@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/* Quitar el fondo blanco del autocompletado del navegador */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px rgb(30 41 59 / 0.6) inset !important;
+  -webkit-text-fill-color: white !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px rgb(30 41 59 / 0.6) inset !important;
+  -webkit-text-fill-color: rgb(30 41 59 / 0.6) !important;
+}

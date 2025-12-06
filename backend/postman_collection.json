@@ -1,0 +1,211 @@
+{
+  "info": {
+    "name": "TCG Music - Upload API",
+    "description": "Colección de endpoints para subir canciones a R2",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Upload",
+      "item": [
+        {
+          "name": "1. Subir Audio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio",
+                  "type": "file",
+                  "src": "/ruta/a/tu/audio.mp3"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/upload/audio",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "upload", "audio"]
+            }
+          }
+        },
+        {
+          "name": "2. Subir Imagen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "/ruta/a/tu/portada.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/upload/imagen",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "upload", "imagen"]
+            }
+          }
+        },
+        {
+          "name": "3. Subir Canción Completa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio",
+                  "type": "file",
+                  "src": "/ruta/a/tu/audio.mp3"
+                },
+                {
+                  "key": "portada",
+                  "type": "file",
+                  "src": "/ruta/a/tu/portada.jpg"
+                },
+                {
+                  "key": "titulo",
+                  "value": "Mi Nueva Canción",
+                  "type": "text"
+                },
+                {
+                  "key": "duracionSegundos",
+                  "value": "210",
+                  "type": "text"
+                },
+                {
+                  "key": "generos",
+                  "value": "rock,indie,alternative",
+                  "type": "text"
+                },
+                {
+                  "key": "esPrivada",
+                  "value": "false",
+                  "type": "text"
+                },
+                {
+                  "key": "esExplicita",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/upload/cancion-completa",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "upload", "cancion-completa"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Canciones",
+      "item": [
+        {
+          "name": "Obtener Canción por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/canciones/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "canciones", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "673d2a1b5f8e9c001234abcd"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mis Canciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/canciones/mis-canciones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "canciones", "mis-canciones"]
+            }
+          }
+        },
+        {
+          "name": "Contar Reproducción",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/canciones/:id/reproducir",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "canciones", ":id", "reproducir"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "673d2a1b5f8e9c001234abcd"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "tu_jwt_token_aqui",
+      "type": "string"
+    }
+  ]
+}
