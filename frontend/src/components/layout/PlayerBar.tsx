@@ -13,12 +13,14 @@ import {
   Maximize2,
   Heart,
   Disc3,
+  Flag,
 } from "lucide-react";
 import { usePlayer } from "../../contexts";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts";
 import { musicService } from "../../services/music.service";
 import { useState, useEffect } from "react";
+import { ReportModal } from "../common/ReportModal";
 
 /**
  * PlayerBar - Reproductor de música fijo en la parte inferior
@@ -70,6 +72,8 @@ export default function PlayerBar() {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [showRemoveLikeModal, setShowRemoveLikeModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showOwnSongModal, setShowOwnSongModal] = useState(false);
 
   // Sincronizar el estado de like con la canción actual
   useEffect(() => {
@@ -83,6 +87,13 @@ export default function PlayerBar() {
   const handleToggleLike = async () => {
     if (!currentSong || !user) return;
 
+    // Verificar si es canción propia
+    const esCancionPropia = currentSong.artistas?.some((artista) =>
+      typeof artista === "string"
+        ? artista === user._id
+        : artista._id === user._id
+    );
+
     // Si ya le gusta, mostrar modal de confirmación
     if (isLiked) {
       setShowRemoveLikeModal(true);
@@ -92,6 +103,12 @@ export default function PlayerBar() {
     // Si no le gusta, agregarlo directamente
     try {
       await musicService.toggleLikeCancion(currentSong._id);
+
+      // Si es canción propia, mostrar modal informativo
+      if (esCancionPropia) {
+        setShowOwnSongModal(true);
+      }
+
       // Actualizar el array de likes localmente
       if (currentSong.likes) {
         currentSong.likes = [...currentSong.likes, user._id];
@@ -99,6 +116,9 @@ export default function PlayerBar() {
         currentSong.likes = [user._id];
       }
       setIsLiked(true);
+
+      // Disparar evento para notificar cambios
+      window.dispatchEvent(new Event("likeChanged"));
     } catch (error) {
       console.error("Error al dar like:", error);
     }
@@ -114,6 +134,9 @@ export default function PlayerBar() {
       }
       setIsLiked(false);
       setShowRemoveLikeModal(false);
+
+      // Disparar evento para notificar cambios
+      window.dispatchEvent(new Event("likeChanged"));
     } catch (error) {
       console.error("Error al quitar like:", error);
       setShowRemoveLikeModal(false);
@@ -186,8 +209,18 @@ export default function PlayerBar() {
                   ? "text-orange-500"
                   : "text-neutral-400 hover:text-orange-500"
               }`}
+              title={isLiked ? "Quitar de me gusta" : "Me gusta"}
             >
               <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
+            </button>
+
+            {/* Botón reportar */}
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="p-2 text-neutral-400 hover:text-red-500 transition-colors hidden md:block"
+              title="Reportar canción"
+            >
+              <Flag size={16} />
             </button>
           </>
         ) : (
@@ -367,6 +400,56 @@ export default function PlayerBar() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal informativo para canciones propias */}
+      {showOwnSongModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-neutral-900 rounded-2xl p-6 max-w-md w-full mx-4 border border-orange-500/30 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
+                <Heart
+                  size={24}
+                  className="text-orange-500"
+                  fill="currentColor"
+                />
+              </div>
+              <h3 className="text-xl font-bold">Esta es tu canción</h3>
+            </div>
+            <p className="text-neutral-300 mb-6">
+              Tus propias canciones no se agregan a "Canciones que me gustan".
+              Puedes escucharlas desde tu perfil en la sección "Mis Canciones".
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowOwnSongModal(false)}
+                className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors font-medium"
+              >
+                Entendido
+              </button>
+              <button
+                onClick={() => {
+                  setShowOwnSongModal(false);
+                  navigate(`/profile/${user.nick}`);
+                }}
+                className="flex-1 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors font-medium"
+              >
+                Ir a mi perfil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Reportar */}
+      {currentSong && (
+        <ReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          tipoContenido="cancion"
+          contenidoId={currentSong._id}
+          nombreContenido={currentSong.titulo}
+        />
       )}
     </footer>
   );

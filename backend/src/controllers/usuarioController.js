@@ -13,13 +13,16 @@ export const registroUsuario = async (req, res) => {
     const { nombre, apellidos, nick, email, password, pais, fechaNacimiento } =
       req.body;
 
+    // Normalizar nick: minúsculas y sin espacios
+    const nickNormalizado = nick.toLowerCase().replace(/\s+/g, "");
+
     // Comprobar si ya existe usuario con ese email o nick
     const usuarioConEmail = await Usuario.findOne({
       email: email.toLowerCase(),
     });
 
     const usuarioConNick = await Usuario.findOne({
-      nick: nick.toLowerCase(),
+      nick: nickNormalizado,
     });
 
     const errores = [];
@@ -48,7 +51,7 @@ export const registroUsuario = async (req, res) => {
     const nuevoUsuario = new Usuario({
       nombre,
       apellidos,
-      nick,
+      nick: nickNormalizado,
       email: email.toLowerCase(),
       password: passwordHash,
       pais,
@@ -133,6 +136,7 @@ export const loginUsuario = async (req, res) => {
 
     // Actualizar última conexión y estado
     usuario.ultimaConexion = new Date();
+    usuario.ultimaActividad = new Date();
     usuario.estaConectado = true;
     usuario.cantidadIniciosSesion = (usuario.cantidadIniciosSesion || 0) + 1;
     await usuario.save();
@@ -263,8 +267,11 @@ export const actualizarPerfil = async (req, res) => {
 
     // Si se proporciona nick, verificar que no esté en uso
     if (nick && nick !== usuario.nick) {
+      // Normalizar nick: minúsculas y sin espacios
+      const nickNormalizado = nick.toLowerCase().replace(/\s+/g, "");
+
       const nickExistente = await Usuario.findOne({
-        nick: nick.toLowerCase(),
+        nick: nickNormalizado,
         _id: { $ne: usuarioId },
       });
 
@@ -275,7 +282,7 @@ export const actualizarPerfil = async (req, res) => {
         });
       }
 
-      usuario.nick = nick;
+      usuario.nick = nickNormalizado;
     }
 
     // Actualizar descripcion si se proporciona
@@ -460,14 +467,16 @@ export const buscarUsuarios = async (req, res) => {
     const searchQuery = q.trim().replace(/^@/, "");
     const regex = new RegExp(searchQuery, "i");
 
-    // Buscar por nick O nombreArtistico
+    // Buscar SOLO por nick o nombreArtistico
     const usuarios = await Usuario.find({
       $or: [{ nick: regex }, { nombreArtistico: regex }],
       estaBaneado: false,
       "privacy.perfilPublico": true, // Solo perfiles públicos
+      esVisible: { $ne: false }, // Permitir undefined o true, solo excluir false explícito
+      role: { $ne: "admin" }, // Excluir solo admins
     })
       .select("nombre apellidos nick nombreArtistico avatarUrl verificado")
-      .limit(20);
+      .limit(50);
 
     return res.status(200).json(usuarios);
   } catch (error) {

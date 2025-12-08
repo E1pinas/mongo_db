@@ -65,17 +65,45 @@ export const seguirUsuario = async (req, res) => {
       $addToSet: { "biblioteca.artistasGuardados": usuarioId },
     });
 
-    // Notificar al usuario que lo siguieron
+    // Notificar al usuario que lo siguieron con contador
     const seguidor = await Usuario.findById(req.userId).select(
       "nick nombreArtistico"
     );
+
+    const totalSeguidores = usuarioActualizado.estadisticas.totalSeguidores;
+    let mensaje;
+
+    if (totalSeguidores === 1) {
+      mensaje = `${
+        seguidor.nombreArtistico || seguidor.nick
+      } es tu primer seguidor 🎉`;
+    } else if (totalSeguidores === 10) {
+      mensaje = `${
+        seguidor.nombreArtistico || seguidor.nick
+      } ha comenzado a seguirte - ¡Ya tienes 10 seguidores! 🔥`;
+    } else if (totalSeguidores === 50) {
+      mensaje = `${
+        seguidor.nombreArtistico || seguidor.nick
+      } ha comenzado a seguirte - ¡Ya tienes 50 seguidores! 🚀`;
+    } else if (totalSeguidores === 100) {
+      mensaje = `${
+        seguidor.nombreArtistico || seguidor.nick
+      } ha comenzado a seguirte - ¡Ya tienes 100 seguidores! 🌟`;
+    } else if (totalSeguidores % 25 === 0 && totalSeguidores >= 25) {
+      mensaje = `${
+        seguidor.nombreArtistico || seguidor.nick
+      } ha comenzado a seguirte - Ya tienes ${totalSeguidores} seguidores 🎊`;
+    } else {
+      mensaje = `${
+        seguidor.nombreArtistico || seguidor.nick
+      } ha comenzado a seguirte`;
+    }
+
     await Notificacion.create({
       usuarioDestino: usuarioId,
       usuarioOrigen: req.userId,
       tipo: "nuevo_seguidor",
-      mensaje: `${
-        seguidor.nombreArtistico || seguidor.nick
-      } ha comenzado a seguirte`,
+      mensaje,
       recurso: {
         tipo: "user",
         id: req.userId,
@@ -84,7 +112,6 @@ export const seguirUsuario = async (req, res) => {
 
     // Notificar hitos de seguidores (10, 50, 100, 500, 1000)
     const hitos = [10, 50, 100, 500, 1000, 5000, 10000];
-    const totalSeguidores = usuarioActualizado.estadisticas.totalSeguidores;
 
     if (hitos.includes(totalSeguidores)) {
       await Notificacion.create({

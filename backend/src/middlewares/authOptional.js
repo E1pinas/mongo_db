@@ -18,8 +18,8 @@ export const authOptional = (req, res, next) => {
     // Verificar el token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Agregar userId al request
-    req.userId = decoded.id;
+    // Agregar usuario al request (mismo formato que authUsuario)
+    req.usuario = { id: decoded.id };
 
     next();
   } catch (error) {

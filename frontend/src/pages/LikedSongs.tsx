@@ -4,7 +4,8 @@ import { musicService } from "../services/music.service";
 import { usePlayer } from "../contexts/PlayerContext";
 import type { Cancion } from "../types";
 import SongRow from "../components/musica/SongRow";
-import SongCommentsModal from "../components/musica/SongCommentsModal";
+import { SongCommentsModal } from "../components/musica";
+import { LoadingSpinner, EmptyState } from "../components/common";
 
 /**
  * LikedSongs - Página de canciones que me gustan
@@ -20,6 +21,17 @@ export default function LikedSongs() {
 
   useEffect(() => {
     loadLikedSongs();
+
+    // Escuchar eventos de cambios en likes
+    const handleLikeChange = () => {
+      loadLikedSongs();
+    };
+
+    window.addEventListener("likeChanged", handleLikeChange);
+
+    return () => {
+      window.removeEventListener("likeChanged", handleLikeChange);
+    };
   }, []);
 
   const loadLikedSongs = async () => {
@@ -53,11 +65,7 @@ export default function LikedSongs() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
@@ -98,15 +106,11 @@ export default function LikedSongs() {
       {/* Lista de canciones */}
       <div className="px-8 pb-8">
         {canciones.length === 0 ? (
-          <div className="text-center py-16">
-            <Heart size={64} className="mx-auto mb-4 text-neutral-600" />
-            <h3 className="text-2xl font-bold mb-2">
-              No tienes canciones guardadas
-            </h3>
-            <p className="text-neutral-400">
-              Dale like a las canciones que te gusten para verlas aquí
-            </p>
-          </div>
+          <EmptyState
+            icon={Heart}
+            title="No tienes canciones guardadas"
+            description="Dale like a las canciones que te gusten para verlas aquí"
+          />
         ) : (
           <div className="space-y-1">
             {canciones.map((cancion, index) => {

@@ -1,8 +1,10 @@
 import { useState, FormEvent, useRef } from "react";
 import { useAuth } from "../contexts";
-import { X, Camera, Upload } from "lucide-react";
+import { X, Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/auth.service";
+import { Input, Textarea, Checkbox } from "../components/forms";
+import { Button } from "../components/common";
 
 export default function Settings() {
   const { user, refreshProfile } = useAuth();
@@ -146,13 +148,16 @@ export default function Settings() {
 
       // 3. Actualizar datos del perfil (nick, bio) - esto siempre debe funcionar
       try {
+        // Normalizar nick: minúsculas y sin espacios
+        const nickNormalizado = formData.nick.toLowerCase().replace(/\s+/g, "");
+
         console.log("Intentando actualizar perfil con:", {
-          nick: formData.nick,
+          nick: nickNormalizado,
           descripcion: formData.bio,
         });
 
         await authService.updateProfile({
-          nick: formData.nick,
+          nick: nickNormalizado,
           descripcion: formData.bio,
           nombreArtistico: formData.nombreArtistico,
           redes: {
@@ -192,9 +197,10 @@ export default function Settings() {
         setMessage(`✓ ${successes.join(", ")}`);
         await refreshProfile();
 
-        // Redirigir al perfil después de 1.5 segundos
+        // Redirigir al perfil después de 1.5 segundos usando el nick normalizado
+        const nickNormalizado = formData.nick.toLowerCase().replace(/\s+/g, "");
         setTimeout(() => {
-          navigate(`/profile/${formData.nick}`);
+          navigate(`/profile/${nickNormalizado}`);
         }, 1500);
       }
 
@@ -376,64 +382,51 @@ export default function Settings() {
             </div>
 
             {/* Nombre de usuario */}
-            <div>
-              <label htmlFor="nick" className="block text-sm font-medium mb-2">
-                Nombre de usuario (único)
-              </label>
-              <input
-                id="nick"
-                type="text"
-                value={formData.nick}
-                onChange={(e) =>
-                  setFormData({ ...formData, nick: e.target.value })
-                }
-                placeholder="Tu nombre de usuario"
-                pattern="^[a-zA-Z0-9_]+$"
-                minLength={3}
-                maxLength={30}
-                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                disabled={isLoading}
-                required
-              />
-              <p className="text-xs text-neutral-500 mt-2">
-                3-30 caracteres. Solo letras, números y guión bajo (_). Sin
-                espacios.
-              </p>
-            </div>
+            <Input
+              id="nick"
+              type="text"
+              label="Nombre de usuario (único)"
+              value={formData.nick}
+              onChange={(e) =>
+                setFormData({ ...formData, nick: e.target.value })
+              }
+              placeholder="Tu nombre de usuario"
+              pattern="^[a-zA-Z0-9_]+$"
+              minLength={3}
+              maxLength={30}
+              disabled={isLoading}
+              required
+              helperText="3-30 caracteres. Solo letras, números y guión bajo (_). Sin espacios."
+            />
+            {formData.nick &&
+              formData.nick !==
+                formData.nick.toLowerCase().replace(/\s+/g, "") && (
+                <p className="text-xs text-orange-400 mt-1">
+                  Se guardará como:{" "}
+                  {formData.nick.toLowerCase().replace(/\s+/g, "")}
+                </p>
+              )}
 
             {/* Nombre artístico */}
-            <div>
-              <label
-                htmlFor="nombreArtistico"
-                className="block text-sm font-medium mb-2"
-              >
-                Nombre para mostrar
-              </label>
-              <input
-                id="nombreArtistico"
-                type="text"
-                value={formData.nombreArtistico}
-                onChange={(e) =>
-                  setFormData({ ...formData, nombreArtistico: e.target.value })
-                }
-                placeholder="New Jeans, Bad Bunny, etc."
-                maxLength={50}
-                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                disabled={isLoading}
-              />
-              <p className="text-xs text-neutral-500 mt-2">
-                Puede contener espacios y caracteres especiales. Máximo 50
-                caracteres.
-              </p>
-            </div>
+            <Input
+              id="nombreArtistico"
+              type="text"
+              label="Nombre para mostrar"
+              value={formData.nombreArtistico}
+              onChange={(e) =>
+                setFormData({ ...formData, nombreArtistico: e.target.value })
+              }
+              placeholder="New Jeans, Bad Bunny, etc."
+              maxLength={50}
+              disabled={isLoading}
+              helperText="Puede contener espacios y caracteres especiales. Máximo 50 caracteres."
+            />
 
             {/* Biografía */}
             <div>
-              <label htmlFor="bio" className="block text-sm font-medium mb-2">
-                Biografía
-              </label>
-              <textarea
+              <Textarea
                 id="bio"
+                label="Biografía"
                 value={formData.bio}
                 onChange={(e) =>
                   setFormData({ ...formData, bio: e.target.value })
@@ -441,7 +434,6 @@ export default function Settings() {
                 placeholder="Cuéntanos sobre ti..."
                 rows={4}
                 maxLength={200}
-                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                 disabled={isLoading}
               />
               <p className="text-xs text-neutral-500 mt-2 text-right">
@@ -454,91 +446,56 @@ export default function Settings() {
               <h3 className="text-lg font-semibold">Redes Sociales</h3>
 
               {/* Instagram */}
-              <div>
-                <label
-                  htmlFor="instagram"
-                  className="flex items-center gap-2 text-sm font-medium mb-2"
-                >
-                  <span className="text-pink-500">📷</span>
-                  Instagram
-                </label>
-                <input
-                  id="instagram"
-                  type="text"
-                  value={formData.instagram}
-                  onChange={(e) =>
-                    setFormData({ ...formData, instagram: e.target.value })
-                  }
-                  placeholder="tu_usuario"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  disabled={isLoading}
-                />
-              </div>
+              <Input
+                id="instagram"
+                type="text"
+                label="📷 Instagram"
+                value={formData.instagram}
+                onChange={(e) =>
+                  setFormData({ ...formData, instagram: e.target.value })
+                }
+                placeholder="tu_usuario"
+                disabled={isLoading}
+              />
 
               {/* TikTok */}
-              <div>
-                <label
-                  htmlFor="tiktok"
-                  className="flex items-center gap-2 text-sm font-medium mb-2"
-                >
-                  <span>🎵</span>
-                  TikTok
-                </label>
-                <input
-                  id="tiktok"
-                  type="text"
-                  value={formData.tiktok}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tiktok: e.target.value })
-                  }
-                  placeholder="@tu_usuario"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-                  disabled={isLoading}
-                />
-              </div>
+              <Input
+                id="tiktok"
+                type="text"
+                label="🎵 TikTok"
+                value={formData.tiktok}
+                onChange={(e) =>
+                  setFormData({ ...formData, tiktok: e.target.value })
+                }
+                placeholder="@tu_usuario"
+                disabled={isLoading}
+              />
 
               {/* YouTube */}
-              <div>
-                <label
-                  htmlFor="youtube"
-                  className="flex items-center gap-2 text-sm font-medium mb-2"
-                >
-                  <span className="text-red-500">▶️</span>
-                  YouTube
-                </label>
-                <input
-                  id="youtube"
-                  type="text"
-                  value={formData.youtube}
-                  onChange={(e) =>
-                    setFormData({ ...formData, youtube: e.target.value })
-                  }
-                  placeholder="@tu_canal"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  disabled={isLoading}
-                />
-              </div>
+              <Input
+                id="youtube"
+                type="text"
+                label="▶️ YouTube"
+                value={formData.youtube}
+                onChange={(e) =>
+                  setFormData({ ...formData, youtube: e.target.value })
+                }
+                placeholder="@tu_canal"
+                disabled={isLoading}
+              />
 
               {/* X (Twitter) */}
-              <div>
-                <label
-                  htmlFor="x"
-                  className="flex items-center gap-2 text-sm font-medium mb-2"
-                >
-                  <span>𝕏</span>X (Twitter)
-                </label>
-                <input
-                  id="x"
-                  type="text"
-                  value={formData.x}
-                  onChange={(e) =>
-                    setFormData({ ...formData, x: e.target.value })
-                  }
-                  placeholder="@tu_usuario"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={isLoading}
-                />
-              </div>
+              <Input
+                id="x"
+                type="text"
+                label="𝕏 X (Twitter)"
+                value={formData.x}
+                onChange={(e) =>
+                  setFormData({ ...formData, x: e.target.value })
+                }
+                placeholder="@tu_usuario"
+                disabled={isLoading}
+              />
             </div>
 
             {/* Configuración de privacidad */}

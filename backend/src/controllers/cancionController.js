@@ -4,6 +4,24 @@ import { Cancion } from "../models/cancionModels.js";
 import { Usuario } from "../models/usuarioModels.js";
 import { esMayorDeEdad } from "../helpers/edadHelper.js";
 import { notificarNuevaCancion } from "../helpers/notificacionHelper.js";
+import {
+  hasUserLiked,
+  toggleLikeOnResource,
+  isArtist,
+  validateSongAvailability,
+  getSongPopulateOptions,
+  getMilestone,
+} from "../helpers/musicHelpers.js";
+import {
+  sendSuccess,
+  sendError,
+  sendNotFound,
+  sendValidationError,
+  sendServerError,
+  sendCreated,
+  sendUnauthorized,
+} from "../helpers/responseHelpers.js";
+import { validateRequired } from "../helpers/validationHelpers.js";
 
 // 📌 Crear canción a partir de URLs (ya subidas a R2)
 export const crearCancion = async (req, res) => {
@@ -29,27 +47,36 @@ export const crearCancion = async (req, res) => {
           .filter(Boolean)
       : [];
 
-    // Validaciones
-    if (!titulo?.trim() || !audioUrl?.trim() || !duracionSegundos) {
-      return res.status(400).json({
-        ok: false,
-        message:
-          "Faltan campos obligatorios (titulo, audioUrl, duracionSegundos)",
-      });
+    // Validaciones con helpers
+    const tituloValidation = validateRequired(titulo, "titulo");
+    if (!tituloValidation.valid) {
+      return sendValidationError(res, tituloValidation.error);
     }
 
-    if (Number(duracionSegundos) <= 0) {
-      return res.status(400).json({
-        ok: false,
-        message: "La duración debe ser mayor a 0",
-      });
+    const audioValidation = validateRequired(audioUrl, "audioUrl");
+    if (!audioValidation.valid) {
+      return sendValidationError(res, audioValidation.error);
+    }
+
+    if (!duracionSegundos || Number(duracionSegundos) <= 0) {
+      return sendValidationError(res, "La duración debe ser mayor a 0");
     }
 
     if (!req.userId) {
-      return res.status(401).json({
-        ok: false,
-        message: "Usuario no autenticado",
-      });
+      return sendUnauthorized(res, "No autenticado");
+    }
+
+    // Verificar que el usuario puede subir contenido
+    const usuario = await Usuario.findById(req.userId);
+    if (!usuario) {
+      return sendNotFound(res, "Usuario");
+    }
+
+    if (!usuario.puedeSubirContenido || usuario.role !== "user") {
+      return sendUnauthorized(
+        res,
+        "No tienes permisos para subir contenido musical"
+      );
     }
 
     const artistas = [new mongoose.Types.ObjectId(req.userId)];
@@ -67,19 +94,16 @@ export const crearCancion = async (req, res) => {
       esExplicita: Boolean(esExplicita),
     });
 
-    // Actualizar usuario: añadir a misCanciones
+    // Actualizar usuario: añadir a misCanciones e incrementar contador
     await Usuario.findByIdAndUpdate(req.userId, {
       $push: { misCanciones: cancion._id },
+      $inc: { "estadisticas.totalCancionesSubidas": 1 },
     });
 
     // Notificar a seguidores (sin esperar)
     notificarNuevaCancion(cancion, req.userId);
 
-    return res.status(201).json({
-      ok: true,
-      message: "Canción creada correctamente",
-      cancion,
-    });
+    return sendCreated(res, cancion, "Canción creada correctamente");
   } catch (error) {
     console.error("Error en crearCancion:", error);
     return res.status(500).json({
@@ -100,16 +124,10 @@ export const misCanciones = async (req, res) => {
       .populate("album", "titulo portadaUrl")
       .sort({ createdAt: -1 });
 
-    return res.status(200).json({
-      ok: true,
-      canciones,
-    });
+    return sendSuccess(res, { canciones });
   } catch (error) {
     console.error("Error en misCanciones:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al obtener las canciones",
-    });
+    return sendServerError(res, error, "Error al obtener las canciones");
   }
 };
 
@@ -119,10 +137,9 @@ export const buscarMisCanciones = async (req, res) => {
     const { q } = req.query;
 
     if (!q || q.trim().length < 2) {
-      return res.status(400).json({
-        ok: false,
-        message: "La búsqueda debe tener al menos 2 caracteres",
-      });
+      return sendValidationError(res, [
+        "La búsqueda debe tener al menos 2 caracteres",
+      ]);
     }
 
     const regex = new RegExp(q.trim(), "i");
@@ -140,17 +157,13 @@ export const buscarMisCanciones = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(20);
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       canciones,
       total: canciones.length,
     });
   } catch (error) {
     console.error("Error en buscarMisCanciones:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al buscar canciones",
-    });
+    return sendServerError(res, error, "Error al buscar canciones");
   }
 };
 
@@ -161,11 +174,9 @@ export const obtenerCancion = async (req, res) => {
       .populate("artistas", "nick nombre nombreArtistico avatarUrl")
       .populate("album", "titulo portadaUrl");
 
-    if (!cancion || cancion.estaEliminada) {
-      return res.status(404).json({
-        ok: false,
-        message: "Canción no encontrada",
-      });
+    const validation = validateSongAvailability(cancion, req.userId);
+    if (!validation.valid) {
+      return sendNotFound(res, "Canción");
     }
 
     // Verificar si el usuario puede reproducir contenido explícito
@@ -189,8 +200,7 @@ export const obtenerCancion = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       cancion,
       restricciones: {
         puedeReproducir,
@@ -200,10 +210,7 @@ export const obtenerCancion = async (req, res) => {
     });
   } catch (error) {
     console.error("Error en obtenerCancion:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al obtener la canción",
-    });
+    return sendServerError(res, error, "Error al obtener la canción");
   }
 };
 
@@ -242,10 +249,7 @@ export const actualizarCancion = async (req, res) => {
     );
 
     if (!cancion) {
-      return res.status(404).json({
-        ok: false,
-        message: "Canción no encontrada o no tienes permisos",
-      });
+      return sendNotFound(res, "Canción o no tienes permisos");
     }
 
     // Recalcular si es single
@@ -254,17 +258,13 @@ export const actualizarCancion = async (req, res) => {
       await cancion.save();
     }
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       message: "Canción actualizada correctamente",
       cancion,
     });
   } catch (error) {
     console.error("Error en actualizarCancion:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al actualizar la canción",
-    });
+    return sendServerError(res, error, "Error al actualizar la canción");
   }
 };
 
@@ -278,26 +278,17 @@ export const eliminarCancion = async (req, res) => {
     );
 
     if (!cancion) {
-      return res.status(404).json({
-        ok: false,
-        message: "Canción no encontrada o no tienes permisos",
-      });
+      return sendNotFound(res, "Canción o no tienes permisos");
     }
 
     // Opcional: borrar archivos en R2
     // await borrarArchivoR2PorUrl(cancion.audioUrl);
     // if (cancion.portadaUrl) await borrarArchivoR2PorUrl(cancion.portadaUrl);
 
-    return res.status(200).json({
-      ok: true,
-      message: "Canción eliminada correctamente",
-    });
+    return sendSuccess(res, null, "Canción eliminada correctamente");
   } catch (error) {
     console.error("Error en eliminarCancion:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al eliminar la canción",
-    });
+    return sendServerError(res, error, "Error al eliminar la canción");
   }
 };
 
@@ -309,84 +300,61 @@ export const toggleLike = async (req, res) => {
       "_id"
     );
 
-    if (!cancion || cancion.estaEliminada) {
-      return res.status(404).json({
-        ok: false,
-        message: "Canción no encontrada",
-      });
+    const validation = validateSongAvailability(cancion, req.userId);
+    if (!validation.valid) {
+      return sendError(res, validation.error, 404);
     }
 
     const usuarioId = String(req.userId);
-    const yaLeDioLike = cancion.likes.some((id) => String(id) === usuarioId);
     const likesAnteriores = cancion.likes.length;
+    const esPropia = isArtist(cancion, usuarioId);
 
-    // Verificar si el usuario es el artista de la canción
-    const esPropia = cancion.artistas.some(
-      (artista) => String(artista._id) === usuarioId
-    );
+    // Toggle like usando helper
+    const { liked, totalLikes } = toggleLikeOnResource(cancion, usuarioId);
 
-    if (yaLeDioLike) {
-      // Quitar like de la canción
-      cancion.likes = cancion.likes.filter((id) => String(id) !== usuarioId);
-
-      // Quitar de biblioteca (solo si no es propia)
-      if (!esPropia) {
-        await Usuario.findByIdAndUpdate(req.userId, {
-          $pull: { "biblioteca.cancionesGuardadas": req.params.id },
-        });
-      }
-    } else {
-      // Agregar like a la canción
-      cancion.likes.push(req.userId);
-
-      // Agregar a biblioteca SOLO si NO es tu propia canción
-      if (!esPropia) {
+    // Actualizar biblioteca (solo si no es propia)
+    if (!esPropia) {
+      if (liked) {
         await Usuario.findByIdAndUpdate(req.userId, {
           $addToSet: { "biblioteca.cancionesGuardadas": req.params.id },
+        });
+      } else {
+        await Usuario.findByIdAndUpdate(req.userId, {
+          $pull: { "biblioteca.cancionesGuardadas": req.params.id },
         });
       }
     }
 
     await cancion.save();
 
-    // Notificar hitos de likes (10, 50, 100, 500, 1000)
-    const hitos = [10, 50, 100, 500, 1000, 5000, 10000];
-    const nuevosLikes = cancion.likes.length;
+    // Notificar hitos usando helper
+    if (liked) {
+      const hito = getMilestone(likesAnteriores, totalLikes);
 
-    if (
-      !yaLeDioLike &&
-      hitos.includes(nuevosLikes) &&
-      nuevosLikes > likesAnteriores
-    ) {
-      // Importar Notificacion
-      const { Notificacion } = await import("../models/notificacionModels.js");
+      if (hito) {
+        const { Notificacion } = await import(
+          "../models/notificacionModels.js"
+        );
 
-      // Notificar a cada artista
-      for (const artista of cancion.artistas) {
-        await Notificacion.create({
-          usuarioDestino: artista._id,
-          usuarioOrigen: null, // Sistema
-          tipo: "sistema",
-          mensaje: `🎉 ¡Tu canción "${cancion.titulo}" ha alcanzado ${nuevosLikes} me gusta!`,
-          recurso: {
-            tipo: "song",
-            id: cancion._id,
-          },
-        });
+        for (const artista of cancion.artistas) {
+          await Notificacion.create({
+            usuarioDestino: artista._id,
+            usuarioOrigen: null,
+            tipo: "sistema",
+            mensaje: `🎉 ¡Tu canción "${cancion.titulo}" ha alcanzado ${hito} me gusta!`,
+            recurso: {
+              tipo: "song",
+              id: cancion._id,
+            },
+          });
+        }
       }
     }
 
-    return res.status(200).json({
-      ok: true,
-      liked: !yaLeDioLike,
-      totalLikes: cancion.likes.length,
-    });
+    return sendSuccess(res, { liked, totalLikes });
   } catch (error) {
     console.error("Error en toggleLike:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al procesar el like",
-    });
+    return sendServerError(res, error, "Error al procesar el like");
   }
 };
 
@@ -395,22 +363,18 @@ export const contarReproduccion = async (req, res) => {
   try {
     const cancion = await Cancion.findById(req.params.id);
 
-    if (!cancion || cancion.estaEliminada) {
-      return res.status(404).json({
-        ok: false,
-        message: "Canción no encontrada",
-      });
+    const validation = validateSongAvailability(cancion, req.userId);
+    if (!validation.valid) {
+      return sendError(res, validation.error, 404);
     }
 
     // Verificar restricción de contenido explícito
     if (cancion.esExplicita) {
       if (!req.userId) {
-        return res.status(403).json({
-          ok: false,
-          message: "Debes iniciar sesión para reproducir contenido explícito",
-          esExplicita: true,
-          requiereLogin: true,
-        });
+        return sendUnauthorized(
+          res,
+          "Debes iniciar sesión para reproducir contenido explícito"
+        );
       }
 
       const usuario = await Usuario.findById(req.userId).select(
@@ -418,37 +382,50 @@ export const contarReproduccion = async (req, res) => {
       );
 
       if (!usuario) {
-        return res.status(404).json({
-          ok: false,
-          message: "Usuario no encontrado",
-        });
+        return sendNotFound(res, "Usuario");
       }
 
       if (!esMayorDeEdad(usuario.fechaNacimiento)) {
-        return res.status(403).json({
-          ok: false,
-          message:
-            "Debes ser mayor de 18 años para reproducir contenido explícito",
-          esExplicita: true,
-          restriccionEdad: true,
-        });
+        return sendUnauthorized(
+          res,
+          "Debes ser mayor de 18 años para reproducir contenido explícito"
+        );
       }
     }
 
-    // Incrementar reproducciones
+    // Incrementar reproducciones de la canción
     cancion.reproduccionesTotales += 1;
     await cancion.save();
 
-    return res.status(200).json({
-      ok: true,
+    // Actualizar estadísticas del usuario que está escuchando (si está autenticado)
+    if (req.userId) {
+      await Usuario.findByIdAndUpdate(req.userId, {
+        $inc: {
+          "estadisticas.reproduccionesTotales": 1,
+          "estadisticas.totalCancionesEscuchadas": 1,
+          "estadisticas.tiempoTotalEscuchado": Math.floor(
+            cancion.duracionSegundos / 60
+          ), // Convertir a minutos
+        },
+      });
+
+      // Agregar al historial de reproducciones (máximo 50 canciones)
+      await Usuario.findByIdAndUpdate(req.userId, {
+        $push: {
+          historialReproducciones: {
+            $each: [{ cancion: cancion._id, fecha: new Date() }],
+            $slice: -50, // Mantener solo las últimas 50
+          },
+        },
+      });
+    }
+
+    return sendSuccess(res, {
       reproduccionesTotales: cancion.reproduccionesTotales,
     });
   } catch (error) {
     console.error("Error en contarReproduccion:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al contar reproducción",
-    });
+    return sendServerError(res, error, "Error al contar reproducción");
   }
 };
 
@@ -459,35 +436,30 @@ export const verificarAccesoCancion = async (req, res) => {
 
     const cancion = await Cancion.findById(id);
 
-    if (!cancion || cancion.estaEliminada) {
-      return res.status(404).json({
-        ok: false,
-        message: "Canción no encontrada",
-      });
+    const validation = validateSongAvailability(cancion, req.userId);
+    if (!validation.valid) {
+      return sendError(res, validation.error, 404);
     }
 
-    // Verificar si es privada
-    if (cancion.esPrivada) {
-      // Solo el artista puede acceder
-      const esArtista = cancion.artistas.some(
-        (artistaId) => artistaId.toString() === req.userId
-      );
+    // Verificar acceso a contenido privado usando helper
+    const hasAccess = hasAccessToPrivateResource(
+      cancion,
+      req.userId,
+      req.userRole
+    );
 
-      if (!esArtista && req.userRole !== "admin") {
-        return res.status(403).json({
-          ok: false,
-          puedeReproducir: false,
-          message: "Esta canción es privada",
-          esPrivada: true,
-        });
-      }
+    if (!hasAccess) {
+      return sendSuccess(res, {
+        puedeReproducir: false,
+        message: "Esta canción es privada",
+        esPrivada: true,
+      });
     }
 
     // Verificar contenido explícito
     if (cancion.esExplicita) {
       if (!req.userId) {
-        return res.status(200).json({
-          ok: true,
+        return sendSuccess(res, {
           puedeReproducir: false,
           message: "Debes iniciar sesión para reproducir contenido explícito",
           esExplicita: true,
@@ -500,15 +472,11 @@ export const verificarAccesoCancion = async (req, res) => {
       );
 
       if (!usuario) {
-        return res.status(404).json({
-          ok: false,
-          message: "Usuario no encontrado",
-        });
+        return sendNotFound(res, "Usuario");
       }
 
       if (!esMayorDeEdad(usuario.fechaNacimiento)) {
-        return res.status(200).json({
-          ok: true,
+        return sendSuccess(res, {
           puedeReproducir: false,
           message:
             "Debes ser mayor de 18 años para reproducir contenido explícito",
@@ -518,17 +486,13 @@ export const verificarAccesoCancion = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       puedeReproducir: true,
       message: "Acceso permitido",
     });
   } catch (error) {
     console.error("Error en verificarAccesoCancion:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al verificar acceso",
-    });
+    return sendServerError(res, error, "Error al verificar acceso");
   }
 };
 
@@ -541,17 +505,28 @@ export const buscarCanciones = async (req, res) => {
     const { q } = req.query;
 
     if (!q || q.trim().length < 2) {
-      return res.status(400).json({
-        ok: false,
-        message: "La búsqueda debe tener al menos 2 caracteres",
-      });
+      return sendValidationError(res, [
+        "La búsqueda debe tener al menos 2 caracteres",
+      ]);
     }
 
     const regex = new RegExp(q.trim(), "i");
 
-    // Buscar canciones por título
+    // Primero buscar usuarios que coincidan con la búsqueda (artistas)
+    // SOLO por nick o nombreArtistico
+    const artistasCoincidentes = await Usuario.find({
+      $or: [{ nick: regex }, { nombreArtistico: regex }],
+      role: "user",
+    }).select("_id");
+
+    const artistaIds = artistasCoincidentes.map((a) => a._id);
+
+    // Buscar canciones por título O por artista
     const canciones = await Cancion.find({
-      titulo: regex,
+      $or: [
+        { titulo: regex },
+        { artistas: { $in: artistaIds } }, // Canciones de artistas que coincidan
+      ],
       esPrivada: false,
       estaEliminada: false,
     })
@@ -563,18 +538,15 @@ export const buscarCanciones = async (req, res) => {
       .select(
         "titulo artistas audioUrl portadaUrl duracionSegundos generos reproduccionesTotales likes"
       )
-      .limit(20);
+      .limit(50)
+      .sort({ reproduccionesTotales: -1 }); // Ordenar por popularidad
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       canciones,
       total: canciones.length,
     });
   } catch (error) {
     console.error("Error en buscarCanciones:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al buscar canciones",
-    });
+    return sendServerError(res, error, "Error al buscar canciones");
   }
 };

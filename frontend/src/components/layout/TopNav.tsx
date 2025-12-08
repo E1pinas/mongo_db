@@ -189,7 +189,11 @@ export default function TopNav({
         </NavLink>
 
         <NavLink
-          to={`/profile/${user?.nick || ""}`}
+          to={
+            user?.role === "admin" || user?.role === "super_admin"
+              ? "/admin"
+              : `/profile/${user?.nick || ""}`
+          }
           className={({ isActive }) =>
             `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
               isActive
@@ -199,7 +203,11 @@ export default function TopNav({
           }
         >
           <User size={18} />
-          <span className="hidden md:inline">Perfil</span>
+          <span className="hidden md:inline">
+            {user?.role === "admin" || user?.role === "super_admin"
+              ? "Panel Admin"
+              : "Perfil"}
+          </span>
         </NavLink>
 
         <NavLink
@@ -285,12 +293,20 @@ export default function TopNav({
               {/* Opciones */}
               <div className="py-1">
                 <NavLink
-                  to={`/profile/${user?.nick || ""}`}
+                  to={
+                    user?.role === "admin" || user?.role === "super_admin"
+                      ? "/admin"
+                      : `/profile/${user?.nick || ""}`
+                  }
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center gap-3 px-4 py-2 hover:bg-neutral-800 transition-colors text-sm"
                 >
                   <User size={16} />
-                  <span>Ver perfil</span>
+                  <span>
+                    {user?.role === "admin" || user?.role === "super_admin"
+                      ? "Panel de Admin"
+                      : "Ver perfil"}
+                  </span>
                 </NavLink>
 
                 <NavLink

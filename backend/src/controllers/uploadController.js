@@ -239,9 +239,10 @@ export const subirCancionCompleta = async (req, res) => {
       esExplicita: esExplicitaBool,
     });
 
-    // Actualizar usuario: añadir a misCanciones
+    // Actualizar usuario: añadir a misCanciones e incrementar contador
     await Usuario.findByIdAndUpdate(req.userId, {
       $push: { misCanciones: cancion._id },
+      $inc: { "estadisticas.totalCancionesSubidas": 1 },
     });
 
     // Poblar información para la respuesta

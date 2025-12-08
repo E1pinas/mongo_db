@@ -78,7 +78,7 @@ const sanitizeString = (value) => {
  * Elimina operadores de MongoDB de las entradas
  */
 export const preventNoSQLInjection = (req, res, next) => {
-  const clean = (obj) => {
+  const clean = (obj) => {http://localhost:5173/song/693577c4c8a583217c3faa2a
     if (typeof obj !== "object" || obj === null) {
       return obj;
     }

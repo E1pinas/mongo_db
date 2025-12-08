@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
-import { Play, Heart, MessageCircle } from "lucide-react";
+import { Play, Heart, MessageCircle, Flag } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { Cancion } from "../../types";
 import { musicService } from "../../services/music.service";
 import { useAuth } from "../../contexts";
+import { ReportModal } from "../common/ReportModal";
+import { formatDuration } from "../../utils/formatHelpers";
 
 interface SongRowProps {
   cancion: Cancion;
@@ -26,8 +29,11 @@ export default function SongRow({
   hideComments = false,
 }: SongRowProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [showRemoveLikeModal, setShowRemoveLikeModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showOwnSongModal, setShowOwnSongModal] = useState(false);
 
   // Sincronizar el estado de like con la canción
   useEffect(() => {
@@ -38,13 +44,6 @@ export default function SongRow({
       setIsLiked(false);
     }
   }, [cancion, cancion.likes, user]);
-
-  const formatDuration = (seconds: number | undefined) => {
-    if (!seconds) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   const handleToggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,6 +60,20 @@ export default function SongRow({
       setIsLiked(true);
 
       await musicService.toggleLikeCancion(cancion._id);
+
+      // Verificar si es canción propia
+      if (user) {
+        const esCancionPropia = cancion.artistas?.some((artista) =>
+          typeof artista === "string"
+            ? artista === user._id
+            : artista._id === user._id
+        );
+
+        // Si es canción propia, mostrar modal informativo
+        if (esCancionPropia) {
+          setShowOwnSongModal(true);
+        }
+      }
 
       // Actualizar el array de likes inmediatamente
       if (user) {
@@ -200,6 +213,17 @@ export default function SongRow({
           >
             <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
           </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowReportModal(true);
+            }}
+            className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-neutral-400 hover:text-red-500"
+            title="Reportar canción"
+          >
+            <Flag size={16} />
+          </button>
         </div>
       </div>
 
@@ -231,6 +255,54 @@ export default function SongRow({
           </div>
         </div>
       )}
+
+      {/* Modal informativo para canciones propias */}
+      {showOwnSongModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-900 rounded-2xl p-6 max-w-md w-full border border-orange-500/30 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
+                <Heart
+                  size={24}
+                  className="text-orange-500"
+                  fill="currentColor"
+                />
+              </div>
+              <h3 className="text-xl font-bold">Esta es tu canción</h3>
+            </div>
+            <p className="text-neutral-300 mb-6">
+              Tus propias canciones no se agregan a "Canciones que me gustan".
+              Puedes escucharlas desde tu perfil en la sección "Mis Canciones".
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowOwnSongModal(false)}
+                className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors font-medium"
+              >
+                Entendido
+              </button>
+              <button
+                onClick={() => {
+                  setShowOwnSongModal(false);
+                  navigate(`/profile/${user?.nick}`);
+                }}
+                className="flex-1 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors font-medium"
+              >
+                Ir a mi perfil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Reportar */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        tipoContenido="cancion"
+        contenidoId={cancion._id}
+        nombreContenido={cancion.titulo}
+      />
     </>
   );
 }

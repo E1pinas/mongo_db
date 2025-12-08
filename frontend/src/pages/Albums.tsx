@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Play, X, Upload, Search } from "lucide-react";
+import { Plus, X, Upload, Search } from "lucide-react";
 import { musicService } from "../services/music.service";
 import { usePlayer, useAuth } from "../contexts";
 import type { Album, Cancion } from "../types";
 import { formatTimeAgo } from "../utils/dateFormat";
+import {
+  Button,
+  LoadingSpinner,
+  EmptyState,
+  SectionHeader,
+  MediaGrid,
+} from "../components/common";
+import { AlbumCard } from "../components/musica";
 
 /**
  * Albums - Página de álbumes
@@ -278,13 +286,10 @@ export default function Albums() {
             <h1 className="text-4xl font-bold mb-2">Álbumes</h1>
             <p className="text-neutral-400">Descubre álbumes de la comunidad</p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-blue-500 text-white rounded-full font-semibold hover:bg-blue-600 transition-colors flex items-center gap-2"
-          >
-            <Plus size={20} />
-            <span>Crear álbum</span>
-          </button>
+          <Button onClick={() => setShowCreateModal(true)} variant="secondary">
+            <Plus size={20} className="mr-2" />
+            Crear álbum
+          </Button>
         </div>
       </div>
 
@@ -306,95 +311,51 @@ export default function Albums() {
       </div>
 
       {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+      {isLoading && <LoadingSpinner />}
 
       {/* Mis álbumes */}
       {!isLoading && filteredMyAlbums.length > 0 && (
         <section className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">
-            {selectedGenre === "Todo"
-              ? "Tus álbumes"
-              : `Tus álbumes de ${selectedGenre}`}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <SectionHeader
+            title={
+              selectedGenre === "Todo"
+                ? "Tus álbumes"
+                : `Tus álbumes de ${selectedGenre}`
+            }
+          />
+          <MediaGrid>
             {filteredMyAlbums.map((album) => (
-              <div
+              <AlbumCard
                 key={album._id}
+                album={album}
                 onClick={() => navigate(`/album/${album._id}`)}
-                className="bg-neutral-800/30 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer group"
-              >
-                <div className="relative mb-4">
-                  <div className="aspect-square bg-neutral-700 rounded-lg mb-4 overflow-hidden">
-                    <img
-                      src={album.portadaUrl || "/cover.jpg"}
-                      alt={album.titulo}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <button
-                    onClick={(e) => handlePlayAlbum(album, e)}
-                    className="absolute bottom-2 right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all shadow-lg hover:scale-105"
-                  >
-                    <Play size={20} fill="currentColor" />
-                  </button>
-                </div>
-                <p className="font-semibold text-sm mb-2 truncate">
-                  {album.titulo}
-                </p>
-                <p className="text-xs text-neutral-400 truncate">
-                  {getArtistNames(album.artistas)} •{" "}
-                  {formatTimeAgo(album.createdAt)}
-                </p>
-              </div>
+                onPlay={(e) => handlePlayAlbum(album, e)}
+              />
             ))}
-          </div>
+          </MediaGrid>
         </section>
       )}
 
       {/* Álbumes públicos */}
       {!isLoading && filteredPublicAlbums.length > 0 && (
         <section className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">
-            {selectedGenre === "Todo"
-              ? "Descubre álbumes"
-              : `Álbumes de ${selectedGenre}`}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <SectionHeader
+            title={
+              selectedGenre === "Todo"
+                ? "Descubre álbumes"
+                : `Álbumes de ${selectedGenre}`
+            }
+          />
+          <MediaGrid>
             {filteredPublicAlbums.map((album) => (
-              <div
+              <AlbumCard
                 key={album._id}
+                album={album}
                 onClick={() => navigate(`/album/${album._id}`)}
-                className="bg-neutral-800/30 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer group"
-              >
-                <div className="relative mb-4">
-                  <div className="aspect-square bg-neutral-700 rounded-lg mb-4 overflow-hidden">
-                    <img
-                      src={album.portadaUrl || "/cover.jpg"}
-                      alt={album.titulo}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <button
-                    onClick={(e) => handlePlayAlbum(album, e)}
-                    className="absolute bottom-2 right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all shadow-lg hover:scale-105"
-                  >
-                    <Play size={20} fill="currentColor" />
-                  </button>
-                </div>
-                <p className="font-semibold text-sm mb-2 truncate">
-                  {album.titulo}
-                </p>
-                <p className="text-xs text-neutral-400 truncate">
-                  {getArtistNames(album.artistas)} •{" "}
-                  {formatTimeAgo(album.createdAt)}
-                </p>
-              </div>
+                onPlay={(e) => handlePlayAlbum(album, e)}
+              />
             ))}
-          </div>
+          </MediaGrid>
         </section>
       )}
 

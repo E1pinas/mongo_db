@@ -1,21 +1,17 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Play,
-  Heart,
-  MoreHorizontal,
-  Clock,
-  Music,
-  ArrowLeft,
-} from "lucide-react";
+import { Music, ArrowLeft, Play, Heart, MoreHorizontal } from "lucide-react";
 import { albumService } from "../services/album.service";
 import { musicService } from "../services/music.service";
 import { recentService } from "../services/recent.service";
 import { usePlayer, useAuth } from "../contexts";
 import type { Album, Cancion, Usuario } from "../types";
-import { formatTimeAgo } from "../utils/dateFormat";
+import { LoadingSpinner, EmptyState } from "../components/common";
+import { DetailHeader } from "../components/musica";
 import SongRow from "../components/musica/SongRow";
 import SongCommentsModal from "../components/musica/SongCommentsModal";
+import { formatTimeAgo } from "../utils/dateFormat";
+import { formatDuration } from "../utils/formatHelpers";
 
 export default function AlbumDetail() {
   const { id } = useParams<{ id: string }>();
@@ -99,12 +95,6 @@ export default function AlbumDetail() {
       .join(", ");
   };
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
   const getTotalDuration = () => {
     if (!album || !album.canciones) return "0:00";
     const songs = album.canciones.filter(
@@ -137,25 +127,16 @@ export default function AlbumDetail() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!album) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <Music size={64} className="text-neutral-600 mb-4" />
-        <p className="text-xl text-neutral-400 mb-4">Álbum no encontrado</p>
-        <button
-          onClick={() => navigate("/albums")}
-          className="px-6 py-2 bg-white text-black rounded-full font-semibold hover:scale-105 transition-transform"
-        >
-          Volver a álbumes
-        </button>
-      </div>
+      <EmptyState
+        icon={Music}
+        title="Álbum no encontrado"
+        description="Este álbum no existe o fue eliminado."
+      />
     );
   }
 
@@ -232,10 +213,11 @@ export default function AlbumDetail() {
 
         {/* Lista de canciones */}
         {songs.length === 0 ? (
-          <div className="text-center py-12">
-            <Music size={48} className="text-neutral-600 mx-auto mb-4" />
-            <p className="text-neutral-400">Este álbum no tiene canciones</p>
-          </div>
+          <EmptyState
+            icon={Music}
+            title="Este álbum no tiene canciones"
+            description="Aún no se han agregado canciones a este álbum."
+          />
         ) : (
           <div className="space-y-1">
             {songs.map((song, index) => {

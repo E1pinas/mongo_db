@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Disc, Play, Heart } from "lucide-react";
+import { Disc } from "lucide-react";
 import { musicService } from "../services/music.service";
-import type { Album, Usuario } from "../types";
+import type { Album } from "../types";
+import { LoadingSpinner, EmptyState, MediaGrid } from "../components/common";
+import { AlbumCard } from "../components/musica";
 
 export default function LikedAlbums() {
   const [albumes, setAlbumes] = useState<Album[]>([]);
@@ -37,11 +39,7 @@ export default function LikedAlbums() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
@@ -67,70 +65,21 @@ export default function LikedAlbums() {
       {/* Grid de álbumes */}
       <div className="px-8 py-6">
         {albumes.length === 0 ? (
-          <div className="text-center py-16">
-            <Disc size={64} className="mx-auto mb-4 text-neutral-600" />
-            <h3 className="text-2xl font-bold mb-2">
-              No tienes álbumes guardados
-            </h3>
-            <p className="text-neutral-400">
-              Guarda álbumes que te gusten para verlos aquí
-            </p>
-          </div>
+          <EmptyState
+            icon={Disc}
+            title="No tienes álbumes guardados"
+            description="Guarda álbumes que te gusten para verlos aquí"
+          />
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {albumes.map((album) => {
-              const artistaNombre =
-                typeof album.artistas?.[0] === "object"
-                  ? (album.artistas[0] as Usuario).nombreArtistico ||
-                    (album.artistas[0] as Usuario).nombre
-                  : "";
-
-              return (
-                <div
-                  key={album._id}
-                  onClick={() => navigate(`/album/${album._id}`)}
-                  className="group bg-neutral-800/40 hover:bg-neutral-800 p-4 rounded-lg transition-all cursor-pointer"
-                >
-                  <div className="relative mb-4">
-                    <img
-                      src={
-                        album.portadaUrl && album.portadaUrl.trim() !== ""
-                          ? album.portadaUrl
-                          : "/cover.jpg"
-                      }
-                      alt={album.titulo}
-                      className="w-full aspect-square object-cover rounded-md shadow-lg"
-                      onError={(e) => {
-                        e.currentTarget.src = "/cover.jpg";
-                      }}
-                    />
-                    <button
-                      onClick={(e) => handleRemoveAlbum(e, album._id)}
-                      className="absolute top-2 right-2 w-10 h-10 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <Heart
-                        size={20}
-                        className="fill-orange-500 text-orange-500"
-                      />
-                    </button>
-                    <button className="absolute bottom-2 right-2 w-12 h-12 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:scale-105 transition-all shadow-lg">
-                      <Play
-                        size={20}
-                        className="text-white ml-1"
-                        fill="white"
-                      />
-                    </button>
-                  </div>
-                  <h3 className="font-semibold text-white truncate mb-1">
-                    {album.titulo}
-                  </h3>
-                  <p className="text-sm text-neutral-400 truncate">
-                    {artistaNombre}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+          <MediaGrid>
+            {albumes.map((album) => (
+              <AlbumCard
+                key={album._id}
+                album={album}
+                onClick={() => navigate(`/album/${album._id}`)}
+              />
+            ))}
+          </MediaGrid>
         )}
       </div>
     </div>

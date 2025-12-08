@@ -4,6 +4,22 @@ import { Usuario } from "../models/usuarioModels.js";
 import { Cancion } from "../models/cancionModels.js";
 import { eliminarArchivoR2 } from "../services/r2Service.js";
 import { notificarNuevoAlbum } from "../helpers/notificacionHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendNotFound,
+  sendValidationError,
+  sendServerError,
+  sendCreated,
+  sendUnauthorized,
+} from "../helpers/responseHelpers.js";
+import {
+  toggleLikeOnResource,
+  isArtist,
+  getMilestone,
+  getAlbumPopulateOptions,
+} from "../helpers/musicHelpers.js";
+import { validateRequired } from "../helpers/validationHelpers.js";
 // 📌 Crear álbum (usuario logueado)
 export const crearAlbum = async (req, res) => {
   try {
@@ -17,14 +33,22 @@ export const crearAlbum = async (req, res) => {
     } = req.body;
 
     // 1. Validación básica
-    if (!titulo) {
-      return res.status(400).json({
-        ok: false,
-        message: "El título del álbum es obligatorio",
-      });
+    const errors = validateRequired({ titulo });
+    if (errors.length > 0) {
+      return sendValidationError(res, errors);
     }
 
     const artistaId = req.userId; // viene del middleware authRequired
+
+    // Verificar que el usuario puede subir contenido
+    const usuario = await Usuario.findById(artistaId);
+    if (!usuario) {
+      return sendNotFound(res, "Usuario");
+    }
+
+    if (!usuario.puedeSubirContenido || usuario.role !== "user") {
+      return sendUnauthorized(res, "No tienes permisos para crear álbumes");
+    }
 
     // 2. Crear álbum
     const nuevoAlbum = new Album({
@@ -49,17 +73,13 @@ export const crearAlbum = async (req, res) => {
     // Notificar a seguidores (sin esperar)
     notificarNuevoAlbum(nuevoAlbum, artistaId);
 
-    return res.status(201).json({
-      ok: true,
+    return sendCreated(res, {
       message: "Álbum creado correctamente",
       album: nuevoAlbum,
     });
   } catch (error) {
     console.error("Error en crearAlbum:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al crear el álbum",
-    });
+    return sendServerError(res, error, "Error al crear el álbum");
   }
 };
 
@@ -86,26 +106,17 @@ export const obtenerAlbumPorId = async (req, res) => {
       .select("+likes"); // Incluir el campo likes
 
     if (!album) {
-      return res.status(404).json({
-        ok: false,
-        message: "Álbum no encontrado",
-      });
+      return sendNotFound(res, "Álbum");
     }
 
-    return res.status(200).json({
-      ok: true,
-      album,
-    });
+    return sendSuccess(res, { album });
   } catch (error) {
     console.error("Error en obtenerAlbumPorId:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al obtener el álbum",
-    });
+    return sendServerError(res, error, "Error al obtener el álbum");
   }
 };
 
-// 📌 Listar álbumes públicos (tipo “nuevos álbumes”)
+// 📌 Listar álbumes públicos (tipo "nuevos álbumes")
 export const listarAlbumesPublicos = async (req, res) => {
   try {
     const albumes = await Album.find({
@@ -116,16 +127,10 @@ export const listarAlbumesPublicos = async (req, res) => {
       .limit(50)
       .populate("artistas", "nick nombreArtistico avatarUrl");
 
-    return res.status(200).json({
-      ok: true,
-      albumes,
-    });
+    return sendSuccess(res, { albumes });
   } catch (error) {
     console.error("Error en listarAlbumesPublicos:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al listar álbumes",
-    });
+    return sendServerError(res, error, "Error al listar álbumes");
   }
 };
 
@@ -136,18 +141,12 @@ export const agregarCancionAAlbum = async (req, res) => {
 
     const album = await Album.findById(idAlbum);
     if (!album || album.estaEliminado) {
-      return res.status(404).json({
-        ok: false,
-        message: "Álbum no encontrado",
-      });
+      return sendNotFound(res, "Álbum");
     }
 
     const cancion = await Cancion.findById(idCancion);
     if (!cancion || cancion.estaEliminada) {
-      return res.status(404).json({
-        ok: false,
-        message: "Canción no encontrada",
-      });
+      return sendNotFound(res, "Canción");
     }
 
     // Comprobar permisos: artista del álbum o admin
@@ -157,10 +156,10 @@ export const agregarCancionAAlbum = async (req, res) => {
     const esAdmin = req.userRole === "admin";
 
     if (!esAutor && !esAdmin) {
-      return res.status(403).json({
-        ok: false,
-        message: "No tienes permisos para modificar este álbum",
-      });
+      return sendUnauthorized(
+        res,
+        "No tienes permisos para modificar este álbum"
+      );
     }
 
     // Añadir canción al álbum (sin duplicados)
@@ -171,17 +170,13 @@ export const agregarCancionAAlbum = async (req, res) => {
     cancion.album = album._id;
     await cancion.save();
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       message: "Canción añadida al álbum",
       album,
     });
   } catch (error) {
     console.error("Error en agregarCancionAAlbum:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al añadir canción al álbum",
-    });
+    return sendServerError(res, error, "Error al añadir canción al álbum");
   }
 };
 
@@ -193,10 +188,7 @@ export const eliminarAlbum = async (req, res) => {
     const album = await Album.findById(id);
 
     if (!album || album.estaEliminado) {
-      return res.status(404).json({
-        ok: false,
-        message: "Álbum no encontrado",
-      });
+      return sendNotFound(res, "Álbum");
     }
 
     const esAutor = album.artistas.some(
@@ -205,10 +197,10 @@ export const eliminarAlbum = async (req, res) => {
     const esAdmin = req.userRole === "admin";
 
     if (!esAutor && !esAdmin) {
-      return res.status(403).json({
-        ok: false,
-        message: "No tienes permisos para eliminar este álbum",
-      });
+      return sendUnauthorized(
+        res,
+        "No tienes permisos para eliminar este álbum"
+      );
     }
 
     album.estaEliminado = true;
@@ -220,16 +212,12 @@ export const eliminarAlbum = async (req, res) => {
       { $pull: { misAlbumes: album._id } }
     );
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       message: "Álbum eliminado (marcado como eliminado)",
     });
   } catch (error) {
     console.error("Error en eliminarAlbum:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al eliminar el álbum",
-    });
+    return sendServerError(res, error, "Error al eliminar el álbum");
   }
 };
 
@@ -245,55 +233,50 @@ export const actualizarPortadaAlbum = async (req, res) => {
     const usuarioId = req.userId;
     const userRole = req.userRole;
 
-    if (!nuevaPortadaUrl) {
-      return res.status(400).json({
-        ok: false,
-        message: "Falta nuevaPortadaUrl en el body",
-      });
+    const errors = validateRequired({ nuevaPortadaUrl });
+    if (errors.length > 0) {
+      return sendValidationError(res, errors);
     }
 
     const album = await Album.findById(idAlbum);
 
     if (!album || album.estaEliminado) {
-      return res.status(404).json({
-        ok: false,
-        message: "Álbum no encontrado o eliminado",
-      });
+      return sendNotFound(res, "Álbum");
     }
 
-    // Solo pueden cambiar la portada:
-    // - artistas del álbum
-    // - admin
+    // Verificar permisos: artista del álbum o admin
     const esAutor = album.artistas.some(
       (artistaId) => artistaId.toString() === usuarioId
     );
     const esAdmin = userRole === "admin";
 
     if (!esAutor && !esAdmin) {
-      return res.status(403).json({
-        ok: false,
-        message: "No tienes permisos para modificar este álbum",
-      });
+      return sendUnauthorized(
+        res,
+        "No tienes permisos para modificar este álbum"
+      );
     }
 
-    const oldUrl = album.portadaUrl;
+    // Borrar antigua portada de R2 (si existe y no es la por defecto)
+    if (album.portadaUrl && album.portadaUrl.includes("cloudflare")) {
+      try {
+        await eliminarArchivoR2(album.portadaUrl);
+      } catch (errR2) {
+        console.error("Error al eliminar portada antigua de R2:", errR2);
+      }
+    }
 
+    // Actualizar con la nueva URL
     album.portadaUrl = nuevaPortadaUrl;
     await album.save();
 
-    await eliminarArchivoR2(oldUrl);
-
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       message: "Portada del álbum actualizada correctamente",
       album,
     });
   } catch (error) {
     console.error("Error en actualizarPortadaAlbum:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al actualizar portada del álbum",
-    });
+    return sendServerError(res, error, "Error al actualizar portada del álbum");
   }
 };
 
@@ -306,10 +289,9 @@ export const buscarAlbumes = async (req, res) => {
     const { q } = req.query;
 
     if (!q || q.trim().length < 2) {
-      return res.status(400).json({
-        ok: false,
-        message: "La búsqueda debe tener al menos 2 caracteres",
-      });
+      return sendValidationError(res, [
+        "La búsqueda debe tener al menos 2 caracteres",
+      ]);
     }
 
     const regex = new RegExp(q.trim(), "i");
@@ -327,17 +309,13 @@ export const buscarAlbumes = async (req, res) => {
       )
       .limit(20);
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       albumes,
       total: albumes.length,
     });
   } catch (error) {
     console.error("Error en buscarAlbumes:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al buscar álbumes",
-    });
+    return sendServerError(res, error, "Error al buscar álbumes");
   }
 };
 
@@ -353,82 +331,58 @@ export const toggleLikeAlbum = async (req, res) => {
     );
 
     if (!album || album.estaEliminado) {
-      return res.status(404).json({
-        ok: false,
-        message: "Álbum no encontrado",
-      });
+      return sendNotFound(res, "Álbum");
     }
 
     const usuarioId = String(req.userId);
-    const yaLeDioLike = album.likes.some((id) => String(id) === usuarioId);
     const likesAnteriores = album.likes.length;
+    const esPropio = isArtist(album, usuarioId);
 
-    // Verificar si el usuario es artista del álbum
-    const esPropio = album.artistas.some(
-      (artista) => String(artista._id) === usuarioId
-    );
+    // Toggle like usando helper
+    const { liked, totalLikes } = toggleLikeOnResource(album, usuarioId);
 
-    if (yaLeDioLike) {
-      // Quitar like del álbum
-      album.likes = album.likes.filter((id) => String(id) !== usuarioId);
-
-      // Quitar de biblioteca (solo si no es propio)
-      if (!esPropio) {
-        await Usuario.findByIdAndUpdate(req.userId, {
-          $pull: { "biblioteca.albumesGuardados": req.params.id },
-        });
-      }
-    } else {
-      // Agregar like al álbum
-      album.likes.push(req.userId);
-
-      // Agregar a biblioteca SOLO si NO es tu propio álbum
-      if (!esPropio) {
+    // Actualizar biblioteca (solo si no es propio)
+    if (!esPropio) {
+      if (liked) {
         await Usuario.findByIdAndUpdate(req.userId, {
           $addToSet: { "biblioteca.albumesGuardados": req.params.id },
+        });
+      } else {
+        await Usuario.findByIdAndUpdate(req.userId, {
+          $pull: { "biblioteca.albumesGuardados": req.params.id },
         });
       }
     }
 
     await album.save();
 
-    // Notificar hitos de likes (10, 50, 100, 500, 1000)
-    const hitos = [10, 50, 100, 500, 1000, 5000, 10000];
-    const nuevosLikes = album.likes.length;
+    // Notificar hitos usando helper
+    if (liked) {
+      const hito = getMilestone(likesAnteriores, totalLikes);
 
-    if (
-      !yaLeDioLike &&
-      hitos.includes(nuevosLikes) &&
-      nuevosLikes > likesAnteriores
-    ) {
-      // Importar Notificacion
-      const { Notificacion } = await import("../models/notificacionModels.js");
+      if (hito) {
+        const { Notificacion } = await import(
+          "../models/notificacionModels.js"
+        );
 
-      // Notificar a cada artista
-      for (const artista of album.artistas) {
-        await Notificacion.create({
-          usuarioDestino: artista._id,
-          usuarioOrigen: null, // Sistema
-          tipo: "sistema",
-          mensaje: `🎉 ¡Tu álbum "${album.titulo}" ha alcanzado ${nuevosLikes} me gusta!`,
-          recurso: {
-            tipo: "album",
-            id: album._id,
-          },
-        });
+        for (const artista of album.artistas) {
+          await Notificacion.create({
+            usuarioDestino: artista._id,
+            usuarioOrigen: null,
+            tipo: "sistema",
+            mensaje: `🎉 ¡Tu álbum "${album.titulo}" ha alcanzado ${hito} me gusta!`,
+            recurso: {
+              tipo: "album",
+              id: album._id,
+            },
+          });
+        }
       }
     }
 
-    return res.status(200).json({
-      ok: true,
-      liked: !yaLeDioLike,
-      totalLikes: album.likes.length,
-    });
+    return sendSuccess(res, { liked, totalLikes });
   } catch (error) {
     console.error("Error en toggleLikeAlbum:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al procesar el like del álbum",
-    });
+    return sendServerError(res, error, "Error al procesar el like del álbum");
   }
 };

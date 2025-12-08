@@ -4,6 +4,11 @@ import { useNavigate } from "react-router-dom";
 import type { Notificacion, NotificacionTipo } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import PostModal from "../components/social/PostModal";
+import { usePlayer } from "../contexts/PlayerContext";
+import { musicService } from "../services/music.service";
+import { albumService } from "../services/album.service";
+import { LoadingSpinner, EmptyState, Button } from "../components/common";
 
 /**
  * Notifications - Página de notificaciones
@@ -20,10 +25,14 @@ export default function Notifications() {
     deleteNotification,
   } = useNotifications();
   const navigate = useNavigate();
+  const { playSong, playQueue, clearQueue } = usePlayer();
 
   const [filter, setFilter] = useState<
     "todas" | "musica" | "social" | "sistema"
   >("todas");
+
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [showPostModal, setShowPostModal] = useState(false);
 
   // Filtrar notificaciones según el filtro activo
   const filteredNotifications = notifications.filter((notif) => {
@@ -39,6 +48,7 @@ export default function Notifications() {
         "nuevo_seguidor",
         "solicitud_amistad",
         "amistad_aceptada",
+        "nuevo_post",
         "like_post",
         "comentario_post",
         "repost",
@@ -56,23 +66,89 @@ export default function Notifications() {
     // Navegar según el tipo de recurso
     if (notif.recurso) {
       switch (notif.recurso.tipo) {
+        case "song":
         case "cancion":
-          navigate(`/song/${notif.recurso.id}`);
+          // Cargar la canción y reproducirla inmediatamente
+          try {
+            console.log(
+              "🎵 Intentando cargar canción con ID:",
+              notif.recurso.id
+            );
+            const cancion = await musicService.getSongById(notif.recurso.id);
+            console.log("✅ Canción cargada:", cancion);
+            console.log("🔍 Es single?:", cancion.esSingle);
+
+            // Si es single, usar contexto de single
+            if (cancion.esSingle) {
+              const contexto = {
+                type: "album" as const,
+                id: "single",
+                name: `Single: ${cancion.titulo}`,
+              };
+              console.log("📁 Reproduciendo con contexto:", contexto);
+              playQueue([cancion], 0, contexto);
+            } else {
+              // Si tiene álbum, reproducir solo esta canción sin contexto especial
+              console.log("📁 Reproduciendo sin contexto (tiene álbum)");
+              playQueue([cancion], 0);
+            }
+          } catch (error: any) {
+            console.error("❌ Error al cargar la canción:", error);
+            console.error("❌ ID de la canción:", notif.recurso.id);
+
+            // Mostrar mensaje al usuario
+            alert(
+              error.response?.status === 404
+                ? "Esta canción ya no está disponible o fue eliminada"
+                : "No se pudo cargar la canción. Intenta más tarde."
+            );
+          }
           break;
         case "album":
-          navigate(`/album/${notif.recurso.id}`);
+          // Cargar el álbum y agregar todas sus canciones a la cola
+          try {
+            const album = await albumService.obtenerAlbum(notif.recurso.id);
+            if (album.canciones && album.canciones.length > 0) {
+              // Reproducir todas las canciones del álbum
+              playQueue(album.canciones, 0, {
+                type: "album",
+                id: album._id,
+                name: album.titulo,
+              });
+            }
+          } catch (error) {
+            console.error("Error al cargar el álbum:", error);
+            // Si falla, navegar a la página del álbum
+            navigate(`/album/${notif.recurso.id}`);
+          }
           break;
         case "playlist":
-          navigate(`/playlist/${notif.recurso.id}`);
+          // Cargar la playlist y agregar todas sus canciones a la cola
+          try {
+            const playlist = await musicService.getPlaylistById(
+              notif.recurso.id
+            );
+            if (playlist.canciones && playlist.canciones.length > 0) {
+              // Reproducir todas las canciones de la playlist
+              playQueue(playlist.canciones, 0, {
+                type: "playlist",
+                id: playlist._id,
+                name: playlist.titulo,
+              });
+            }
+          } catch (error) {
+            console.error("Error al cargar la playlist:", error);
+            // Si falla, navegar a la página de la playlist
+            navigate(`/playlist/${notif.recurso.id}`);
+          }
           break;
         case "usuario":
           navigate(`/profile/${notif.recurso.id}`);
           break;
         case "post":
-          // Navegar al perfil del usuario para ver el post (no tenemos ruta dedicada de post aún)
-          if (typeof notif.usuarioOrigen === "object" && notif.usuarioOrigen) {
-            navigate(`/profile/${notif.usuarioOrigen._id}`);
-          }
+          // Abrir modal del post en lugar de navegar al perfil
+          setSelectedPostId(notif.recurso.id);
+          setShowPostModal(true);
           break;
         case "comentario":
           // Navegar al perfil donde está el comentario
@@ -88,34 +164,7 @@ export default function Notifications() {
   };
 
   const getFormattedMessage = (notif: Notificacion) => {
-    // Si hay usuario origen, formatear el mensaje con su nombre artístico o nick
-    if (notif.usuarioOrigen && typeof notif.usuarioOrigen === "object") {
-      const nombreUsuario =
-        notif.usuarioOrigen.nombreArtistico || notif.usuarioOrigen.nick;
-
-      // Mapeo de tipos de notificación a sus mensajes
-      const mensajes: Record<string, string> = {
-        nuevo_seguidor: `${nombreUsuario} ha comenzado a seguirte`,
-        solicitud_amistad: `${nombreUsuario} te ha enviado una solicitud de amistad`,
-        amistad_aceptada: `${nombreUsuario} ha aceptado tu solicitud de amistad`,
-        like_post: `${nombreUsuario} le dio me gusta a tu post`,
-        comentario_post: `${nombreUsuario} comentó tu post`,
-        repost: `${nombreUsuario} hizo repost de tu publicación`,
-        comentario_en_perfil: `${nombreUsuario} comentó tu post`,
-        respuesta_comentario: `${nombreUsuario} ha respondido a tu comentario`,
-        like_comentario: `${nombreUsuario} le gustó tu comentario`,
-        nueva_cancion_artista: `${nombreUsuario} ha subido una nueva canción`,
-        nuevo_album_artista: `${nombreUsuario} ha lanzado un nuevo álbum`,
-        nueva_playlist_artista: `${nombreUsuario} ha creado una nueva playlist`,
-      };
-
-      // Si existe un mensaje personalizado para este tipo, usarlo
-      if (mensajes[notif.tipo]) {
-        return mensajes[notif.tipo];
-      }
-    }
-
-    // Si no hay usuario origen, usar el mensaje original de la BD
+    // SIEMPRE usar el mensaje de la base de datos que ya incluye toda la información
     return notif.mensaje;
   };
 
@@ -323,13 +372,33 @@ export default function Notifications() {
 
       {/* Lista de notificaciones */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-        </div>
+        <LoadingSpinner />
       ) : filteredNotifications.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-neutral-400">No hay notificaciones</p>
-        </div>
+        <EmptyState
+          icon={() => (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-neutral-600"
+            >
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+            </svg>
+          )}
+          title="No hay notificaciones"
+          description={
+            filter === "todas"
+              ? "Estarás al día con tu actividad"
+              : `No hay notificaciones de ${filter}`
+          }
+        />
       ) : (
         <div className="space-y-2">
           {filteredNotifications.map((notif) => (
@@ -386,6 +455,18 @@ export default function Notifications() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Modal de Post */}
+      {selectedPostId && (
+        <PostModal
+          postId={selectedPostId}
+          isOpen={showPostModal}
+          onClose={() => {
+            setShowPostModal(false);
+            setSelectedPostId(null);
+          }}
+        />
       )}
     </div>
   );

@@ -382,11 +382,14 @@ export default function PostCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
+            console.log("💬 Click en botón de comentarios en PostCard");
+            console.log("💬 onComment function:", onComment);
             // Para repost_post, comentar el post original
             const targetPostId =
               post.tipo === "repost_post" && post.postOriginal
                 ? post.postOriginal._id
                 : post._id;
+            console.log("💬 Llamando onComment con postId:", targetPostId);
             onComment?.(targetPostId);
           }}
           className="flex items-center gap-2 text-neutral-400 hover:text-blue-400 transition-colors group"
@@ -446,11 +449,15 @@ export default function PostCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
+            console.log("💗 Click en botón de like en PostCard");
+            console.log("💗 Post:", post._id);
+            console.log("💗 onLike function:", onLike);
             // Para repost_post, dar like al post original
             const targetPostId =
               post.tipo === "repost_post" && post.postOriginal
                 ? post.postOriginal._id
                 : post._id;
+            console.log("💗 Llamando onLike con postId:", targetPostId);
             onLike(targetPostId);
           }}
           className={`flex items-center gap-2 transition-colors group ${

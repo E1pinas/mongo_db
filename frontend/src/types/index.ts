@@ -11,7 +11,7 @@ export interface Usuario {
   avatarUrl?: string;
   bannerUrl?: string;
   bio?: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "super_admin";
   verificado: boolean;
   banned: boolean;
   estaConectado?: boolean;
@@ -148,7 +148,14 @@ export interface Notificacion {
   mensaje: string;
   leida: boolean;
   recurso?: {
-    tipo: "cancion" | "album" | "playlist" | "comentario" | "usuario" | "post";
+    tipo:
+      | "song"
+      | "cancion"
+      | "album"
+      | "playlist"
+      | "comentario"
+      | "usuario"
+      | "post";
     id: string;
   };
   createdAt: string;
@@ -158,6 +165,7 @@ export type NotificacionTipo =
   | "nueva_cancion_artista"
   | "nuevo_album_artista"
   | "nueva_playlist_artista"
+  | "nuevo_post"
   | "solicitud_amistad"
   | "amistad_aceptada"
   | "nuevo_seguidor"

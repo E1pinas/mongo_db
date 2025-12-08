@@ -20,12 +20,15 @@ import {
   X,
   MessageCircle,
   FileText,
+  Flag,
 } from "lucide-react";
 import type { Usuario, Cancion, Album, Playlist } from "../types";
 import SongCommentsModal from "../components/musica/SongCommentsModal";
 import SongRow from "../components/musica/SongRow";
 import PostFeed from "../components/social/PostFeed";
 import { formatTimeAgo } from "../utils/dateFormat";
+import { formatDuration, formatNumber } from "../utils/formatHelpers";
+import { ReportModal } from "../components/common/ReportModal";
 
 /**
  * Profile - Página de perfil de usuario
@@ -37,6 +40,18 @@ export default function Profile() {
   const { nick } = useParams<{ nick: string }>();
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
+
+  // Si es admin/super_admin viendo su propio perfil, redirigir al panel
+  useEffect(() => {
+    if (
+      currentUser &&
+      (currentUser.role === "admin" || currentUser.role === "super_admin") &&
+      (!nick || nick === currentUser.nick)
+    ) {
+      navigate("/admin", { replace: true });
+      return;
+    }
+  }, [currentUser, nick, navigate]);
 
   const [profileUser, setProfileUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,6 +81,7 @@ export default function Profile() {
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [showRemoveFriendModal, setShowRemoveFriendModal] = useState(false);
   const [showUnfollowModal, setShowUnfollowModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [comentariosCancion, setComentariosCancion] = useState<Cancion | null>(
     null
   );
@@ -419,23 +435,6 @@ export default function Profile() {
     }
   };
 
-  const formatDuration = (seconds: number | undefined) => {
-    if (!seconds || isNaN(seconds)) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(2)}M`;
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toString();
-  };
-
   const isOwnProfile = profileUser?._id === currentUser?._id;
 
   // Debug: verificar IDs
@@ -719,15 +718,32 @@ export default function Profile() {
                     {isFollowing ? "Siguiendo" : "Seguir"}
                   </button>
 
-                  {/* Menú de opciones (incluye bloquear) */}
-                  <div className="relative">
+                  {/* Menú de opciones (incluye bloquear y reportar) */}
+                  <div className="relative group">
                     <button
-                      onClick={() => setShowBlockModal(true)}
                       className="p-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
                       title="Más opciones"
                     >
                       <MoreHorizontal size={20} />
                     </button>
+
+                    {/* Menú desplegable */}
+                    <div className="absolute right-0 mt-2 w-48 bg-neutral-800 rounded-lg shadow-xl border border-neutral-700 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                      <button
+                        onClick={() => setShowReportModal(true)}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors flex items-center gap-2 text-orange-400"
+                      >
+                        <Flag size={16} />
+                        Reportar usuario
+                      </button>
+                      <button
+                        onClick={() => setShowBlockModal(true)}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors flex items-center gap-2 text-red-400"
+                      >
+                        <Ban size={16} />
+                        Bloquear usuario
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -871,9 +887,25 @@ export default function Profile() {
                       isPlaying={isPlaying}
                       onPlay={() => handlePlaySong(cancion)}
                       onOpenComments={() => setComentariosCancion(cancion)}
-                      onLikeChange={() => {
-                        // Recargar canciones del perfil
-                        loadContent("canciones");
+                      onLikeChange={(liked) => {
+                        // Actualizar inmediatamente el estado local
+                        setCanciones((prevCanciones) =>
+                          prevCanciones.map((c) =>
+                            c._id === cancion._id
+                              ? {
+                                  ...c,
+                                  likes: liked
+                                    ? [
+                                        ...(c.likes || []),
+                                        currentUser?._id || "",
+                                      ]
+                                    : (c.likes || []).filter(
+                                        (id) => id !== currentUser?._id
+                                      ),
+                                }
+                              : c
+                          )
+                        );
                       }}
                     />
                   );
@@ -1227,6 +1259,17 @@ export default function Profile() {
         <SongCommentsModal
           song={comentariosCancion}
           onClose={() => setComentariosCancion(null)}
+        />
+      )}
+
+      {/* Modal de Reportar Usuario */}
+      {profileUser && (
+        <ReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          tipoContenido="usuario"
+          contenidoId={profileUser._id}
+          nombreContenido={`@${profileUser.nick}`}
         />
       )}
     </div>

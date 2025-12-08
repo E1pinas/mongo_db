@@ -1,5 +1,14 @@
 // src/controllers/reporteController.js
 import { Reporte } from "../models/reporteModels.js";
+import {
+  sendSuccess,
+  sendError,
+  sendNotFound,
+  sendValidationError,
+  sendServerError,
+  sendCreated,
+} from "../helpers/responseHelpers.js";
+import { validateRequired } from "../helpers/validationHelpers.js";
 
 /**
  * Crear un reporte
@@ -10,12 +19,9 @@ export const crearReporte = async (req, res) => {
   try {
     const { tipoContenido, contenidoId, motivo, descripcion } = req.body;
 
-    if (!tipoContenido || !contenidoId || !motivo) {
-      return res.status(400).json({
-        ok: false,
-        mensaje:
-          "Faltan campos obligatorios: tipoContenido, contenidoId, motivo",
-      });
+    const errors = validateRequired({ tipoContenido, contenidoId, motivo });
+    if (errors.length > 0) {
+      return sendValidationError(res, errors);
     }
 
     // Verificar si ya existe un reporte pendiente del mismo usuario para el mismo contenido
@@ -27,10 +33,11 @@ export const crearReporte = async (req, res) => {
     });
 
     if (reporteExistente) {
-      return res.status(400).json({
-        ok: false,
-        mensaje: "Ya tienes un reporte pendiente para este contenido",
-      });
+      return sendError(
+        res,
+        "Ya tienes un reporte pendiente para este contenido",
+        400
+      );
     }
 
     const reporte = await Reporte.create({
@@ -41,17 +48,13 @@ export const crearReporte = async (req, res) => {
       descripcion: descripcion?.trim() || "",
     });
 
-    return res.status(201).json({
-      ok: true,
+    return sendCreated(res, {
       mensaje: "Reporte creado correctamente. Será revisado por un moderador",
       reporte,
     });
   } catch (error) {
     console.error("Error al crear reporte:", error);
-    return res.status(500).json({
-      ok: false,
-      mensaje: "Error al crear el reporte",
-    });
+    return sendServerError(res, error, "Error al crear el reporte");
   }
 };
 
@@ -75,8 +78,7 @@ export const obtenerMisReportes = async (req, res) => {
 
     const total = await Reporte.countDocuments(filtro);
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       reportes,
       paginacion: {
         total,
@@ -87,10 +89,7 @@ export const obtenerMisReportes = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al obtener reportes:", error);
-    return res.status(500).json({
-      ok: false,
-      mensaje: "Error al obtener reportes",
-    });
+    return sendServerError(res, error, "Error al obtener reportes");
   }
 };
 
@@ -129,8 +128,7 @@ export const obtenerTodosReportes = async (req, res) => {
       rechazados: await Reporte.countDocuments({ estado: "rechazado" }),
     };
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       reportes,
       estadisticas,
       paginacion: {
@@ -142,10 +140,7 @@ export const obtenerTodosReportes = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al obtener reportes:", error);
-    return res.status(500).json({
-      ok: false,
-      mensaje: "Error al obtener reportes",
-    });
+    return sendServerError(res, error, "Error al obtener reportes");
   }
 };
 
@@ -161,10 +156,7 @@ export const actualizarEstadoReporte = async (req, res) => {
 
     const reporte = await Reporte.findById(id);
     if (!reporte) {
-      return res.status(404).json({
-        ok: false,
-        mensaje: "Reporte no encontrado",
-      });
+      return sendNotFound(res, "Reporte");
     }
 
     if (estado) reporte.estado = estado;
@@ -172,17 +164,13 @@ export const actualizarEstadoReporte = async (req, res) => {
 
     await reporte.save();
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       mensaje: "Reporte actualizado correctamente",
       reporte,
     });
   } catch (error) {
     console.error("Error al actualizar reporte:", error);
-    return res.status(500).json({
-      ok: false,
-      mensaje: "Error al actualizar reporte",
-    });
+    return sendServerError(res, error, "Error al actualizar reporte");
   }
 };
 
@@ -196,19 +184,14 @@ export const resolverReporte = async (req, res) => {
     const { id } = req.params;
     const { accion, nota } = req.body;
 
-    if (!accion) {
-      return res.status(400).json({
-        ok: false,
-        mensaje: "La acción es obligatoria",
-      });
+    const errors = validateRequired({ accion });
+    if (errors.length > 0) {
+      return sendValidationError(res, errors);
     }
 
     const reporte = await Reporte.findById(id);
     if (!reporte) {
-      return res.status(404).json({
-        ok: false,
-        mensaje: "Reporte no encontrado",
-      });
+      return sendNotFound(res, "Reporte");
     }
 
     reporte.estado = "resuelto";
@@ -221,17 +204,13 @@ export const resolverReporte = async (req, res) => {
 
     await reporte.save();
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       mensaje: "Reporte resuelto correctamente",
       reporte,
     });
   } catch (error) {
     console.error("Error al resolver reporte:", error);
-    return res.status(500).json({
-      ok: false,
-      mensaje: "Error al resolver reporte",
-    });
+    return sendServerError(res, error, "Error al resolver reporte");
   }
 };
 
@@ -250,16 +229,12 @@ export const obtenerReportesContenido = async (req, res) => {
       .populate("reportadoPor", "nick email")
       .sort({ createdAt: -1 });
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       total: reportes.length,
       reportes,
     });
   } catch (error) {
     console.error("Error al obtener reportes de contenido:", error);
-    return res.status(500).json({
-      ok: false,
-      mensaje: "Error al obtener reportes",
-    });
+    return sendServerError(res, error, "Error al obtener reportes");
   }
 };

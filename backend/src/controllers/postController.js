@@ -1,7 +1,29 @@
 import Post from "../models/postModels.js";
 import { Usuario } from "../models/usuarioModels.js";
 import { Seguidor } from "../models/seguidorModels.js";
-import { crearNotificacion } from "../helpers/notificacionHelper.js";
+import {
+  crearNotificacion,
+  notificarNuevoPost,
+} from "../helpers/notificacionHelper.js";
+import {
+  enrichPostsWithUserData,
+  getPostPopulateOptions,
+  hasUserReposted,
+  isPostAuthor,
+} from "../helpers/postHelpers.js";
+import {
+  sendSuccess,
+  sendError,
+  sendNotFound,
+  sendValidationError,
+  sendServerError,
+  sendCreated,
+  sendUnauthorized,
+} from "../helpers/responseHelpers.js";
+import {
+  validateEnum,
+  validateRequired,
+} from "../helpers/validationHelpers.js";
 
 export const postController = {
   /**
@@ -12,32 +34,28 @@ export const postController = {
       const usuarioId = req.usuario.id;
       const { contenido, tipo, recursoId } = req.body;
 
-      // Validaciones
+      // Validaciones con helpers
       const tiposValidos = [
         "texto",
         "repost_cancion",
         "repost_album",
         "repost_playlist",
       ];
-      if (!tiposValidos.includes(tipo)) {
-        return res.status(400).json({
-          success: false,
-          message: "Tipo de post inválido",
-        });
+
+      const tipoValidation = validateEnum(tipo, tiposValidos, "tipo");
+      if (!tipoValidation.valid) {
+        return sendValidationError(res, tipoValidation.error);
       }
 
       if (tipo !== "texto" && !recursoId) {
-        return res.status(400).json({
-          success: false,
-          message: "El recurso es requerido para reposts",
-        });
+        return sendValidationError(res, "El recurso es requerido para reposts");
       }
 
-      if (tipo === "texto" && (!contenido || contenido.trim() === "")) {
-        return res.status(400).json({
-          success: false,
-          message: "El contenido es requerido para posts de texto",
-        });
+      if (tipo === "texto") {
+        const contenidoValidation = validateRequired(contenido, "contenido");
+        if (!contenidoValidation.valid) {
+          return sendValidationError(res, contenidoValidation.error);
+        }
       }
 
       // Determinar tipo de recurso
@@ -62,17 +80,13 @@ export const postController = {
         await nuevoPost.populate("recursoId");
       }
 
-      res.status(201).json({
-        success: true,
-        message: "Post creado exitosamente",
-        data: nuevoPost,
-      });
+      // Notificar a seguidores y amigos (sin esperar)
+      notificarNuevoPost(nuevoPost, usuarioId);
+
+      return sendCreated(res, nuevoPost, "Post creado exitosamente");
     } catch (error) {
       console.error("Error creando post:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al crear el post",
-      });
+      return sendServerError(res, error, "Error al crear el post");
     }
   },
 
@@ -92,61 +106,15 @@ export const postController = {
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip(offset)
-        .populate("usuario", "nick nombre nombreArtistico avatarUrl verificado")
-        .populate("recursoId")
-        .populate({
-          path: "postOriginal",
-          populate: [
-            {
-              path: "usuario",
-              select: "nick nombre nombreArtistico avatarUrl verificado",
-            },
-            {
-              path: "recursoId",
-            },
-          ],
-        });
+        .populate(getPostPopulateOptions());
 
-      // Convertir a objetos planos con virtuals
-      const posts = postsQuery.map((post) => {
-        const postObj = post.toObject();
+      // Enriquecer posts con datos del usuario actual
+      const posts = enrichPostsWithUserData(postsQuery, req.usuario?.id);
 
-        // Verificar likes y reposts del usuario actual
-        const usuarioActualId = req.usuario?.id;
-        if (usuarioActualId) {
-          postObj.usuario_dio_like = post.likes?.some(
-            (like) => like.toString() === usuarioActualId
-          );
-          postObj.usuario_hizo_repost = post.reposts?.some(
-            (repost) => repost.usuario.toString() === usuarioActualId
-          );
-
-          // Para repost_post, también verificar likes y reposts del post original
-          if (postObj.tipo === "repost_post" && postObj.postOriginal) {
-            postObj.postOriginal.usuario_dio_like =
-              postObj.postOriginal.likes?.some(
-                (like) => like.toString() === usuarioActualId
-              );
-            postObj.postOriginal.usuario_hizo_repost =
-              postObj.postOriginal.reposts?.some(
-                (repost) => repost.usuario.toString() === usuarioActualId
-              );
-          }
-        }
-
-        return postObj;
-      });
-
-      res.json({
-        success: true,
-        data: posts,
-      });
+      return sendSuccess(res, posts);
     } catch (error) {
       console.error("Error obteniendo posts del usuario:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al obtener los posts",
-      });
+      return sendServerError(res, error, "Error al obtener los posts");
     }
   },
 
@@ -175,57 +143,15 @@ export const postController = {
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip(offset)
-        .populate("usuario", "nick nombre nombreArtistico avatarUrl verificado")
-        .populate("recursoId")
-        .populate({
-          path: "postOriginal",
-          populate: [
-            {
-              path: "usuario",
-              select: "nick nombre nombreArtistico avatarUrl verificado",
-            },
-            {
-              path: "recursoId",
-            },
-          ],
-        });
+        .populate(getPostPopulateOptions());
 
-      // Convertir a objetos planos con virtuals
-      const posts = postsQuery.map((post) => {
-        const postObj = post.toObject();
+      // Enriquecer posts con datos del usuario actual
+      const posts = enrichPostsWithUserData(postsQuery, usuarioId);
 
-        postObj.usuario_dio_like = post.likes?.some(
-          (like) => like.toString() === usuarioId
-        );
-        postObj.usuario_hizo_repost = post.reposts?.some(
-          (repost) => repost.usuario.toString() === usuarioId
-        );
-
-        // Para repost_post, también verificar likes y reposts del post original
-        if (postObj.tipo === "repost_post" && postObj.postOriginal) {
-          postObj.postOriginal.usuario_dio_like =
-            postObj.postOriginal.likes?.some(
-              (like) => like.toString() === usuarioId
-            );
-          postObj.postOriginal.usuario_hizo_repost =
-            postObj.postOriginal.reposts?.some(
-              (repost) => repost.usuario.toString() === usuarioId
-            );
-        }
-
-        return postObj;
-      });
-
-      res.json({
-        success: true,
-        data: posts,
-      });
+      return sendSuccess(res, posts);
     } catch (error) {
       console.error("Error obteniendo feed:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al obtener el feed",
-      });
+      return sendServerError(res, error, "Error al obtener el feed");
     }
   },
 
@@ -235,38 +161,21 @@ export const postController = {
   async obtenerPost(req, res) {
     try {
       const { postId } = req.params;
-      const post = await Post.findOne({ _id: postId, estaEliminado: false })
+      const postDoc = await Post.findOne({ _id: postId, estaEliminado: false })
         .populate("usuario", "nick nombre nombreArtistico avatarUrl verificado")
-        .populate("recursoId")
-        .lean();
+        .populate("recursoId");
 
-      if (!post) {
-        return res.status(404).json({
-          success: false,
-          message: "Post no encontrado",
-        });
+      if (!postDoc) {
+        return sendNotFound(res, "Post");
       }
 
-      const usuarioId = req.usuario?.id;
-      if (usuarioId) {
-        post.usuario_dio_like = post.likes?.some(
-          (like) => like.toString() === usuarioId
-        );
-        post.usuario_hizo_repost = post.reposts?.some(
-          (repost) => repost.usuario.toString() === usuarioId
-        );
-      }
+      const usuarioId = req.usuario?.id || req.userId;
+      const post = enrichPostsWithUserData([postDoc], usuarioId)[0];
 
-      res.json({
-        success: true,
-        data: post,
-      });
+      return sendSuccess(res, post);
     } catch (error) {
       console.error("Error obteniendo post:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al obtener el post",
-      });
+      return sendServerError(res, error, "Error al obtener el post");
     }
   },
 
@@ -285,22 +194,13 @@ export const postController = {
       );
 
       if (!post) {
-        return res.status(404).json({
-          success: false,
-          message: "Post no encontrado o no tienes permiso",
-        });
+        return sendNotFound(res, "Post");
       }
 
-      res.json({
-        success: true,
-        message: "Post eliminado exitosamente",
-      });
+      return sendSuccess(res, null, "Post eliminado exitosamente");
     } catch (error) {
       console.error("Error eliminando post:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al eliminar el post",
-      });
+      return sendServerError(res, error, "Error al eliminar el post");
     }
   },
 
@@ -312,6 +212,8 @@ export const postController = {
       const usuarioId = req.usuario.id;
       const { postId } = req.params;
 
+      console.log("🔥 Toggle like:", { usuarioId, postId });
+
       const post = await Post.findById(postId);
       if (!post) {
         return res.status(404).json({
@@ -321,10 +223,13 @@ export const postController = {
       }
 
       const yaLeDioLike = post.likes.includes(usuarioId);
+      console.log("🔥 Ya le dio like:", yaLeDioLike);
+      console.log("🔥 Likes antes:", post.likes.length);
 
       if (yaLeDioLike) {
         post.likes.pull(usuarioId);
         await post.save();
+        console.log("✅ Like eliminado. Likes después:", post.likes.length);
 
         res.json({
           success: true,
@@ -334,9 +239,10 @@ export const postController = {
       } else {
         post.likes.push(usuarioId);
         await post.save();
+        console.log("✅ Like agregado. Likes después:", post.likes.length);
 
         // Crear notificación si no es el propio usuario
-        if (post.usuario.toString() !== usuarioId) {
+        if (!isPostAuthor(post, usuarioId)) {
           const usuario = await Usuario.findById(usuarioId).select(
             "nick nombreArtistico"
           );
@@ -351,18 +257,11 @@ export const postController = {
           );
         }
 
-        res.json({
-          success: true,
-          message: "Like agregado",
-          liked: true,
-        });
+        return sendSuccess(res, { liked: true }, "Like agregado");
       }
     } catch (error) {
       console.error("Error en toggle like:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al procesar el like",
-      });
+      return sendServerError(res, error, "Error al procesar el like");
     }
   },
 
@@ -375,19 +274,14 @@ export const postController = {
       const { postId } = req.params;
       const { contenido } = req.body;
 
-      if (!contenido || contenido.trim() === "") {
-        return res.status(400).json({
-          success: false,
-          message: "El contenido del comentario es requerido",
-        });
+      const contenidoValidation = validateRequired(contenido, "contenido");
+      if (!contenidoValidation.valid) {
+        return sendValidationError(res, contenidoValidation.error);
       }
 
       const post = await Post.findById(postId);
       if (!post) {
-        return res.status(404).json({
-          success: false,
-          message: "Post no encontrado",
-        });
+        return sendNotFound(res, "Post");
       }
 
       post.comentarios.push({
@@ -404,7 +298,7 @@ export const postController = {
       });
 
       // Crear notificación
-      if (post.usuario.toString() !== usuarioId) {
+      if (!isPostAuthor(post, usuarioId)) {
         const usuario = await Usuario.findById(usuarioId).select(
           "nick nombreArtistico"
         );
@@ -419,17 +313,11 @@ export const postController = {
         );
       }
 
-      res.status(201).json({
-        success: true,
-        message: "Comentario agregado",
-        data: post.comentarios[post.comentarios.length - 1],
-      });
+      const nuevoComentario = post.comentarios[post.comentarios.length - 1];
+      return sendCreated(res, nuevoComentario, "Comentario agregado");
     } catch (error) {
       console.error("Error agregando comentario:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al agregar el comentario",
-      });
+      return sendServerError(res, error, "Error al agregar comentario");
     }
   },
 
@@ -451,26 +339,17 @@ export const postController = {
         .lean();
 
       if (!post) {
-        return res.status(404).json({
-          success: false,
-          message: "Post no encontrado",
-        });
+        return sendNotFound(res, "Post");
       }
 
       const comentarios = post.comentarios
         .slice(offset, offset + limit)
-        .reverse(); // Más recientes primero
+        .reverse();
 
-      res.json({
-        success: true,
-        data: comentarios,
-      });
+      return sendSuccess(res, { comentarios });
     } catch (error) {
       console.error("Error obteniendo comentarios:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al obtener los comentarios",
-      });
+      return sendServerError(res, error, "Error al obtener comentarios");
     }
   },
 
@@ -481,25 +360,21 @@ export const postController = {
     try {
       const usuarioId = req.usuario.id;
       const { postId } = req.params;
-      const { contenido } = req.body; // Comentario opcional al hacer repost
+      const { contenido } = req.body;
 
       const postOriginal = await Post.findById(postId);
       if (!postOriginal) {
-        return res.status(404).json({
-          success: false,
-          message: "Post no encontrado",
-        });
+        return sendNotFound(res, "Post");
       }
 
-      // Verificar si el usuario es el autor del post
       if (postOriginal.usuario.toString() === usuarioId) {
-        return res.status(400).json({
-          success: false,
-          message: "No puedes hacer repost de tu propio contenido",
-        });
+        return sendError(
+          res,
+          "No puedes hacer repost de tu propio contenido",
+          400
+        );
       }
 
-      // Verificar si ya hizo repost (buscar si ya existe un post tipo repost_post con este postOriginal)
       const yaHizoRepost = await Post.findOne({
         usuario: usuarioId,
         tipo: "repost_post",
@@ -508,13 +383,9 @@ export const postController = {
       });
 
       if (yaHizoRepost) {
-        return res.status(400).json({
-          success: false,
-          message: "Ya has hecho repost de este contenido",
-        });
+        return sendError(res, "Ya has hecho repost de este contenido", 400);
       }
 
-      // Crear el nuevo post tipo repost
       const nuevoRepost = await Post.create({
         usuario: usuarioId,
         tipo: "repost_post",
@@ -522,14 +393,12 @@ export const postController = {
         postOriginal: postId,
       });
 
-      // Agregar también al array reposts del post original (para mantener el contador)
       postOriginal.reposts.push({
         usuario: usuarioId,
         comentario: contenido || null,
       });
       await postOriginal.save();
 
-      // Poblar el repost con los datos necesarios
       await nuevoRepost.populate([
         {
           path: "usuario",
@@ -549,33 +418,35 @@ export const postController = {
         },
       ]);
 
-      // Crear notificación
       if (postOriginal.usuario.toString() !== usuarioId) {
         const usuario = await Usuario.findById(usuarioId).select(
           "nick nombreArtistico"
         );
         const nombreUsuario = usuario.nombreArtistico || usuario.nick;
+        const totalReposts = postOriginal.reposts.length;
+
+        let mensaje = `${nombreUsuario} hizo repost de tu publicación`;
+        if (
+          totalReposts === 10 ||
+          totalReposts === 50 ||
+          totalReposts === 100
+        ) {
+          mensaje += ` - ¡Ya llevas ${totalReposts} reposts! 🔥`;
+        }
 
         await crearNotificacion(
           postOriginal.usuario,
           usuarioId,
           "repost",
-          `${nombreUsuario} hizo repost de tu publicación`,
+          mensaje,
           { tipo: "post", id: postId }
         );
       }
 
-      res.status(201).json({
-        success: true,
-        message: "Repost creado exitosamente",
-        data: nuevoRepost,
-      });
+      return sendCreated(res, nuevoRepost, "Repost creado exitosamente");
     } catch (error) {
       console.error("Error creando repost:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al crear el repost",
-      });
+      return sendServerError(res, error, "Error al crear el repost");
     }
   },
 
@@ -587,7 +458,6 @@ export const postController = {
       const usuarioId = req.usuario.id;
       const { postId } = req.params;
 
-      // Buscar el post de repost que hizo el usuario
       const repost = await Post.findOne({
         usuario: usuarioId,
         tipo: "repost_post",
@@ -596,17 +466,12 @@ export const postController = {
       });
 
       if (!repost) {
-        return res.status(404).json({
-          success: false,
-          message: "Repost no encontrado",
-        });
+        return sendNotFound(res, "Repost");
       }
 
-      // Eliminar el post de repost
       repost.estaEliminado = true;
       await repost.save();
 
-      // También eliminar del array reposts del post original
       const postOriginal = await Post.findById(postId);
       if (postOriginal) {
         const repostIndex = postOriginal.reposts.findIndex(
@@ -618,16 +483,10 @@ export const postController = {
         }
       }
 
-      res.json({
-        success: true,
-        message: "Repost eliminado",
-      });
+      return sendSuccess(res, null, "Repost eliminado");
     } catch (error) {
       console.error("Error eliminando repost:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al eliminar el repost",
-      });
+      return sendServerError(res, error, "Error al eliminar el repost");
     }
   },
 };

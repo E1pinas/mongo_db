@@ -1,5 +1,6 @@
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import { AuthProvider, PlayerProvider, NotificationProvider } from "./contexts";
+import { usePresence } from "./hooks/usePresence";
 import ShellLayout from "./layouts/ShellLayout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import PublicRoute from "./components/common/PublicRoute";
@@ -22,6 +23,7 @@ import UploadSong from "./pages/UploadSong";
 import MySongs from "./pages/MySongs";
 import Search from "./pages/Search";
 import Auth from "./pages/auth/Auth";
+import AdminPanel from "./pages/AdminPanel";
 
 /**
  * App.tsx - Punto de entrada principal
@@ -128,6 +130,10 @@ const router = createBrowserRouter([
             element: <Settings />,
           },
           {
+            path: "admin",
+            element: <AdminPanel />,
+          },
+          {
             path: "blocked-users",
             element: <BlockedUsers />,
           },
@@ -137,12 +143,19 @@ const router = createBrowserRouter([
   },
 ]);
 
+function AppContent() {
+  // Hook para mantener presencia online
+  usePresence();
+
+  return <RouterProvider router={router} />;
+}
+
 function App() {
   return (
     <AuthProvider>
       <PlayerProvider>
         <NotificationProvider>
-          <RouterProvider router={router} />
+          <AppContent />
         </NotificationProvider>
       </PlayerProvider>
     </AuthProvider>

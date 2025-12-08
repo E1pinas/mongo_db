@@ -203,11 +203,16 @@ export default function Auth() {
     }
 
     try {
+      // Normalizar nick: minúsculas y sin espacios
+      const nickNormalizado = registerData.nick
+        .toLowerCase()
+        .replace(/\s+/g, "");
+
       await register({
         nombre: registerData.nombre,
         apellidos: registerData.apellidos,
         email: registerData.email,
-        nick: registerData.nick,
+        nick: nickNormalizado,
         password: registerData.password,
         pais: registerData.pais,
         fechaNacimiento: registerData.fechaNacimiento,
@@ -466,6 +471,12 @@ export default function Auth() {
                   placeholder="Crea tu nombre de usuario único (mínimo 3 caracteres)"
                   disabled={isLoading}
                 />
+                {registerData.nick && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Se guardará como:{" "}
+                    {registerData.nick.toLowerCase().replace(/\s+/g, "")}
+                  </p>
+                )}
                 {errors.nick && (
                   <p className="text-red-400 text-xs mt-1">{errors.nick}</p>
                 )}

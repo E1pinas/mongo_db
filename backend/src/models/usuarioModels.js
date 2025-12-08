@@ -53,9 +53,13 @@ const usuarioSchema = new Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "super_admin"],
       required: true,
       default: "user",
+    },
+    puedeSubirContenido: {
+      type: Boolean,
+      default: true, // Admins tendrán false
     },
     generos: {
       type: [String],
@@ -173,9 +177,11 @@ const usuarioSchema = new Schema(
     suspendidoHasta: { type: Date, default: null },
     razonSuspension: { type: String, default: null },
     verificado: { type: Boolean, default: false }, // Badge de verificación
+    esVisible: { type: Boolean, default: true }, // Admins son invisibles (false)
 
     // CONEXIÓN WEB / ESTADO
     ultimaConexion: { type: Date },
+    ultimaActividad: { type: Date }, // Para detectar inactividad
     estaConectado: { type: Boolean, default: false },
     cantidadIniciosSesion: { type: Number, default: 0 },
     estaActivo: { type: Boolean, default: true },

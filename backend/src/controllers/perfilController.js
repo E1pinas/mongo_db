@@ -347,7 +347,11 @@ export const obtenerPerfilPorNick = async (req, res) => {
     console.log("🔍 Buscando perfil por nick:", nick);
     console.log("👤 Usuario actual ID:", usuarioActualId);
 
-    const usuario = await Usuario.findOne({ nick: nick.toLowerCase() })
+    const usuario = await Usuario.findOne({
+      nick: nick.toLowerCase(),
+      esVisible: { $ne: false }, // Permitir undefined o true, excluir solo false
+      role: { $ne: "admin" }, // Excluir solo admins
+    })
       .select("-password")
       .populate({
         path: "misCanciones",

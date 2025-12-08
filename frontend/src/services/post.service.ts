@@ -51,7 +51,14 @@ export const postService = {
     const response = await api.get<{ success: boolean; data: Post }>(
       `/posts/${postId}`
     );
-    return response.data.data;
+    return response.data;
+  },
+
+  /**
+   * Alias de obtenerPost para mayor claridad
+   */
+  async obtenerPostPorId(postId: string) {
+    return this.obtenerPost(postId);
   },
 
   /**

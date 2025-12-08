@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plus, Upload, Search, X } from "lucide-react";
 import { musicService } from "../services/music.service";
 import { usePlayer } from "../contexts/PlayerContext";
 import { useAuth } from "../contexts/AuthContext";
-import { Upload, X, Plus, Search, Play } from "lucide-react";
-import type { Playlist, Usuario, Cancion } from "../types";
+import type { Playlist, Cancion, Usuario } from "../types";
+import LoadingSpinner from "../components/common/LoadingSpinner";
+import EmptyState from "../components/common/EmptyState";
+import SectionHeader from "../components/common/SectionHeader";
+import MediaGrid from "../components/common/MediaGrid";
+import PlaylistCard from "../components/musica/PlaylistCard";
+import Button from "../components/common/Button";
 import { formatTimeAgo } from "../utils/dateFormat";
 
 /**
@@ -268,136 +274,66 @@ export default function Playlists() {
 
       {/* Botón crear playlist */}
       <div className="mb-8">
-        <button
+        <Button
           onClick={() => {
-            setError(""); // Limpiar errores anteriores
+            setError("");
             setShowCreateModal(true);
           }}
-          className="px-6 py-3 bg-white text-black rounded-full font-semibold hover:scale-105 transition-transform flex items-center gap-2"
+          variant="secondary"
+          className="bg-white text-black hover:bg-white/90"
         >
-          <Plus size={20} />
+          <Plus size={20} className="mr-2" />
           Crear playlist
-        </button>
+        </Button>
       </div>
 
-      {loading && (
-        <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-4 border-neutral-600 border-t-white rounded-full animate-spin"></div>
-          <p className="text-neutral-400 mt-4">Cargando playlists...</p>
-        </div>
-      )}
+      {loading && <LoadingSpinner text="Cargando playlists..." />}
 
       {/* Tus playlists */}
       {!loading && misPlaylists.length > 0 && (
         <section className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">Tus playlists</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <SectionHeader title="Tus playlists" />
+          <MediaGrid>
             {misPlaylists
               .filter((playlist) => playlist && playlist._id && playlist.titulo)
               .map((playlist) => (
-                <div
+                <PlaylistCard
                   key={playlist._id}
+                  playlist={playlist}
                   onClick={() => handleClickPlaylist(playlist._id)}
-                  className="bg-neutral-800/30 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer group"
-                >
-                  <div className="relative mb-4">
-                    <div className="aspect-square bg-neutral-700 rounded-lg mb-4 overflow-hidden">
-                      <img
-                        src={playlist.portadaUrl || "/cover.jpg"}
-                        alt={playlist.titulo}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <button
-                      onClick={(e) => handlePlayPlaylist(playlist, e)}
-                      className="absolute bottom-2 right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all shadow-lg hover:scale-105"
-                    >
-                      <Play size={20} fill="currentColor" />
-                    </button>
-                  </div>
-                  <p className="font-semibold text-sm mb-2 truncate">
-                    {playlist.titulo}
-                  </p>
-                  <p className="text-xs text-neutral-400 truncate">
-                    {getCreatorName(playlist.creador)} •{" "}
-                    {formatTimeAgo(playlist.createdAt)} •{" "}
-                    {getSongCount(playlist.canciones)} canciones
-                  </p>
-                </div>
+                  onPlay={(e) => handlePlayPlaylist(playlist, e)}
+                />
               ))}
-          </div>
+          </MediaGrid>
         </section>
       )}
 
       {/* Playlists públicas de la comunidad */}
       {!loading && playlistsPublicas.length > 0 && (
         <section className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">Descubre playlists</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <SectionHeader title="Descubre playlists" />
+          <MediaGrid>
             {playlistsPublicas
               .filter((playlist) => playlist && playlist._id && playlist.titulo)
               .map((playlist) => (
-                <div
+                <PlaylistCard
                   key={playlist._id}
+                  playlist={playlist}
                   onClick={() => handleClickPlaylist(playlist._id)}
-                  className="bg-neutral-800/30 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer group"
-                >
-                  <div className="relative mb-4">
-                    <div className="aspect-square bg-neutral-700 rounded-lg mb-4 overflow-hidden">
-                      <img
-                        src={playlist.portadaUrl || "/cover.jpg"}
-                        alt={playlist.titulo}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <button
-                      onClick={(e) => handlePlayPlaylist(playlist, e)}
-                      className="absolute bottom-2 right-2 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all shadow-lg hover:scale-105"
-                    >
-                      <Play size={20} fill="currentColor" />
-                    </button>
-                  </div>
-                  <p className="font-semibold text-sm mb-2 truncate">
-                    {playlist.titulo}
-                  </p>
-                  <p className="text-xs text-neutral-400 truncate">
-                    {getCreatorName(playlist.creador)} •{" "}
-                    {getSongCount(playlist.canciones)} canciones
-                  </p>
-                </div>
+                  onPlay={(e) => handlePlayPlaylist(playlist, e)}
+                />
               ))}
-          </div>
+          </MediaGrid>
         </section>
       )}
 
       {!loading && misPlaylists.length === 0 && (
-        <div className="text-center py-12">
-          <svg
-            className="w-16 h-16 mx-auto mb-4 text-neutral-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-            />
-          </svg>
-          <h3 className="text-xl font-semibold mb-2">
-            Aún no tienes playlists
-          </h3>
-          <p className="text-neutral-400 mb-6">
-            Crea tu primera playlist para organizar tu música
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-block px-6 py-3 bg-blue-500 rounded-full font-semibold hover:bg-blue-600 transition-colors"
-          >
-            Crear Playlist
-          </button>
-        </div>
+        <EmptyState
+          title="Aún no tienes playlists"
+          description="Crea tu primera playlist para organizar tu música"
+          actionLabel="Crear Playlist"
+          onAction={() => setShowCreateModal(true)}
+        />
       )}
 
       {/* Modal crear playlist */}

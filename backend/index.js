@@ -8,6 +8,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { conexion } from "./database/conexion.js";
+import { startPresenceMonitoring } from "./src/services/presenceService.js";
 
 // Importar middlewares
 import { generalLimiter } from "./src/middlewares/rateLimiter.js";
@@ -35,6 +36,9 @@ import reporteRoutes from "./src/routes/reporte.routes.js";
 import reproduccionRoutes from "./src/routes/reproduccion.routes.js";
 import seguidorRoutes from "./src/routes/seguidor.routes.js";
 import postRoutes from "./src/routes/post.routes.js";
+import adminRoutes from "./src/routes/admin.routes.js";
+import moderacionRoutes from "./src/routes/moderacion.routes.js";
+import presenceRoutes from "./src/routes/presence.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -96,6 +100,7 @@ app.use("/api/playlists", playlistRoutes);
 app.use("/api/biblioteca", bibliotecaRoutes);
 app.use("/api/amistad", amistadRoutes);
 app.use("/api/notificaciones", notificacionRoutes);
+app.use("/api/presence", presenceRoutes);
 
 // Rutas de comentarios, reportes y seguimiento
 app.use("/api/comentarios", comentarioRoutes);
@@ -105,6 +110,12 @@ app.use("/api/seguidores", seguidorRoutes);
 
 // Rutas de posts/tweets
 app.use("/api/posts", postRoutes);
+
+// Rutas de administración (solo super_admin)
+app.use("/api/admin", adminRoutes);
+
+// Rutas de moderación (admin y super_admin)
+app.use("/api/moderacion", moderacionRoutes);
 
 // ========== MANEJO DE ERRORES ==========
 
@@ -118,4 +129,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📁 Upload endpoint: http://localhost:${PORT}/api/upload`);
+
+  // Iniciar sistema de presencia de usuarios
+  startPresenceMonitoring();
 });

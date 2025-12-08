@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
 import { musicService } from "../services/music.service";
+import { formatDuration } from "../utils/formatHelpers";
 import { usePlayer } from "../contexts/PlayerContext";
-import type { Cancion, Usuario } from "../types";
-import SongCommentsModal from "../components/musica/SongCommentsModal";
+import { useAuth } from "../contexts";
+import type { Cancion } from "../types";
+import { SongCommentsModal } from "../components/musica";
 import SongRow from "../components/musica/SongRow";
+import {
+  Button,
+  LoadingSpinner,
+  EmptyState,
+  SectionHeader,
+} from "../components/common";
 
 export default function MySongs() {
   const navigate = useNavigate();
@@ -160,69 +167,25 @@ export default function MySongs() {
             <path d="m21 21-4.35-4.35"></path>
           </svg>
         </div>
-        <button
-          onClick={() => navigate("/upload")}
-          className="px-6 py-3 bg-blue-500 rounded-lg font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
+        <Button onClick={() => navigate("/upload")} variant="secondary">
           Subir Canción
-        </button>
+        </Button>
         {canciones.length > 0 && (
-          <button
-            onClick={() => playQueue(canciones, 0)}
-            className="px-6 py-3 bg-green-500 rounded-lg font-semibold hover:bg-green-600 transition-colors"
-          >
+          <Button onClick={() => playQueue(canciones, 0)}>
             Reproducir todo
-          </button>
+          </Button>
         )}
       </div>
 
-      {loading && (
-        <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-4 border-neutral-600 border-t-white rounded-full animate-spin"></div>
-          <p className="text-neutral-400 mt-4">Cargando canciones...</p>
-        </div>
-      )}
+      {loading && <LoadingSpinner text="Cargando canciones..." />}
 
       {!loading && canciones.length === 0 && !searchQuery && (
-        <div className="text-center py-12">
-          <svg
-            className="w-16 h-16 mx-auto mb-4 text-neutral-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-            />
-          </svg>
-          <h3 className="text-xl font-semibold mb-2">
-            Aún no tienes canciones
-          </h3>
-          <p className="text-neutral-400 mb-6">
-            Sube tu primera canción para comenzar
-          </p>
-          <button
-            onClick={() => navigate("/upload")}
-            className="inline-block px-6 py-3 bg-blue-500 rounded-full font-semibold hover:bg-blue-600 transition-colors"
-          >
-            Subir Canción
-          </button>
-        </div>
+        <EmptyState
+          title="Aún no tienes canciones"
+          description="Sube tu primera canción para comenzar"
+          actionLabel="Subir Canción"
+          onAction={() => navigate("/upload")}
+        />
       )}
 
       {!loading && canciones.length === 0 && searchQuery && (

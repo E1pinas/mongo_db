@@ -70,9 +70,10 @@ export const authUsuario = async (req, res, next) => {
     req.userRole = usuario.role || "user";
     req.usuario = usuario;
 
-    // 9. Actualizar última conexión y marcar como conectado (sin await para no bloquear)
+    // 9. Actualizar última actividad y marcar como conectado (sin await para no bloquear)
     Usuario.findByIdAndUpdate(usuario._id, {
       estaConectado: true,
+      ultimaActividad: new Date(),
       ultimaConexion: new Date(),
     }).exec();
 

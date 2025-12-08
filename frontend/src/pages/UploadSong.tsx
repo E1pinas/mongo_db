@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { musicService } from "../services/music.service";
+import { formatDuration } from "../utils/formatHelpers";
 
 const GENEROS = [
   "rock",
@@ -147,12 +148,6 @@ export default function UploadSong() {
     } finally {
       setUploading(false);
     }
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (

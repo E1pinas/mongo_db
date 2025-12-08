@@ -6,8 +6,14 @@ import { authService } from "../services/auth.service";
 import { usePlayer } from "../contexts/PlayerContext";
 import { useAuth } from "../contexts";
 import SongRow from "../components/musica/SongRow";
-import SongCommentsModal from "../components/musica/SongCommentsModal";
+import { SongCommentsModal } from "../components/musica";
 import type { Cancion, Usuario, Album, Playlist } from "../types";
+import {
+  LoadingSpinner,
+  EmptyState,
+  SectionHeader,
+  Button,
+} from "../components/common";
 
 export default function Search() {
   const { user } = useAuth();
@@ -81,12 +87,6 @@ export default function Search() {
     }
   };
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
   const getArtistName = (artistas: string[] | Usuario[]) => {
     if (!artistas || artistas.length === 0) return "Artista desconocido";
 
@@ -131,12 +131,7 @@ export default function Search() {
       </div>
 
       {/* Estado de carga */}
-      {loading && (
-        <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-4 border-neutral-600 border-t-white rounded-full animate-spin"></div>
-          <p className="text-neutral-400 mt-4">Buscando...</p>
-        </div>
-      )}
+      {loading && <LoadingSpinner text="Buscando..." />}
 
       {/* Resultados */}
       {!loading &&
@@ -149,17 +144,14 @@ export default function Search() {
             {/* Canciones */}
             {canciones.length > 0 && (
               <section>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">
-                    Canciones ({canciones.length})
-                  </h2>
-                  <button
-                    onClick={() => playQueue(canciones, 0)}
-                    className="px-4 py-2 bg-green-500 rounded-full text-sm font-semibold hover:bg-green-600 transition-colors"
-                  >
-                    Reproducir todo
-                  </button>
-                </div>
+                <SectionHeader
+                  title={`Canciones (${canciones.length})`}
+                  rightElement={
+                    <Button onClick={() => playQueue(canciones, 0)}>
+                      Reproducir todo
+                    </Button>
+                  }
+                />
 
                 <div className="space-y-2">
                   {canciones.map((cancion, index) => {
@@ -184,9 +176,7 @@ export default function Search() {
             {/* Álbumes */}
             {albumes.length > 0 && (
               <section>
-                <h2 className="text-2xl font-bold mb-6">
-                  Álbumes ({albumes.length})
-                </h2>
+                <SectionHeader title={`Álbumes (${albumes.length})`} />
                 <div className="space-y-2">
                   {albumes.map((album) => (
                     <div
@@ -236,9 +226,7 @@ export default function Search() {
             {/* Playlists */}
             {playlists.length > 0 && (
               <section>
-                <h2 className="text-2xl font-bold mb-6">
-                  Playlists ({playlists.length})
-                </h2>
+                <SectionHeader title={`Playlists (${playlists.length})`} />
                 <div className="space-y-2">
                   {playlists.map((playlist) => (
                     <div
@@ -284,9 +272,7 @@ export default function Search() {
             {/* Usuarios */}
             {usuarios.length > 0 && (
               <section>
-                <h2 className="text-2xl font-bold mb-6">
-                  Usuarios ({usuarios.length})
-                </h2>
+                <SectionHeader title={`Usuarios (${usuarios.length})`} />
 
                 <div className="space-y-2">
                   {usuarios.map((usuario) => (
@@ -342,28 +328,10 @@ export default function Search() {
         playlists.length === 0 &&
         usuarios.length === 0 &&
         query.trim() && (
-          <div className="text-center py-12">
-            <svg
-              className="w-16 h-16 mx-auto mb-4 text-neutral-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <circle cx="11" cy="11" r="8"></circle>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="m21 21-4.35-4.35"
-              ></path>
-            </svg>
-            <h3 className="text-xl font-semibold mb-2">
-              No se encontraron resultados
-            </h3>
-            <p className="text-neutral-400">
-              No encontramos canciones con "{query}"
-            </p>
-          </div>
+          <EmptyState
+            title="No se encontraron resultados"
+            description={`No encontramos canciones con "${query}"`}
+          />
         )}
 
       {/* Estado inicial */}

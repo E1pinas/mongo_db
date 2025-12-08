@@ -2,6 +2,13 @@ import { Usuario } from "../models/usuarioModels.js";
 import { Cancion } from "../models/cancionModels.js";
 import { Playlist } from "../models/playlistModels.js";
 import { Album } from "../models/albumModels.js";
+import {
+  sendSuccess,
+  sendError,
+  sendNotFound,
+  sendServerError,
+} from "../helpers/responseHelpers.js";
+import { isArtist } from "../helpers/musicHelpers.js";
 
 // ---------------------------------------------------------
 // CANCIONES
@@ -19,22 +26,19 @@ export const obtenerCancionesGuardadas = async (req, res) => {
     });
 
     if (!usuario) {
-      return res.status(404).json({
-        ok: false,
-        message: "Usuario no encontrado",
-      });
+      return sendNotFound(res, "Usuario");
     }
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       canciones: usuario.biblioteca.cancionesGuardadas || [],
     });
   } catch (error) {
     console.error("Error en obtenerCancionesGuardadas:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al obtener las canciones guardadas",
-    });
+    return sendServerError(
+      res,
+      error,
+      "Error al obtener las canciones guardadas"
+    );
   }
 };
 
@@ -49,10 +53,7 @@ export const agregarCancionBiblioteca = async (req, res) => {
     });
 
     if (!cancion) {
-      return res.status(404).json({
-        ok: false,
-        message: "La canción no existe o está eliminada",
-      });
+      return sendNotFound(res, "La canción no existe o está eliminada");
     }
 
     const usuarioActualizado = await Usuario.findByIdAndUpdate(
@@ -63,17 +64,17 @@ export const agregarCancionBiblioteca = async (req, res) => {
       { new: true }
     ).populate("biblioteca.cancionesGuardadas", "titulo audioUrl portadaUrl");
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       message: "Canción agregada a tu biblioteca",
       biblioteca: usuarioActualizado.biblioteca,
     });
   } catch (error) {
     console.error("Error en agregarCancionBiblioteca:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al agregar la canción a la biblioteca",
-    });
+    return sendServerError(
+      res,
+      error,
+      "Error al agregar la canción a la biblioteca"
+    );
   }
 };
 
@@ -86,16 +87,16 @@ export const quitarCancionBiblioteca = async (req, res) => {
       $pull: { "biblioteca.cancionesGuardadas": cancionId },
     });
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       message: "Canción eliminada de tu biblioteca",
     });
   } catch (error) {
     console.error("Error en quitarCancionBiblioteca:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al quitar la canción de la biblioteca",
-    });
+    return sendServerError(
+      res,
+      error,
+      "Error al quitar la canción de la biblioteca"
+    );
   }
 };
 
@@ -115,22 +116,19 @@ export const obtenerPlaylistsGuardadas = async (req, res) => {
     });
 
     if (!usuario) {
-      return res.status(404).json({
-        ok: false,
-        message: "Usuario no encontrado",
-      });
+      return sendNotFound(res, "Usuario");
     }
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       playlists: usuario.biblioteca.playlistsGuardadas || [],
     });
   } catch (error) {
     console.error("Error en obtenerPlaylistsGuardadas:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al obtener las playlists guardadas",
-    });
+    return sendServerError(
+      res,
+      error,
+      "Error al obtener las playlists guardadas"
+    );
   }
 };
 
@@ -142,10 +140,7 @@ export const togglePlaylistGuardada = async (req, res) => {
     const playlist = await Playlist.findById(playlistId);
 
     if (!playlist) {
-      return res.status(404).json({
-        ok: false,
-        message: "La playlist no existe",
-      });
+      return sendNotFound(res, "Playlist");
     }
 
     // Verificar si el usuario es el creador de la playlist
@@ -153,10 +148,11 @@ export const togglePlaylistGuardada = async (req, res) => {
 
     // Si es propia, no permitir guardarla en biblioteca
     if (esPropia) {
-      return res.status(400).json({
-        ok: false,
-        message: "No puedes guardar tu propia playlist en la biblioteca",
-      });
+      return sendError(
+        res,
+        "No puedes guardar tu propia playlist en la biblioteca",
+        400
+      );
     }
 
     const usuario = await Usuario.findById(usuarioId);
@@ -169,8 +165,7 @@ export const togglePlaylistGuardada = async (req, res) => {
         $pull: { "biblioteca.playlistsGuardadas": playlistId },
       });
 
-      return res.status(200).json({
-        ok: true,
+      return sendSuccess(res, {
         saved: false,
         message: "Playlist eliminada de tu biblioteca",
       });
@@ -179,18 +174,14 @@ export const togglePlaylistGuardada = async (req, res) => {
         $addToSet: { "biblioteca.playlistsGuardadas": playlistId },
       });
 
-      return res.status(200).json({
-        ok: true,
+      return sendSuccess(res, {
         saved: true,
         message: "Playlist agregada a tu biblioteca",
       });
     }
   } catch (error) {
     console.error("Error en togglePlaylistGuardada:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al procesar la playlist",
-    });
+    return sendServerError(res, error, "Error al procesar la playlist");
   }
 };
 
@@ -210,22 +201,19 @@ export const obtenerAlbumesGuardados = async (req, res) => {
     });
 
     if (!usuario) {
-      return res.status(404).json({
-        ok: false,
-        message: "Usuario no encontrado",
-      });
+      return sendNotFound(res, "Usuario");
     }
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       albumes: usuario.biblioteca.albumesGuardados || [],
     });
   } catch (error) {
     console.error("Error en obtenerAlbumesGuardados:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al obtener los álbumes guardados",
-    });
+    return sendServerError(
+      res,
+      error,
+      "Error al obtener los álbumes guardados"
+    );
   }
 };
 
@@ -237,23 +225,19 @@ export const toggleAlbumGuardado = async (req, res) => {
     const album = await Album.findById(albumId);
 
     if (!album) {
-      return res.status(404).json({
-        ok: false,
-        message: "El álbum no existe",
-      });
+      return sendNotFound(res, "Álbum");
     }
 
-    // Verificar si el usuario es artista del álbum
-    const esPropio = album.artistas.some(
-      (artistaId) => String(artistaId) === String(usuarioId)
-    );
+    // Verificar si el usuario es artista del álbum usando helper
+    const esPropio = isArtist(album, usuarioId);
 
     // Si es propio, no permitir guardarlo en biblioteca
     if (esPropio) {
-      return res.status(400).json({
-        ok: false,
-        message: "No puedes guardar tu propio álbum en la biblioteca",
-      });
+      return sendError(
+        res,
+        "No puedes guardar tu propio álbum en la biblioteca",
+        400
+      );
     }
 
     const usuario = await Usuario.findById(usuarioId);
@@ -266,8 +250,7 @@ export const toggleAlbumGuardado = async (req, res) => {
         $pull: { "biblioteca.albumesGuardados": albumId },
       });
 
-      return res.status(200).json({
-        ok: true,
+      return sendSuccess(res, {
         saved: false,
         message: "Álbum eliminado de tu biblioteca",
       });
@@ -276,18 +259,14 @@ export const toggleAlbumGuardado = async (req, res) => {
         $addToSet: { "biblioteca.albumesGuardados": albumId },
       });
 
-      return res.status(200).json({
-        ok: true,
+      return sendSuccess(res, {
         saved: true,
         message: "Álbum agregado a tu biblioteca",
       });
     }
   } catch (error) {
     console.error("Error en toggleAlbumGuardado:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al procesar el álbum",
-    });
+    return sendServerError(res, error, "Error al procesar el álbum");
   }
 };
 
@@ -304,22 +283,19 @@ export const obtenerArtistasGuardados = async (req, res) => {
     );
 
     if (!usuario) {
-      return res.status(404).json({
-        ok: false,
-        message: "Usuario no encontrado",
-      });
+      return sendNotFound(res, "Usuario");
     }
 
-    return res.status(200).json({
-      ok: true,
+    return sendSuccess(res, {
       artistas: usuario.biblioteca.artistasGuardados || [],
     });
   } catch (error) {
     console.error("Error en obtenerArtistasGuardados:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al obtener los artistas guardados",
-    });
+    return sendServerError(
+      res,
+      error,
+      "Error al obtener los artistas guardados"
+    );
   }
 };
 
@@ -331,10 +307,7 @@ export const toggleArtistaGuardado = async (req, res) => {
     const artista = await Usuario.findById(artistaId);
 
     if (!artista) {
-      return res.status(404).json({
-        ok: false,
-        message: "El artista no existe",
-      });
+      return sendNotFound(res, "Artista");
     }
 
     const usuario = await Usuario.findById(usuarioId);
@@ -347,8 +320,7 @@ export const toggleArtistaGuardado = async (req, res) => {
         $pull: { "biblioteca.artistasGuardados": artistaId },
       });
 
-      return res.status(200).json({
-        ok: true,
+      return sendSuccess(res, {
         saved: false,
         message: "Artista eliminado de tu biblioteca",
       });
@@ -357,17 +329,13 @@ export const toggleArtistaGuardado = async (req, res) => {
         $addToSet: { "biblioteca.artistasGuardados": artistaId },
       });
 
-      return res.status(200).json({
-        ok: true,
+      return sendSuccess(res, {
         saved: true,
         message: "Artista agregado a tu biblioteca",
       });
     }
   } catch (error) {
     console.error("Error en toggleArtistaGuardado:", error);
-    return res.status(500).json({
-      ok: false,
-      message: "Error al procesar el artista",
-    });
+    return sendServerError(res, error, "Error al procesar el artista");
   }
 };

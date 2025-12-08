@@ -1,17 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Play,
-  Heart,
-  MoreHorizontal,
-  Clock,
-  Music,
-  ArrowLeft,
-} from "lucide-react";
+import { Music, Play, Heart, MoreHorizontal, ArrowLeft } from "lucide-react";
 import { musicService } from "../services/music.service";
 import { recentService } from "../services/recent.service";
 import { usePlayer, useAuth } from "../contexts";
 import type { Playlist, Cancion, Usuario } from "../types";
+import { LoadingSpinner, EmptyState, Button } from "../components/common";
 import SongRow from "../components/musica/SongRow";
 import SongCommentsModal from "../components/musica/SongCommentsModal";
 
@@ -96,12 +90,6 @@ export default function PlaylistDetail() {
     return artistas
       .map((a: Usuario) => a.nombreArtistico || a.nick || a.nombre)
       .join(", ");
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const getTotalDuration = () => {
@@ -236,12 +224,11 @@ export default function PlaylistDetail() {
       {/* Canciones */}
       <div className="px-8 pb-8">
         {songs.length === 0 ? (
-          <div className="text-center py-12">
-            <Music size={64} className="text-neutral-600 mx-auto mb-4" />
-            <p className="text-xl text-neutral-400">
-              Esta playlist aún no tiene canciones
-            </p>
-          </div>
+          <EmptyState
+            icon={Music}
+            title="Esta playlist aún no tiene canciones"
+            description="Agrega canciones para empezar a escuchar."
+          />
         ) : (
           <div className="space-y-1">
             {songs.map((song, index) => {
