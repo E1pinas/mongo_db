@@ -38,6 +38,12 @@ export default function PostCard({
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
 
+  // Validación de seguridad: asegurar que post y post.usuario existan
+  if (!post || !post._id || !post.usuario || !post.usuario._id) {
+    console.error("PostCard recibió un post inválido:", post);
+    return null;
+  }
+
   const isOwnPost = user?._id === post.usuario._id;
 
   // Para repost_post, verificar si el post ORIGINAL es propio
@@ -70,7 +76,7 @@ export default function PostCard({
 
   const handleProfileClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/profile/${post.usuario.nick}`);
+    navigate(`/perfil/${post.usuario.nick}`);
   };
 
   return (
@@ -183,7 +189,7 @@ export default function PostCard({
             onClick={(e) => {
               e.stopPropagation();
               // Navegar al perfil del usuario original y ver el post
-              navigate(`/profile/${post.postOriginal.usuario.nick}`);
+              navigate(`/perfil/${post.postOriginal.usuario.nick}`);
             }}
             className="border border-neutral-700 rounded-xl p-4 bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors cursor-pointer"
           >
@@ -192,7 +198,7 @@ export default function PostCard({
               <div
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/profile/${post.postOriginal.usuario.nick}`);
+                  navigate(`/perfil/${post.postOriginal.usuario.nick}`);
                 }}
                 className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 p-0.5 hover:scale-105 transition-transform"
               >
@@ -208,7 +214,7 @@ export default function PostCard({
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/profile/${post.postOriginal.usuario.nick}`);
+                    navigate(`/perfil/${post.postOriginal.usuario.nick}`);
                   }}
                   className="flex items-center gap-2 cursor-pointer group"
                 >
@@ -462,10 +468,10 @@ export default function PostCard({
           }}
           className={`flex items-center gap-2 transition-colors group ${
             post.tipo === "repost_post" && post.postOriginal
-              ? post.postOriginal.usuario_dio_like
+              ? post.postOriginal.usuario_dio_like ?? false
                 ? "text-red-500"
                 : "text-neutral-400 hover:text-red-400"
-              : post.usuario_dio_like
+              : post.usuario_dio_like ?? false
               ? "text-red-500"
               : "text-neutral-400 hover:text-red-400"
           }`}
@@ -475,10 +481,10 @@ export default function PostCard({
               size={18}
               fill={
                 post.tipo === "repost_post" && post.postOriginal
-                  ? post.postOriginal.usuario_dio_like
+                  ? post.postOriginal.usuario_dio_like ?? false
                     ? "currentColor"
                     : "none"
-                  : post.usuario_dio_like
+                  : post.usuario_dio_like ?? false
                   ? "currentColor"
                   : "none"
               }

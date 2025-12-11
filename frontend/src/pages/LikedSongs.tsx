@@ -38,7 +38,14 @@ export default function LikedSongs() {
     try {
       setLoading(true);
       const songs = await musicService.getLikedSongs();
-      setCanciones(songs);
+      // Ordenar por fecha de like (más recientes primero)
+      const sortedSongs = songs.sort((a, b) => {
+        // Si tienen updatedAt, usarlo para ordenar
+        const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+        const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+        return dateB - dateA; // Más recientes primero
+      });
+      setCanciones(sortedSongs);
     } catch (error) {
       console.error("Error cargando canciones guardadas:", error);
     } finally {
@@ -69,20 +76,38 @@ export default function LikedSongs() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-900/20 via-neutral-900 to-neutral-900">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-purple-600/40 to-transparent p-8 pb-6">
-        <div className="flex items-end gap-6">
-          <div className="w-56 h-56 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-2xl">
-            <Heart size={80} className="text-white" fill="white" />
+    <div className="min-h-screen bg-linear-to-b from-neutral-900 via-black to-black">
+      {/* Header con diseño único */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-br from-pink-500/10 via-purple-500/10 to-orange-500/10 blur-3xl" />
+        <div className="relative px-6 pt-8 pb-12">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-xl">
+              <Heart size={32} className="text-white" fill="white" />
+            </div>
+            <div>
+              <p className="text-sm text-purple-400 font-semibold mb-1">
+                TU COLECCIÓN
+              </p>
+              <h1 className="text-5xl font-black bg-linear-to-r from-pink-400 via-purple-400 to-orange-400 bg-clip-text text-transparent">
+                Favoritas
+              </h1>
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold mb-2">PLAYLIST</p>
-            <h1 className="text-6xl font-black mb-6">
-              Canciones que me gustan
-            </h1>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-semibold">
+
+          <div className="flex items-center gap-6">
+            {canciones.length > 0 && (
+              <button
+                onClick={handlePlayAll}
+                className="px-8 py-4 bg-linear-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-full font-bold text-lg transition-all hover:scale-105 flex items-center gap-3 shadow-lg"
+              >
+                <Play size={20} fill="white" />
+                Reproducir todo
+              </button>
+            )}
+            <div className="px-4 py-2 bg-neutral-800/50 backdrop-blur-sm rounded-full text-sm">
+              <span className="text-neutral-400">Total:</span>
+              <span className="ml-2 font-bold text-white">
                 {canciones.length}{" "}
                 {canciones.length === 1 ? "canción" : "canciones"}
               </span>
@@ -91,28 +116,22 @@ export default function LikedSongs() {
         </div>
       </div>
 
-      {/* Acciones */}
-      <div className="px-8 py-6 flex items-center gap-6">
-        {canciones.length > 0 && (
-          <button
-            onClick={handlePlayAll}
-            className="w-14 h-14 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
-          >
-            <Play size={24} className="text-white ml-1" fill="white" />
-          </button>
-        )}
-      </div>
-
       {/* Lista de canciones */}
-      <div className="px-8 pb-8">
+      <div className="px-6 pb-20">
         {canciones.length === 0 ? (
-          <EmptyState
-            icon={Heart}
-            title="No tienes canciones guardadas"
-            description="Dale like a las canciones que te gusten para verlas aquí"
-          />
+          <div className="text-center py-20">
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-linear-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center">
+              <Heart size={48} className="text-pink-400" />
+            </div>
+            <h3 className="text-2xl font-bold mb-2">
+              No tienes canciones favoritas
+            </h3>
+            <p className="text-neutral-400">
+              Dale like a las canciones que te gusten para verlas aquí
+            </p>
+          </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {canciones.map((cancion, index) => {
               const isCurrentSong = currentSong?._id === cancion._id;
               return (

@@ -118,10 +118,10 @@ export const marcarTodasComoLeidas = async (req, res) => {
 export const eliminarNotificacion = async (req, res) => {
   try {
     const usuarioId = req.userId;
-    const { notificacionId } = req.params;
+    const { id } = req.params;
 
     const notificacion = await Notificacion.findOneAndDelete({
-      _id: notificacionId,
+      _id: id,
       usuarioDestino: usuarioId,
     });
 

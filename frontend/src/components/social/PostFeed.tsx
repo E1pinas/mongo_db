@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Loader2, Music } from "lucide-react";
+import { Plus, Loader2, Music, Ban, Trash2, AlertTriangle } from "lucide-react";
 import { useAuth } from "../../contexts";
 import { postService } from "../../services/post.service";
 import type { Post, Cancion, Album, Playlist } from "../../types";
@@ -26,6 +26,9 @@ export default function PostFeed({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPostForComments, setSelectedPostForComments] =
     useState<Post | null>(null);
+  const [showSuspendedModal, setShowSuspendedModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadPosts();
@@ -56,9 +59,10 @@ export default function PostFeed({
     recursoId?: string;
   }) => {
     try {
-      const newPost = await postService.crearPost(data);
-      setPosts([newPost, ...posts]);
+      await postService.crearPost(data);
       setShowCreateModal(false);
+      // Recargar el feed completo para mostrar el nuevo post con todos los datos
+      await loadPosts();
     } catch (error: any) {
       throw error;
     }
@@ -100,22 +104,42 @@ export default function PostFeed({
           return post;
         })
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al dar like:", error);
+
+      // Si el post fue eliminado, recargamos el feed
+      if (error.response?.status === 410) {
+        alert("Este post ha sido eliminado");
+        loadPosts();
+      }
     }
   };
 
   const handleDelete = async (postId: string) => {
-    if (!confirm("¿Estás seguro de que quieres eliminar este post?")) {
-      return;
-    }
+    setPostToDelete(postId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!postToDelete) return;
 
     try {
-      await postService.eliminarPost(postId);
-      setPosts(posts.filter((post) => post._id !== postId));
-    } catch (error) {
+      await postService.eliminarPost(postToDelete);
+      setPosts(posts.filter((post) => post._id !== postToDelete));
+      setShowDeleteModal(false);
+      setPostToDelete(null);
+    } catch (error: any) {
       console.error("Error al eliminar post:", error);
-      alert("Error al eliminar el post");
+      const errorMessage =
+        error.response?.data?.message || "Error al eliminar el post";
+      alert(errorMessage);
+      setShowDeleteModal(false);
+      setPostToDelete(null);
+
+      // Si el post ya fue eliminado, recargamos para actualizar la vista
+      if (error.response?.status === 410) {
+        loadPosts();
+      }
     }
   };
 
@@ -159,7 +183,14 @@ export default function PostFeed({
         })
       );
     } catch (error: any) {
-      alert(error.response?.data?.message || "Error al hacer repost");
+      const errorMessage =
+        error.response?.data?.message || "Error al hacer repost";
+      alert(errorMessage);
+
+      // Si el post fue eliminado, recargamos el feed
+      if (error.response?.status === 410) {
+        loadPosts();
+      }
     }
   };
 
@@ -197,7 +228,14 @@ export default function PostFeed({
         })
       );
     } catch (error: any) {
-      alert(error.response?.data?.message || "Error al eliminar repost");
+      const errorMessage =
+        error.response?.data?.message || "Error al eliminar repost";
+      alert(errorMessage);
+
+      // Si el post fue eliminado, recargamos el feed
+      if (error.response?.status === 410) {
+        loadPosts();
+      }
     }
   };
 
@@ -224,9 +262,15 @@ export default function PostFeed({
     }
   };
 
-  const handleCommentAdded = () => {
+  const handleCommentAdded = async () => {
     // Incrementar el contador de comentarios
     if (selectedPostForComments) {
+      // Actualizar el selectedPostForComments también
+      setSelectedPostForComments({
+        ...selectedPostForComments,
+        totalComentarios: selectedPostForComments.totalComentarios + 1,
+      });
+
       setPosts(
         posts.map((post) => {
           if (post._id === selectedPostForComments._id) {
@@ -268,7 +312,13 @@ export default function PostFeed({
       {user && (!userId || userId === user._id) && (
         <div className="mb-6">
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              if ((user as any)?.suspendido) {
+                setShowSuspendedModal(true);
+              } else {
+                setShowCreateModal(true);
+              }
+            }}
             className="w-full p-5 bg-gradient-to-br from-neutral-900/80 to-neutral-900/40 backdrop-blur-sm hover:from-neutral-800/80 hover:to-neutral-800/40 border border-neutral-800 hover:border-orange-500/50 rounded-xl transition-all flex items-center gap-4"
           >
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 p-0.5">
@@ -300,17 +350,21 @@ export default function PostFeed({
         </div>
       ) : (
         <div className="space-y-4">
-          {posts.map((post) => (
-            <PostCard
-              key={post._id}
-              post={post}
-              onLike={handleLike}
-              onDelete={handleDelete}
-              onRepost={handleRepost}
-              onUndoRepost={handleUndoRepost}
-              onComment={handleComment}
-            />
-          ))}
+          {posts
+            .filter(
+              (post) => post && post._id && post.usuario && post.usuario._id
+            )
+            .map((post) => (
+              <PostCard
+                key={post._id}
+                post={post}
+                onLike={handleLike}
+                onDelete={handleDelete}
+                onRepost={handleRepost}
+                onUndoRepost={handleUndoRepost}
+                onComment={handleComment}
+              />
+            ))}
         </div>
       )}
 
@@ -332,6 +386,89 @@ export default function PostFeed({
           onClose={() => setSelectedPostForComments(null)}
           onCommentAdded={handleCommentAdded}
         />
+      )}
+
+      {/* Modal de confirmar eliminación */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-900 rounded-2xl p-7 max-w-md w-full border-2 border-red-600/50 shadow-2xl shadow-red-600/20">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-14 h-14 bg-gradient-to-br from-red-600 to-red-500 rounded-2xl flex items-center justify-center shadow-lg shadow-red-500/30">
+                <Trash2 className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white">Eliminar Post</h3>
+                <p className="text-sm text-neutral-400 mt-1">
+                  Esta acción no se puede deshacer
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-5 p-4 bg-red-900/20 border border-red-700/50 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-200">
+                  ¿Estás seguro de que quieres eliminar este post? Se eliminará
+                  permanentemente y no podrás recuperarlo.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setPostToDelete(null);
+                }}
+                className="flex-1 bg-neutral-700 hover:bg-neutral-600 px-5 py-3 rounded-xl font-semibold transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 px-5 py-3 rounded-xl font-semibold transition-all shadow-lg shadow-red-500/30"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de cuenta suspendida */}
+      {showSuspendedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-700">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="bg-yellow-600/20 p-3 rounded-full">
+                <Ban className="w-6 h-6 text-yellow-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Tu cuenta está suspendida
+                </h3>
+                <p className="text-gray-300 mb-3">
+                  No puedes crear posts mientras tu cuenta esté suspendida.
+                </p>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                  <p className="text-sm text-gray-400 mb-1">
+                    Razón de la suspensión:
+                  </p>
+                  <p className="text-yellow-400 font-medium">
+                    {(user as any)?.razonSuspension ||
+                      "Violación de normas comunitarias"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSuspendedModal(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

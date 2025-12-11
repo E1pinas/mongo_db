@@ -29,10 +29,10 @@ export const socialService = {
   // Verificar si sigo a un usuario
   async isFollowing(userId: string): Promise<boolean> {
     try {
-      const response = await api.get<ApiResponse<{ siguiendo: boolean }>>(
+      const response = await api.get<{ ok: boolean; siguiendo: boolean }>(
         `/seguidores/siguiendo/${userId}`
       );
-      return response.data.data?.siguiendo || false;
+      return response.data.siguiendo || false;
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
@@ -42,10 +42,10 @@ export const socialService = {
   // Obtener seguidores
   async getFollowers(userId: string): Promise<any[]> {
     try {
-      const response = await api.get<ApiResponse<any[]>>(
+      const response = await api.get<{ ok: boolean; seguidores: any[] }>(
         `/seguidores/${userId}/seguidores`
       );
-      return response.data.data || [];
+      return response.data.seguidores || [];
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
@@ -55,10 +55,10 @@ export const socialService = {
   // Obtener seguidos
   async getFollowing(userId: string): Promise<any[]> {
     try {
-      const response = await api.get<ApiResponse<any[]>>(
+      const response = await api.get<{ ok: boolean; seguidos: any[] }>(
         `/seguidores/${userId}/seguidos`
       );
-      return response.data.data || [];
+      return response.data.seguidos || [];
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
@@ -102,8 +102,10 @@ export const socialService = {
   // Obtener solicitudes pendientes
   async getPendingRequests(): Promise<any[]> {
     try {
-      const response = await api.get<ApiResponse<any[]>>("/amistad/pendientes");
-      return response.data.data || [];
+      const response = await api.get<{ ok: boolean; solicitudes: any[] }>(
+        "/amistad/pendientes"
+      );
+      return response.data.solicitudes || [];
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
@@ -113,8 +115,10 @@ export const socialService = {
   // Obtener lista de amigos
   async getFriends(): Promise<any[]> {
     try {
-      const response = await api.get<ApiResponse<any[]>>("/amistad/amigos");
-      return response.data.data || [];
+      const response = await api.get<{ ok: boolean; amigos: any[] }>(
+        "/amistad/amigos"
+      );
+      return response.data.amigos || [];
     } catch (error) {
       const errorData = handleApiError(error);
       // Retornar array vacío en lugar de lanzar error para evitar bloqueos

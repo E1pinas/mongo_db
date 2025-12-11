@@ -3,6 +3,7 @@ import { Usuario } from "../models/usuarioModels.js";
 import { hashPassword, comparePassword } from "../helpers/contraseniaHelper.js";
 import { crearToken } from "../helpers/jwtHelpers.js";
 import { eliminarArchivoR2 } from "../services/r2Service.js";
+import { calcularEdad } from "../helpers/edadHelper.js";
 
 /**
  * 📌 REGISTER
@@ -47,7 +48,7 @@ export const registroUsuario = async (req, res) => {
     // Hashear contraseña
     const passwordHash = await hashPassword(password);
 
-    // Crear usuario
+    // Crear usuario con avatar por defecto
     const nuevoUsuario = new Usuario({
       nombre,
       apellidos,
@@ -56,6 +57,7 @@ export const registroUsuario = async (req, res) => {
       password: passwordHash,
       pais,
       fechaNacimiento,
+      avatarUrl: "/avatar.png", // Avatar por defecto
     });
 
     // Guardar en BD
@@ -79,6 +81,10 @@ export const registroUsuario = async (req, res) => {
     // Preparar objeto sin contraseña
     const usuarioSinPassword = nuevoUsuario.toObject();
     delete usuarioSinPassword.password;
+
+    // Calcular si es menor de edad
+    usuarioSinPassword.esMenorDeEdad =
+      calcularEdad(nuevoUsuario.fechaNacimiento) < 18;
 
     return res.status(201).json({
       ok: true,
@@ -113,6 +119,45 @@ export const loginUsuario = async (req, res) => {
       });
     }
 
+    // Verificar si el usuario está baneado (esto SÍ bloquea el login)
+    if (usuario.baneado) {
+      return res.status(403).json({
+        ok: false,
+        message: `Tu cuenta ha sido baneada permanentemente. Razón: ${
+          usuario.razonBaneo || "Violación de términos de servicio"
+        }`,
+        baneado: true,
+      });
+    }
+
+    // Verificar si la suspensión temporal ha expirado
+    if (usuario.suspendido && usuario.suspendidoHasta) {
+      const ahora = new Date();
+      if (ahora > usuario.suspendidoHasta) {
+        // La suspensión ha expirado, reactivar automáticamente
+        usuario.suspendido = false;
+        usuario.suspendidoHasta = null;
+        usuario.razonSuspension = null;
+        usuario.puedeSubirContenido = true;
+
+        usuario.historialConducta.push({
+          fecha: new Date(),
+          accion: "vida_restaurada",
+          tipoContenido: "usuario",
+          nombreContenido: usuario.nick,
+          razon: "Suspensión temporal expirada automáticamente",
+          vidasRestantes: usuario.vidas,
+        });
+
+        await usuario.save();
+        console.log(
+          `✅ Suspensión de ${usuario.nick} expirada y reactivada automáticamente`
+        );
+      }
+    }
+
+    // Nota: La suspensión NO bloquea el login, solo las funcionalidades dentro de la app
+
     // Comparar contraseña
     const esCorrecta = await comparePassword(password, usuario.password);
 
@@ -145,6 +190,22 @@ export const loginUsuario = async (req, res) => {
     const usuarioSinPassword = usuario.toObject();
     delete usuarioSinPassword.password;
 
+    // Calcular si es menor de edad
+    usuarioSinPassword.esMenorDeEdad =
+      calcularEdad(usuario.fechaNacimiento) < 18;
+
+    // LOG: Verificar campo suspendido
+    console.log("🔍 LOGIN - Usuario:", usuario.nick);
+    console.log("🔍 Campo suspendido en DB:", usuario.suspendido);
+    console.log(
+      "🔍 Campo suspendido en respuesta:",
+      usuarioSinPassword.suspendido
+    );
+    console.log(
+      "🔍 Keys en respuesta:",
+      Object.keys(usuarioSinPassword).filter((k) => k.includes("suspend"))
+    );
+
     return res.status(200).json({
       ok: true,
       message: "Sesión iniciada correctamente",
@@ -168,15 +229,31 @@ export const perfilUsuario = async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.userId)
       .select("-password")
-      .populate("playlistsCreadas", "titulo portadaUrl esPublica canciones")
-      .populate(
-        "biblioteca.playlistsGuardadas",
-        "titulo portadaUrl esPublica canciones creador"
-      )
-      .populate(
-        "misAlbumes",
-        "titulo portadaUrl generos fechaLanzamiento canciones artistas esPrivado"
-      );
+      .populate({
+        path: "playlistsCreadas",
+        select: "titulo portadaUrl esPublica canciones creador",
+        populate: {
+          path: "creador",
+          select: "nick nombreArtistico nombre avatarUrl",
+        },
+      })
+      .populate({
+        path: "biblioteca.playlistsGuardadas",
+        select: "titulo portadaUrl esPublica canciones creador",
+        populate: {
+          path: "creador",
+          select: "nick nombreArtistico nombre avatarUrl",
+        },
+      })
+      .populate({
+        path: "misAlbumes",
+        select:
+          "titulo portadaUrl generos fechaLanzamiento canciones artistas esPrivado",
+        populate: {
+          path: "artistas",
+          select: "nick nombreArtistico nombre avatarUrl",
+        },
+      });
 
     if (!usuario) {
       return res.status(404).json({
@@ -185,9 +262,13 @@ export const perfilUsuario = async (req, res) => {
       });
     }
 
+    // Agregar campo calculado esMenorDeEdad
+    const usuarioObj = usuario.toObject();
+    usuarioObj.esMenorDeEdad = calcularEdad(usuario.fechaNacimiento) < 18;
+
     return res.status(200).json({
       ok: true,
-      usuario,
+      usuario: usuarioObj,
     });
   } catch (error) {
     console.error("Error en perfilUsuario:", error);
@@ -455,6 +536,7 @@ export const actualizarBannerUsuario = async (req, res) => {
 export const buscarUsuarios = async (req, res) => {
   try {
     const { q } = req.query;
+    const usuarioActualId = req.userId; // Puede ser undefined si no está autenticado
 
     if (!q || q.trim().length < 2) {
       return res.status(400).json({
@@ -467,6 +549,27 @@ export const buscarUsuarios = async (req, res) => {
     const searchQuery = q.trim().replace(/^@/, "");
     const regex = new RegExp(searchQuery, "i");
 
+    // Si el usuario está autenticado, obtener lista de bloqueados
+    let usuariosBloqueadosIds = [];
+    if (usuarioActualId) {
+      const { Amistad } = await import("../models/amistadModels.js");
+
+      // Obtener usuarios bloqueados por el usuario actual o que bloquearon al usuario actual
+      const bloqueados = await Amistad.find({
+        $or: [
+          { solicitante: usuarioActualId, estado: "bloqueada" }, // Usuarios que YO bloqueé
+          { receptor: usuarioActualId, estado: "bloqueada" }, // Usuarios que ME bloquearon
+        ],
+      }).select("solicitante receptor");
+
+      // Extraer IDs de usuarios bloqueados
+      usuariosBloqueadosIds = bloqueados.map((bloqueo) =>
+        bloqueo.solicitante.toString() === usuarioActualId
+          ? bloqueo.receptor.toString()
+          : bloqueo.solicitante.toString()
+      );
+    }
+
     // Buscar SOLO por nick o nombreArtistico
     const usuarios = await Usuario.find({
       $or: [{ nick: regex }, { nombreArtistico: regex }],
@@ -474,6 +577,7 @@ export const buscarUsuarios = async (req, res) => {
       "privacy.perfilPublico": true, // Solo perfiles públicos
       esVisible: { $ne: false }, // Permitir undefined o true, solo excluir false explícito
       role: { $ne: "admin" }, // Excluir solo admins
+      _id: { $nin: usuariosBloqueadosIds }, // Excluir usuarios bloqueados
     })
       .select("nombre apellidos nick nombreArtistico avatarUrl verificado")
       .limit(50);

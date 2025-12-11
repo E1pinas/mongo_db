@@ -93,7 +93,7 @@ export default function SidebarLeft({
           {/* Filtros de biblioteca */}
           <div className="space-y-2 mb-6">
             <NavLink
-              to="/upload"
+              to="/subir"
               className={`
                 flex items-center gap-3 w-full p-3 rounded-lg
                 bg-blue-500/10 hover:bg-blue-500/20 transition-colors
@@ -110,7 +110,7 @@ export default function SidebarLeft({
             </NavLink>
 
             <NavLink
-              to="/liked-songs"
+              to="/canciones-favoritas"
               className={({ isActive }) => `
                 flex items-center gap-3 w-full p-3 rounded-lg
                 hover:bg-neutral-800 transition-colors
@@ -125,7 +125,7 @@ export default function SidebarLeft({
             </NavLink>
 
             <NavLink
-              to="/library/playlists"
+              to="/biblioteca/playlists"
               className={({ isActive }) => `
                 flex items-center gap-3 w-full p-3 rounded-lg
                 hover:bg-neutral-800 transition-colors
@@ -138,7 +138,7 @@ export default function SidebarLeft({
             </NavLink>
 
             <NavLink
-              to="/library/artists"
+              to="/biblioteca/artistas"
               className={({ isActive }) => `
                 flex items-center gap-3 w-full p-3 rounded-lg
                 hover:bg-neutral-800 transition-colors
@@ -151,7 +151,7 @@ export default function SidebarLeft({
             </NavLink>
 
             <NavLink
-              to="/library/albums"
+              to="/biblioteca/albumes"
               className={({ isActive }) => `
                 flex items-center gap-3 w-full p-3 rounded-lg
                 hover:bg-neutral-800 transition-colors
@@ -168,19 +168,6 @@ export default function SidebarLeft({
           {isOpen && <RecentItems />}
 
           {/* Solo iconos cuando está colapsado */}
-          {!isOpen && (
-            <div className="space-y-4 flex flex-col items-center">
-              <button className="p-3 hover:bg-neutral-800 rounded-lg">
-                <Heart size={20} className="text-neutral-400" />
-              </button>
-              <button className="p-3 hover:bg-neutral-800 rounded-lg">
-                <Music size={20} className="text-neutral-400" />
-              </button>
-              <button className="p-3 hover:bg-neutral-800 rounded-lg">
-                <ListMusic size={20} className="text-neutral-400" />
-              </button>
-            </div>
-          )}
         </div>
       </aside>
     </>

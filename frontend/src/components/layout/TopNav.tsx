@@ -101,6 +101,20 @@ export default function TopNav({
     <header className="h-16 bg-neutral-950 border-b border-neutral-800 px-4 flex items-center justify-between gap-4 shrink-0">
       {/* IZQUIERDA - Logo y controles sidebar */}
       <div className="flex items-center gap-3">
+        {/* Toggle sidebar izquierdo (desktop) - Primero para que sea visible */}
+        <button
+          onClick={onToggleLeft}
+          className="hidden lg:flex p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+          aria-label="Toggle left sidebar"
+          title={leftOpen ? "Ocultar biblioteca" : "Mostrar biblioteca"}
+        >
+          {leftOpen ? (
+            <PanelLeftClose size={20} />
+          ) : (
+            <PanelLeftOpen size={20} />
+          )}
+        </button>
+
         {/* Botón hamburguesa móvil */}
         <button
           onClick={onToggleLeftMobile}
@@ -112,21 +126,8 @@ export default function TopNav({
 
         {/* Logo */}
         <NavLink to="/" className="font-bold text-xl hidden sm:block">
-          🎵 TCG Music
+          OTO Music
         </NavLink>
-
-        {/* Toggle sidebar izquierdo (desktop) */}
-        <button
-          onClick={onToggleLeft}
-          className="hidden lg:flex p-2 hover:bg-neutral-800 rounded-lg transition-colors"
-          aria-label="Toggle left sidebar"
-        >
-          {leftOpen ? (
-            <PanelLeftClose size={20} />
-          ) : (
-            <PanelLeftOpen size={20} />
-          )}
-        </button>
       </div>
 
       {/* CENTRO - Navegación principal */}
@@ -147,7 +148,7 @@ export default function TopNav({
         </NavLink>
 
         <NavLink
-          to="/search"
+          to="/buscar"
           className={({ isActive }) =>
             `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
               isActive
@@ -161,7 +162,7 @@ export default function TopNav({
         </NavLink>
 
         <NavLink
-          to="/albums"
+          to="/albumes"
           className={({ isActive }) =>
             `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
               isActive
@@ -192,12 +193,12 @@ export default function TopNav({
           to={
             user?.role === "admin" || user?.role === "super_admin"
               ? "/admin"
-              : `/profile/${user?.nick || ""}`
+              : `/perfil/${user?.nick || ""}`
           }
           className={({ isActive }) =>
             `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
               isActive
-                ? "bg-neutral-800 text-white"
+                ? " text-neutral-400 hover:text-white hover:bg-neutral-800/50"
                 : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
             }`
           }
@@ -205,13 +206,13 @@ export default function TopNav({
           <User size={18} />
           <span className="hidden md:inline">
             {user?.role === "admin" || user?.role === "super_admin"
-              ? "Panel Admin"
+              ? "Admin"
               : "Perfil"}
           </span>
         </NavLink>
 
         <NavLink
-          to="/notifications"
+          to="/notificaciones"
           className={({ isActive }) =>
             `flex items-center gap-2 px-4 py-2 rounded-lg transition-colors relative ${
               isActive
@@ -231,7 +232,7 @@ export default function TopNav({
         </NavLink>
 
         <NavLink
-          to="/requests"
+          to="/solicitudes"
           className={({ isActive }) =>
             `relative flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
               isActive
@@ -252,9 +253,23 @@ export default function TopNav({
       </nav>
 
       {/* DERECHA - Avatar y toggle sidebar derecho */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        {/* Toggle sidebar derecho (Cola y Amigos) - Primero para que sea visible */}
+        <button
+          onClick={onToggleRight}
+          className="hidden lg:flex p-2 hover:bg-neutral-800 rounded-lg transition-colors shrink-0"
+          aria-label="Toggle right sidebar"
+          title={rightOpen ? "Ocultar Cola/Amigos" : "Mostrar Cola/Amigos"}
+        >
+          {rightOpen ? (
+            <PanelRightClose size={20} />
+          ) : (
+            <PanelRightOpen size={20} />
+          )}
+        </button>
+
         {/* Dropdown de perfil */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative shrink-0" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2 p-1 hover:bg-neutral-800 rounded-full transition-colors"
@@ -284,10 +299,19 @@ export default function TopNav({
             <div className="absolute right-0 mt-2 w-56 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden z-50">
               {/* Info del usuario */}
               <div className="px-4 py-3 border-b border-neutral-800">
-                <p className="font-semibold text-sm truncate">{user?.nick}</p>
-                <p className="text-xs text-neutral-400 truncate">
-                  {user?.nombre}
+                <p className="font-semibold text-sm truncate">
+                  {user?.role === "admin" || user?.role === "super_admin"
+                    ? user?.nick
+                    : user?.nombreArtistico ||
+                      `${user?.nombre} ${user?.apellidos}`}
                 </p>
+                {user?.role !== "admin" &&
+                  user?.role !== "super_admin" &&
+                  user?.nombreArtistico && (
+                    <p className="text-xs text-neutral-400 truncate">
+                      @{user?.nick}
+                    </p>
+                  )}
               </div>
 
               {/* Opciones */}
@@ -296,7 +320,7 @@ export default function TopNav({
                   to={
                     user?.role === "admin" || user?.role === "super_admin"
                       ? "/admin"
-                      : `/profile/${user?.nick || ""}`
+                      : `/perfil/${user?.nick || ""}`
                   }
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center gap-3 px-4 py-2 hover:bg-neutral-800 transition-colors text-sm"
@@ -310,7 +334,7 @@ export default function TopNav({
                 </NavLink>
 
                 <NavLink
-                  to="/settings"
+                  to="/configuracion"
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center gap-3 px-4 py-2 hover:bg-neutral-800 transition-colors text-sm"
                 >
@@ -332,19 +356,6 @@ export default function TopNav({
             </div>
           )}
         </div>
-
-        {/* Toggle sidebar derecho (solo visible en xl+) */}
-        <button
-          onClick={onToggleRight}
-          className="hidden xl:flex p-2 hover:bg-neutral-800 rounded-lg transition-colors"
-          aria-label="Toggle right sidebar"
-        >
-          {rightOpen ? (
-            <PanelRightClose size={20} />
-          ) : (
-            <PanelRightOpen size={20} />
-          )}
-        </button>
       </div>
     </header>
   );

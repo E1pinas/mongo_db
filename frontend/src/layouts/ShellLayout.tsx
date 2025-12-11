@@ -33,7 +33,7 @@ export default function ShellLayout() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [leftMobileOpen, setLeftMobileOpen] = useState(false);
-  
+
   // Hook de autenticación
   const { needsProfileSetup, completeProfileSetup, refreshProfile } = useAuth();
 
@@ -51,7 +51,7 @@ export default function ShellLayout() {
     <div className="h-screen overflow-hidden bg-black text-white flex flex-col">
       {/* Modal de bienvenida (obligatorio) */}
       {needsProfileSetup && <WelcomeModal onComplete={handleCompleteSetup} />}
-      
+
       {/* TOPBAR - Fija arriba */}
       <TopNav
         onToggleLeft={toggleLeft}
@@ -62,7 +62,7 @@ export default function ShellLayout() {
       />
 
       {/* CONTENIDO PRINCIPAL - Grid con sidebars y main */}
-      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-[auto_1fr] xl:grid-cols-[auto_1fr_auto]">
+      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-[auto_1fr_auto]">
         {/* SIDEBAR IZQUIERDO */}
         <SidebarLeft
           isOpen={leftOpen}
@@ -75,7 +75,7 @@ export default function ShellLayout() {
           <Outlet />
         </main>
 
-        {/* SIDEBAR DERECHO - Solo visible en xl (1024px+) */}
+        {/* SIDEBAR DERECHO - Cola y Amigos (visible desde lg: 1024px+) */}
         <SidebarRight isOpen={rightOpen} />
       </div>
 

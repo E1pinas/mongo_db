@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, X, Upload, Search } from "lucide-react";
+import { Plus, X, Upload, Search, Music } from "lucide-react";
 import { musicService } from "../services/music.service";
 import { usePlayer, useAuth } from "../contexts";
 import type { Album, Cancion } from "../types";
@@ -279,342 +279,436 @@ export default function Albums() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Álbumes</h1>
-            <p className="text-neutral-400">Descubre álbumes de la comunidad</p>
+    <div className="min-h-screen bg-linear-to-b from-neutral-900 via-black to-black">
+      {/* Header con diseño único */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-br from-orange-500/10 via-red-500/10 to-pink-500/10 blur-3xl" />
+        <div className="relative px-6 pt-8 pb-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-xl">
+                  <svg
+                    className="w-8 h-8 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-orange-400 font-semibold mb-1">
+                    EXPLORA MÚSICA
+                  </p>
+                  <h1 className="text-5xl font-black bg-linear-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
+                    Álbumes
+                  </h1>
+                  <p className="text-neutral-300 mt-2">
+                    Descubre y crea álbumes completos
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-8 py-4 bg-linear-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-full font-bold text-lg transition-all hover:scale-105 flex items-center gap-3 shadow-lg"
+            >
+              <Plus size={20} />
+              Crear Álbum
+            </button>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} variant="secondary">
-            <Plus size={20} className="mr-2" />
-            Crear álbum
-          </Button>
+
+          {/* Filtros por género */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {genres.map((genre) => (
+              <button
+                key={genre}
+                onClick={() => setSelectedGenre(genre)}
+                className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
+                  selectedGenre === genre
+                    ? "bg-linear-to-r from-orange-500 to-red-600 text-white shadow-lg scale-105"
+                    : "bg-neutral-800/70 text-neutral-300 hover:bg-neutral-700 hover:scale-105"
+                }`}
+              >
+                {genre.charAt(0).toUpperCase() + genre.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Filtros por género */}
-      <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
-        {genres.map((genre) => (
-          <button
-            key={genre}
-            onClick={() => setSelectedGenre(genre)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
-              selectedGenre === genre
-                ? "bg-white text-black scale-105"
-                : "bg-neutral-800 text-white hover:bg-neutral-700"
-            }`}
-          >
-            {genre.charAt(0).toUpperCase() + genre.slice(1)}
-          </button>
-        ))}
-      </div>
+      <div className="px-6 pb-8">
+        {/* Loading */}
+        {isLoading && <LoadingSpinner />}
 
-      {/* Loading */}
-      {isLoading && <LoadingSpinner />}
-
-      {/* Mis álbumes */}
-      {!isLoading && filteredMyAlbums.length > 0 && (
-        <section className="mb-12">
-          <SectionHeader
-            title={
-              selectedGenre === "Todo"
-                ? "Tus álbumes"
-                : `Tus álbumes de ${selectedGenre}`
-            }
-          />
-          <MediaGrid>
-            {filteredMyAlbums.map((album) => (
-              <AlbumCard
-                key={album._id}
-                album={album}
-                onClick={() => navigate(`/album/${album._id}`)}
-                onPlay={(e) => handlePlayAlbum(album, e)}
-              />
-            ))}
-          </MediaGrid>
-        </section>
-      )}
-
-      {/* Álbumes públicos */}
-      {!isLoading && filteredPublicAlbums.length > 0 && (
-        <section className="mb-12">
-          <SectionHeader
-            title={
-              selectedGenre === "Todo"
-                ? "Descubre álbumes"
-                : `Álbumes de ${selectedGenre}`
-            }
-          />
-          <MediaGrid>
-            {filteredPublicAlbums.map((album) => (
-              <AlbumCard
-                key={album._id}
-                album={album}
-                onClick={() => navigate(`/album/${album._id}`)}
-                onPlay={(e) => handlePlayAlbum(album, e)}
-              />
-            ))}
-          </MediaGrid>
-        </section>
-      )}
-
-      {/* Modal de crear álbum */}
-      {!isLoading &&
-        filteredMyAlbums.length === 0 &&
-        filteredPublicAlbums.length === 0 && (
-          <div className="text-center py-20">
-            <Music size={64} className="text-neutral-600 mx-auto mb-4" />
-            <p className="text-xl text-neutral-400 mb-2">
-              {selectedGenre === "Todo"
-                ? "No hay álbumes disponibles"
-                : `No hay álbumes de ${selectedGenre}`}
-            </p>
-            <p className="text-sm text-neutral-500 mb-6">
-              {selectedGenre === "Todo"
-                ? "Sé el primero en crear un álbum"
-                : "Intenta con otro género"}
-            </p>
-          </div>
+        {/* Mis álbumes */}
+        {!isLoading && filteredMyAlbums.length > 0 && (
+          <section className="mb-16">
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold bg-linear-to-r from-orange-400 to-red-500 bg-clip-text text-transparent mb-2">
+                {selectedGenre === "Todo"
+                  ? "Mis Álbumes"
+                  : `Mis Álbumes de ${
+                      selectedGenre.charAt(0).toUpperCase() +
+                      selectedGenre.slice(1)
+                    }`}
+              </h2>
+              <p className="text-neutral-400">Tus colecciones musicales</p>
+            </div>
+            <MediaGrid>
+              {filteredMyAlbums.map((album) => (
+                <AlbumCard
+                  key={album._id}
+                  album={album}
+                  onClick={() => navigate(`/album/${album._id}`)}
+                  onPlay={(e) => handlePlayAlbum(album, e)}
+                />
+              ))}
+            </MediaGrid>
+          </section>
         )}
+
+        {/* Álbumes públicos */}
+        {!isLoading && filteredPublicAlbums.length > 0 && (
+          <section className="mb-16">
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold bg-linear-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent mb-2">
+                {selectedGenre === "Todo"
+                  ? "Descubre Álbumes"
+                  : `Álbumes de ${
+                      selectedGenre.charAt(0).toUpperCase() +
+                      selectedGenre.slice(1)
+                    }`}
+              </h2>
+              <p className="text-neutral-400">De la comunidad TCG Music</p>
+            </div>
+            <MediaGrid>
+              {filteredPublicAlbums.map((album) => (
+                <AlbumCard
+                  key={album._id}
+                  album={album}
+                  onClick={() => navigate(`/album/${album._id}`)}
+                  onPlay={(e) => handlePlayAlbum(album, e)}
+                />
+              ))}
+            </MediaGrid>
+          </section>
+        )}
+
+        {/* Empty state */}
+        {!isLoading &&
+          filteredMyAlbums.length === 0 &&
+          filteredPublicAlbums.length === 0 && (
+            <div className="text-center py-20">
+              <div className="w-24 h-24 rounded-full bg-linear-to-br from-orange-500/20 to-red-600/20 flex items-center justify-center mx-auto mb-6">
+                <Music size={48} className="text-orange-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-neutral-200 mb-2">
+                {selectedGenre === "Todo"
+                  ? "No hay álbumes disponibles"
+                  : `No hay álbumes de ${selectedGenre}`}
+              </h3>
+              <p className="text-neutral-400 mb-6">
+                {selectedGenre === "Todo"
+                  ? "Sé el primero en crear un álbum"
+                  : "Intenta con otro género"}
+              </p>
+              {selectedGenre === "Todo" && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-6 py-3 bg-linear-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-full font-bold transition-all hover:scale-105"
+                >
+                  Crear Mi Primer Álbum
+                </button>
+              )}
+            </div>
+          )}
+      </div>
 
       {/* Modal de creación */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-linear-to-br from-neutral-900 via-neutral-900 to-neutral-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-neutral-800">
             {/* Header */}
-            <div className="sticky top-0 bg-neutral-900 border-b border-neutral-800 p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Crear álbum</h2>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  resetForm();
-                }}
-                disabled={creating}
-                className="p-2 hover:bg-neutral-800 rounded-full transition-colors"
-              >
-                <X size={24} />
-              </button>
+            <div className="sticky top-0 bg-linear-to-r from-orange-600/20 via-red-600/20 to-pink-600/20 backdrop-blur-md border-b border-neutral-800/50 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg">
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                      />
+                    </svg>
+                  </div>
+                  <h2 className="text-3xl font-bold bg-linear-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
+                    Nuevo Álbum
+                  </h2>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    resetForm();
+                  }}
+                  disabled={creating}
+                  className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {error && (
-                <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded-lg">
-                  {error}
-                </div>
-              )}
-
-              {/* Título */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Título del álbum *
-                </label>
-                <input
-                  type="text"
-                  value={titulo}
-                  onChange={(e) => setTitulo(e.target.value)}
-                  placeholder="Mi nuevo álbum"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-500"
-                  disabled={creating}
-                  required
-                />
-              </div>
-
-              {/* Descripción */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Descripción
-                </label>
-                <textarea
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Describe tu álbum..."
-                  rows={3}
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-500 resize-none"
-                  disabled={creating}
-                />
-              </div>
-
-              {/* Fecha de lanzamiento */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Fecha de lanzamiento
-                </label>
-                <input
-                  type="date"
-                  value={fechaLanzamiento}
-                  onChange={(e) => setFechaLanzamiento(e.target.value)}
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-500"
-                  disabled={creating}
-                />
-              </div>
-
-              {/* Géneros */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Géneros
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {generosDisponibles.map((genero) => (
-                    <button
-                      key={genero}
-                      type="button"
-                      onClick={() => toggleGenero(genero)}
-                      disabled={creating}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        generos.includes(genero)
-                          ? "bg-blue-500 text-white"
-                          : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                      }`}
-                    >
-                      {genero.charAt(0).toUpperCase() + genero.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Portada */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Imagen de portada
-                </label>
-                <div className="flex items-start gap-4">
-                  {portadaPreview ? (
-                    <div className="relative w-32 h-32 rounded-lg overflow-hidden">
-                      <img
-                        src={portadaPreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPortadaFile(null);
-                          setPortadaPreview("");
-                        }}
-                        disabled={creating}
-                        className="absolute top-2 right-2 p-1 bg-black/70 hover:bg-black rounded-full"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="w-32 h-32 border-2 border-dashed border-neutral-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors">
-                      <Upload size={24} className="text-neutral-500 mb-2" />
-                      <span className="text-xs text-neutral-500">
-                        Subir imagen
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePortadaChange}
-                        disabled={creating}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                  <div className="flex-1 text-sm text-neutral-400">
-                    <p>Recomendado: imagen cuadrada de al menos 500x500px</p>
-                    <p className="text-xs mt-1">Máximo 5MB</p>
+            <div className="overflow-y-auto max-h-[calc(90vh-200px)]">
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {error && (
+                  <div className="bg-red-500/10 border-2 border-red-500 text-red-500 px-4 py-3 rounded-xl backdrop-blur-sm">
+                    {error}
                   </div>
-                </div>
-              </div>
+                )}
 
-              {/* Agregar canciones */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Canciones del álbum
-                </label>
-                <div className="relative">
-                  <Search
-                    size={20}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
-                  />
+                {/* Título */}
+                <div>
+                  <label className="block text-sm font-bold mb-2 text-neutral-200">
+                    Título del álbum *
+                  </label>
                   <input
                     type="text"
-                    value={searchQuery}
-                    onChange={(e) => handleSearchSongs(e.target.value)}
-                    placeholder="Busca tus canciones para agregar..."
-                    className="w-full pl-10 pr-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-500"
+                    value={titulo}
+                    onChange={(e) => setTitulo(e.target.value)}
+                    placeholder="Mi nuevo álbum"
+                    className="w-full px-4 py-3.5 bg-neutral-800/50 border-2 border-neutral-700 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all placeholder-neutral-500"
+                    disabled={creating}
+                    required
+                  />
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="block text-sm font-bold mb-2 text-neutral-200">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    placeholder="Describe tu álbum..."
+                    rows={3}
+                    className="w-full px-4 py-3.5 bg-neutral-800/50 border-2 border-neutral-700 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 resize-none transition-all placeholder-neutral-500"
                     disabled={creating}
                   />
                 </div>
 
-                {searching && (
-                  <p className="text-sm text-neutral-400 mt-2">Buscando...</p>
-                )}
+                {/* Fecha de lanzamiento */}
+                <div>
+                  <label className="block text-sm font-bold mb-2 text-neutral-200">
+                    Fecha de lanzamiento
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaLanzamiento}
+                    onChange={(e) => setFechaLanzamiento(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-neutral-800/50 border-2 border-neutral-700 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                    disabled={creating}
+                  />
+                </div>
 
-                {cancionesBuscadas.length > 0 && (
-                  <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
-                    <div className="space-y-1">
-                      {cancionesBuscadas.map((song) => (
-                        <label
-                          key={song._id}
-                          className="flex items-center gap-3 p-2 rounded hover:bg-neutral-700 cursor-pointer"
+                {/* Géneros */}
+                <div>
+                  <label className="block text-sm font-bold mb-3 text-neutral-200">
+                    Géneros
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {generosDisponibles.map((genero) => (
+                      <button
+                        key={genero}
+                        type="button"
+                        onClick={() => toggleGenero(genero)}
+                        disabled={creating}
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                          generos.includes(genero)
+                            ? "bg-linear-to-r from-orange-500 to-red-600 text-white shadow-lg scale-105"
+                            : "bg-neutral-800/70 text-neutral-300 hover:bg-neutral-700 hover:scale-105"
+                        }`}
+                      >
+                        {genero.charAt(0).toUpperCase() + genero.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Portada */}
+                <div>
+                  <label className="block text-sm font-bold mb-2 text-neutral-200">
+                    Imagen de portada
+                  </label>
+                  <div className="flex items-start gap-4">
+                    {portadaPreview ? (
+                      <div className="relative w-32 h-32 rounded-xl overflow-hidden ring-2 ring-orange-500/50">
+                        <img
+                          src={portadaPreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPortadaFile(null);
+                            setPortadaPreview("");
+                          }}
+                          disabled={creating}
+                          className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-black rounded-full transition-all"
                         >
-                          <input
-                            type="checkbox"
-                            checked={selectedSongs.includes(song._id)}
-                            onChange={() => toggleSong(song._id)}
-                            className="w-4 h-4"
-                          />
-                          <div className="w-10 h-10 bg-neutral-700 rounded shrink-0 overflow-hidden">
-                            <img
-                              src={song.portadaUrl || "/cover.jpg"}
-                              alt={song.titulo}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {song.titulo}
-                            </p>
-                            <p className="text-xs text-neutral-400 truncate">
-                              {Array.isArray(song.artistas)
-                                ? song.artistas
-                                    .map((a: any) =>
-                                      typeof a === "string"
-                                        ? a
-                                        : a.nombreArtistico ||
-                                          a.nick ||
-                                          a.nombre
-                                    )
-                                    .join(", ")
-                                : "Artista"}
-                            </p>
-                          </div>
-                        </label>
-                      ))}
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-32 h-32 border-2 border-dashed border-neutral-700 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-orange-500 hover:bg-orange-500/5 transition-all">
+                        <Upload size={24} className="text-neutral-500 mb-2" />
+                        <span className="text-xs text-neutral-500 font-medium">
+                          Subir imagen
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePortadaChange}
+                          disabled={creating}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                    <div className="flex-1 text-sm text-neutral-400">
+                      <p className="font-medium">
+                        Recomendado: imagen cuadrada de al menos 500x500px
+                      </p>
+                      <p className="text-xs mt-1">Máximo 5MB</p>
                     </div>
                   </div>
-                )}
+                </div>
 
-                {selectedSongs.length > 0 && (
-                  <p className="text-xs text-neutral-400 mt-2">
-                    {selectedSongs.length} canción
-                    {selectedSongs.length !== 1 ? "es" : ""} seleccionada
-                    {selectedSongs.length !== 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
+                {/* Agregar canciones */}
+                <div>
+                  <label className="block text-sm font-bold mb-3 text-neutral-200">
+                    Canciones del álbum
+                  </label>
+                  <div className="relative">
+                    <Search
+                      size={20}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500"
+                    />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => handleSearchSongs(e.target.value)}
+                      placeholder="Busca tus canciones para agregar..."
+                      className="w-full pl-12 pr-4 py-3.5 bg-neutral-800/50 border-2 border-neutral-700 rounded-xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all placeholder-neutral-500"
+                      disabled={creating}
+                    />
+                  </div>
 
-              {/* Opciones de privacidad */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="esPrivado"
-                  checked={esPrivado}
-                  onChange={(e) => setEsPrivado(e.target.checked)}
-                  className="w-5 h-5"
-                />
-                <label htmlFor="esPrivado" className="text-sm cursor-pointer">
-                  Álbum privado (solo tú podrás verlo)
-                </label>
-              </div>
+                  {searching && (
+                    <p className="text-sm text-neutral-400 mt-2 ml-1">
+                      Buscando...
+                    </p>
+                  )}
 
-              {/* Botones */}
-              <div className="flex gap-3 pt-4">
+                  {cancionesBuscadas.length > 0 && (
+                    <div className="mt-3 space-y-2 max-h-60 overflow-y-auto pr-1">
+                      <div className="space-y-1.5">
+                        {cancionesBuscadas.map((song) => (
+                          <label
+                            key={song._id}
+                            className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-700/50 cursor-pointer transition-all border border-transparent hover:border-neutral-600"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSongs.includes(song._id)}
+                              onChange={() => toggleSong(song._id)}
+                              className="w-5 h-5 rounded accent-orange-500"
+                            />
+                            <div className="w-12 h-12 bg-neutral-700 rounded-lg shrink-0 overflow-hidden">
+                              <img
+                                src={song.portadaUrl || "/cover.jpg"}
+                                alt={song.titulo}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold truncate">
+                                {song.titulo}
+                              </p>
+                              <p className="text-xs text-neutral-400 truncate">
+                                {Array.isArray(song.artistas)
+                                  ? song.artistas
+                                      .map((a: any) =>
+                                        typeof a === "string"
+                                          ? a
+                                          : a.nombreArtistico ||
+                                            a.nick ||
+                                            a.nombre
+                                      )
+                                      .join(", ")
+                                  : "Artista"}
+                              </p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedSongs.length > 0 && (
+                    <div className="mt-2 px-3 py-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                      <p className="text-xs font-semibold text-orange-400">
+                        {selectedSongs.length} canción
+                        {selectedSongs.length !== 1 ? "es" : ""} seleccionada
+                        {selectedSongs.length !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Opciones de privacidad */}
+                <div className="p-4 bg-neutral-800/30 rounded-xl border border-neutral-700/50">
+                  <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-700/30 transition-colors">
+                    <input
+                      type="checkbox"
+                      id="esPrivado"
+                      checked={esPrivado}
+                      onChange={(e) => setEsPrivado(e.target.checked)}
+                      className="w-5 h-5 rounded accent-orange-500"
+                    />
+                    <label
+                      htmlFor="esPrivado"
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      <span className="font-semibold text-white">
+                        Álbum privado
+                      </span>
+                      <p className="text-xs text-neutral-400 mt-0.5">
+                        Solo tú podrás verlo
+                      </p>
+                    </label>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            {/* Botones fijos */}
+            <div className="sticky bottom-0 bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-800 p-6">
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -622,19 +716,20 @@ export default function Albums() {
                     resetForm();
                   }}
                   disabled={creating}
-                  className="flex-1 px-4 py-3 rounded-lg font-semibold bg-neutral-800 hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                  className="flex-1 px-6 py-3.5 rounded-xl font-bold bg-neutral-800 hover:bg-neutral-700 transition-all disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
+                  onClick={handleSubmit}
                   disabled={creating || !titulo.trim()}
-                  className="flex-1 px-4 py-3 rounded-lg font-semibold bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-6 py-3.5 rounded-xl font-bold bg-linear-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-orange-500/20"
                 >
-                  {creating ? "Creando..." : "Crear álbum"}
+                  {creating ? "Creando..." : "Crear Álbum"}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

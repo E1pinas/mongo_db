@@ -2,6 +2,8 @@ import { Playlist } from "../models/playlistModels.js";
 import { Cancion } from "../models/cancionModels.js";
 import { Usuario } from "../models/usuarioModels.js";
 import { Notificacion } from "../models/notificacionModels.js";
+import Post from "../models/postModels.js";
+import { Comentario } from "../models/comentarioModels.js";
 import { eliminarArchivoR2 } from "../services/r2Service.js";
 import { notificarNuevaPlaylist } from "../helpers/notificacionHelper.js";
 import {
@@ -94,6 +96,14 @@ export const agregarCancionPlaylist = async (req, res) => {
       return sendUnauthorized(res, "No puedes editar esta playlist");
     }
 
+    // Validar privacidad: No permitir canciones privadas en playlists públicas
+    if (playlist.esPublica && cancion.esPrivada) {
+      return sendValidationError(
+        res,
+        "No puedes agregar canciones privadas a una playlist pública. Cambia la playlist a privada o la canción a pública."
+      );
+    }
+
     playlist.canciones.addToSet(cancionId);
     await playlist.save();
 
@@ -150,7 +160,8 @@ export const obtenerPlaylistPorId = async (req, res) => {
       .populate("creador", "nick nombre nombreArtistico avatarUrl verificado")
       .populate({
         path: "canciones",
-        select: "titulo audioUrl duracionSegundos portadaUrl artistas likes",
+        select:
+          "titulo audioUrl duracionSegundos portadaUrl artistas likes esPrivada estaEliminada esExplicita oculta razonOculta",
         populate: {
           path: "artistas",
           select: "nick nombre nombreArtistico avatarUrl",
@@ -160,6 +171,33 @@ export const obtenerPlaylistPorId = async (req, res) => {
 
     if (!playlist) {
       return sendNotFound(res, "Playlist");
+    }
+
+    // Verificar si el usuario es menor de edad
+    let esMenorDeEdad = false;
+    if (req.userId) {
+      const { Usuario } = await import("../models/usuarioModels.js");
+      const usuario = await Usuario.findById(req.userId).select(
+        "fechaNacimiento"
+      );
+      if (usuario && usuario.fechaNacimiento) {
+        const { calcularEdad } = await import("../helpers/edadHelper.js");
+        esMenorDeEdad = calcularEdad(usuario.fechaNacimiento) < 18;
+      }
+    }
+
+    // Filtrar canciones eliminadas, privadas, ocultas y explícitas (para menores)
+    if (playlist.canciones) {
+      playlist.canciones = playlist.canciones.filter((cancion) => {
+        if (!cancion || cancion.estaEliminada) return false;
+        // Filtrar canciones ocultas por moderación
+        if (cancion.oculta) return false;
+        // Si la playlist es pública, filtrar canciones privadas
+        if (playlist.esPublica && cancion.esPrivada) return false;
+        // Si el usuario es menor de edad, filtrar canciones explícitas
+        if (esMenorDeEdad && cancion.esExplicita === true) return false;
+        return true;
+      });
     }
 
     return sendSuccess(res, { playlist });
@@ -172,10 +210,10 @@ export const obtenerPlaylistPorId = async (req, res) => {
 // 📌 Eliminar Playlist (borrado lógico)
 export const eliminarPlaylist = async (req, res) => {
   try {
-    const { idPlaylist } = req.params;
+    const { id } = req.params;
     const usuarioId = req.userId;
 
-    const playlist = await Playlist.findById(idPlaylist);
+    const playlist = await Playlist.findById(id);
 
     if (!playlist) {
       return sendNotFound(res, "Playlist");
@@ -191,13 +229,26 @@ export const eliminarPlaylist = async (req, res) => {
       );
     }
 
-    playlist.estaEliminada = true;
-    await playlist.save();
+    // Eliminar portada de R2 si existe
+    if (playlist.portadaUrl && playlist.portadaUrl.includes("cloudflare")) {
+      eliminarArchivoR2(playlist.portadaUrl).catch((err) =>
+        console.error("Error eliminando portada de R2:", err)
+      );
+    }
 
     // Quitarla del usuario
     await Usuario.findByIdAndUpdate(usuarioId, {
       $pull: { misPlaylists: playlist._id },
     });
+
+    // Eliminar comentarios y posts asociados a la playlist
+    await Comentario.deleteMany({
+      postId: { $in: await Post.find({ recursoId: id }).select("_id") },
+    });
+    await Post.deleteMany({ recursoId: id });
+
+    // Eliminar la playlist completamente
+    await Playlist.findByIdAndDelete(id);
 
     return sendSuccess(res, {
       message: "Playlist eliminada correctamente",
@@ -205,6 +256,67 @@ export const eliminarPlaylist = async (req, res) => {
   } catch (error) {
     console.error("Error en eliminarPlaylist:", error);
     return sendServerError(res, error, "Error al eliminar playlist");
+  }
+};
+
+// 📌 Actualizar Playlist (título, descripción, privacidad, etc.)
+export const actualizarPlaylist = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { titulo, descripcion, esPublica } = req.body;
+    const usuarioId = req.userId;
+
+    const playlist = await Playlist.findById(id).populate({
+      path: "canciones",
+      select: "esPrivada",
+    });
+
+    if (!playlist) {
+      return sendNotFound(res, "Playlist");
+    }
+
+    const esDuenio = isPlaylistCreator(playlist, usuarioId);
+    const esAdmin = req.userRole === "admin" || req.userRole === "super_admin";
+
+    if (!esDuenio && !esAdmin) {
+      return sendUnauthorized(
+        res,
+        "No tienes permisos para modificar esta playlist"
+      );
+    }
+
+    // Validar cambio a público: verificar que no haya canciones privadas
+    if (
+      esPublica === true &&
+      playlist.canciones &&
+      playlist.canciones.length > 0
+    ) {
+      const tieneCancionesPrivadas = playlist.canciones.some(
+        (cancion) => cancion.esPrivada === true
+      );
+
+      if (tieneCancionesPrivadas) {
+        return sendValidationError(
+          res,
+          "No puedes hacer pública esta playlist porque contiene canciones privadas. Cambia las canciones a públicas primero o elimínalas de la playlist."
+        );
+      }
+    }
+
+    // Actualizar campos
+    if (titulo !== undefined) playlist.titulo = titulo;
+    if (descripcion !== undefined) playlist.descripcion = descripcion;
+    if (esPublica !== undefined) playlist.esPublica = esPublica;
+
+    await playlist.save();
+
+    return sendSuccess(res, {
+      message: "Playlist actualizada correctamente",
+      playlist,
+    });
+  } catch (error) {
+    console.error("Error en actualizarPlaylist:", error);
+    return sendServerError(res, error, "Error al actualizar playlist");
   }
 };
 
@@ -595,5 +707,32 @@ export const toggleSeguirPlaylist = async (req, res) => {
       error,
       "Error al procesar el seguimiento de la playlist"
     );
+  }
+};
+
+// 📌 Buscar playlists por nombre
+export const buscarPlaylists = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || q.trim().length === 0) {
+      return sendError(res, "Debes proporcionar un término de búsqueda", 400);
+    }
+
+    const playlists = await Playlist.find({
+      titulo: { $regex: q, $options: "i" },
+      estaEliminada: false,
+    })
+      .populate("creador", "nick nombre nombreArtistico avatarUrl verificado")
+      .select(
+        "titulo descripcion portadaUrl canciones creador createdAt esPublica"
+      )
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    return sendSuccess(res, { playlists });
+  } catch (error) {
+    console.error("Error en buscarPlaylists:", error);
+    return sendServerError(res, error, "Error al buscar playlists");
   }
 };

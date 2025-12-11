@@ -41,6 +41,17 @@ export default function Profile() {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
 
+  // Verificar si el usuario está suspendido
+  useEffect(() => {
+    if (currentUser && (currentUser as any).suspendido) {
+      // Si intenta ver otro perfil, bloquearlo
+      if (nick && nick !== currentUser.nick) {
+        setShowSuspendedModal(true);
+        return;
+      }
+    }
+  }, [currentUser, nick]);
+
   // Si es admin/super_admin viendo su propio perfil, redirigir al panel
   useEffect(() => {
     if (
@@ -82,11 +93,12 @@ export default function Profile() {
   const [showRemoveFriendModal, setShowRemoveFriendModal] = useState(false);
   const [showUnfollowModal, setShowUnfollowModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showSuspendedModal, setShowSuspendedModal] = useState(false);
   const [comentariosCancion, setComentariosCancion] = useState<Cancion | null>(
     null
   );
 
-  const { playQueue, currentSong, isPlaying, togglePlayPause } = usePlayer();
+  const { playQueue, currentSong, isPlaying, togglePlay } = usePlayer();
 
   useEffect(() => {
     loadProfile();
@@ -374,30 +386,24 @@ export default function Profile() {
     }
   };
 
-  const handleBlockUser = async () => {
+  const handleUnblockUser = async () => {
     if (!profileUser) return;
 
     try {
       setLoadingAction(true);
+      await friendshipService.unblockUser(profileUser._id);
 
-      if (solicitudId) {
-        // Bloquear desde solicitud pendiente
-        await friendshipService.blockFromRequest(solicitudId);
-      } else {
-        // Bloquear directamente al usuario
-        await friendshipService.blockUser(profileUser._id);
-      }
+      // Recargar el estado de la relación después de desbloquear
+      const status = await friendshipService.getRelationshipStatus(
+        profileUser._id
+      );
+      setRelationshipStatus(status.estado);
+      setSolicitudId(status.solicitudId);
 
-      setRelationshipStatus("bloqueado");
-      setShowBlockModal(false);
-
-      // Redirigir al home después de bloquear
-      setTimeout(() => {
-        navigate("/");
-      }, 1000);
+      alert("Usuario desbloqueado correctamente");
     } catch (error: any) {
-      console.error("Error blocking user:", error);
-      alert(error.message || "Error al bloquear usuario");
+      console.error("Error unblocking user:", error);
+      alert(error.message || "Error al desbloquear usuario");
     } finally {
       setLoadingAction(false);
     }
@@ -425,12 +431,35 @@ export default function Profile() {
 
   const handlePlaySong = (song: Cancion) => {
     if (currentSong?._id === song._id && isPlaying) {
-      togglePlayPause();
+      togglePlay();
     } else {
-      // Encontrar el índice de la canción seleccionada
-      const songIndex = canciones.findIndex((c) => c._id === song._id);
+      // Filtrar canciones explícitas si el usuario es menor de edad
+      let cancionesDisponibles = canciones;
+
+      if (currentUser?.esMenorDeEdad) {
+        cancionesDisponibles = canciones.filter((c) => !c.esExplicita);
+        console.log(
+          `🔞 Usuario menor de edad - Filtrando canciones explícitas`
+        );
+        console.log(
+          `📊 Canciones originales: ${canciones.length}, Canciones disponibles: ${cancionesDisponibles.length}`
+        );
+
+        // Verificar si la canción seleccionada es explícita
+        if (song.esExplicita) {
+          alert(
+            "No puedes reproducir contenido explícito siendo menor de edad."
+          );
+          return;
+        }
+      }
+
+      // Encontrar el índice de la canción seleccionada en el array filtrado
+      const songIndex = cancionesDisponibles.findIndex(
+        (c) => c._id === song._id
+      );
       if (songIndex !== -1) {
-        playQueue(canciones, songIndex);
+        playQueue(cancionesDisponibles, songIndex);
       }
     }
   };
@@ -496,7 +525,11 @@ export default function Profile() {
             <div className="flex-1 pb-2">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-5xl font-bold text-white">
-                  {profileUser.nombreArtistico || profileUser.nick}
+                  {profileUser.role === "admin" ||
+                  profileUser.role === "super_admin"
+                    ? profileUser.nick
+                    : profileUser.nombreArtistico ||
+                      `${profileUser.nombre} ${profileUser.apellidos}`}
                 </h1>
                 {profileUser.verificado && (
                   <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center">
@@ -515,12 +548,14 @@ export default function Profile() {
                 )}
               </div>
 
-              {/* Username (si hay nombre artístico) */}
-              {profileUser.nombreArtistico && (
-                <p className="text-neutral-400 text-sm mb-2">
-                  @{profileUser.nick}
-                </p>
-              )}
+              {/* Username (solo para usuarios no admin con nombre artístico) */}
+              {profileUser.role !== "admin" &&
+                profileUser.role !== "super_admin" &&
+                profileUser.nombreArtistico && (
+                  <p className="text-neutral-400 text-sm mb-2">
+                    @{profileUser.nick}
+                  </p>
+                )}
 
               {/* Biografía */}
               {profileUser.bio && (
@@ -642,7 +677,7 @@ export default function Profile() {
             <div className="flex items-center gap-3 pb-2">
               {isOwnProfile ? (
                 <button
-                  onClick={() => navigate("/settings")}
+                  onClick={() => navigate("/configuracion")}
                   className="px-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
                 >
                   <Settings size={16} />
@@ -718,33 +753,15 @@ export default function Profile() {
                     {isFollowing ? "Siguiendo" : "Seguir"}
                   </button>
 
-                  {/* Menú de opciones (incluye bloquear y reportar) */}
-                  <div className="relative group">
-                    <button
-                      className="p-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
-                      title="Más opciones"
-                    >
-                      <MoreHorizontal size={20} />
-                    </button>
-
-                    {/* Menú desplegable */}
-                    <div className="absolute right-0 mt-2 w-48 bg-neutral-800 rounded-lg shadow-xl border border-neutral-700 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                      <button
-                        onClick={() => setShowReportModal(true)}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors flex items-center gap-2 text-orange-400"
-                      >
-                        <Flag size={16} />
-                        Reportar usuario
-                      </button>
-                      <button
-                        onClick={() => setShowBlockModal(true)}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors flex items-center gap-2 text-red-400"
-                      >
-                        <Ban size={16} />
-                        Bloquear usuario
-                      </button>
-                    </div>
-                  </div>
+                  {/* Botón de Reportar */}
+                  <button
+                    onClick={() => setShowReportModal(true)}
+                    className="px-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 border border-neutral-700 text-orange-400"
+                    title="Reportar usuario"
+                  >
+                    <Flag size={16} />
+                    Reportar
+                  </button>
                 </>
               )}
             </div>
@@ -785,12 +802,12 @@ export default function Profile() {
       </div>
 
       {/* Tabs de navegación */}
-      <div className="border-b border-neutral-800 bg-neutral-900/30 sticky top-0 z-10">
-        <div className="px-8">
-          <div className="flex items-center gap-8">
+      <div className="border-b border-neutral-800 bg-neutral-900/30 sticky top-0 z-10 overflow-x-hidden">
+        <div className="px-4 sm:px-8">
+          <div className="flex items-center gap-4 sm:gap-8 overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setActiveTab("posts")}
-              className={`py-4 text-sm font-semibold border-b-2 transition-colors ${
+              className={`py-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "posts"
                   ? "border-orange-500 text-white"
                   : "border-transparent text-neutral-400 hover:text-white"
@@ -800,7 +817,7 @@ export default function Profile() {
             </button>
             <button
               onClick={() => setActiveTab("canciones")}
-              className={`py-4 text-sm font-semibold border-b-2 transition-colors ${
+              className={`py-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "canciones"
                   ? "border-orange-500 text-white"
                   : "border-transparent text-neutral-400 hover:text-white"
@@ -810,7 +827,7 @@ export default function Profile() {
             </button>
             <button
               onClick={() => setActiveTab("albumes")}
-              className={`py-4 text-sm font-semibold border-b-2 transition-colors ${
+              className={`py-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "albumes"
                   ? "border-orange-500 text-white"
                   : "border-transparent text-neutral-400 hover:text-white"
@@ -820,7 +837,7 @@ export default function Profile() {
             </button>
             <button
               onClick={() => setActiveTab("playlists")}
-              className={`py-4 text-sm font-semibold border-b-2 transition-colors ${
+              className={`py-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "playlists"
                   ? "border-orange-500 text-white"
                   : "border-transparent text-neutral-400 hover:text-white"
@@ -830,7 +847,7 @@ export default function Profile() {
             </button>
             <button
               onClick={() => setActiveTab("seguidores")}
-              className={`py-4 text-sm font-semibold border-b-2 transition-colors ${
+              className={`py-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "seguidores"
                   ? "border-orange-500 text-white"
                   : "border-transparent text-neutral-400 hover:text-white"
@@ -840,7 +857,7 @@ export default function Profile() {
             </button>
             <button
               onClick={() => setActiveTab("siguiendo")}
-              className={`py-4 text-sm font-semibold border-b-2 transition-colors ${
+              className={`py-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "siguiendo"
                   ? "border-orange-500 text-white"
                   : "border-transparent text-neutral-400 hover:text-white"
@@ -865,6 +882,29 @@ export default function Profile() {
         {activeTab === "canciones" && (
           <div>
             <h2 className="text-2xl font-bold mb-6">Todas las pistas</h2>
+
+            {/* Mensaje informativo para menores de edad */}
+            {currentUser?.esMenorDeEdad &&
+              canciones.some((c) => c.esExplicita) && (
+                <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl backdrop-blur-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-yellow-400 font-bold">🔞</span>
+                    </div>
+                    <div>
+                      <p className="text-yellow-400 font-semibold text-sm">
+                        Algunas canciones están ocultas porque contienen
+                        contenido explícito
+                      </p>
+                      <p className="text-yellow-500/70 text-xs mt-0.5">
+                        Solo puedes ver y reproducir contenido apto para menores
+                        de edad
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             {loadingContent ? (
               <div className="text-center py-12">
                 <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -876,40 +916,48 @@ export default function Profile() {
               </div>
             ) : (
               <div className="space-y-2">
-                {canciones.map((cancion, index) => {
-                  const isCurrentSong = currentSong?._id === cancion._id;
-                  return (
-                    <SongRow
-                      key={cancion._id}
-                      cancion={cancion}
-                      index={index}
-                      isCurrentSong={isCurrentSong}
-                      isPlaying={isPlaying}
-                      onPlay={() => handlePlaySong(cancion)}
-                      onOpenComments={() => setComentariosCancion(cancion)}
-                      onLikeChange={(liked) => {
-                        // Actualizar inmediatamente el estado local
-                        setCanciones((prevCanciones) =>
-                          prevCanciones.map((c) =>
-                            c._id === cancion._id
-                              ? {
-                                  ...c,
-                                  likes: liked
-                                    ? [
-                                        ...(c.likes || []),
-                                        currentUser?._id || "",
-                                      ]
-                                    : (c.likes || []).filter(
-                                        (id) => id !== currentUser?._id
-                                      ),
-                                }
-                              : c
-                          )
-                        );
-                      }}
-                    />
-                  );
-                })}
+                {canciones
+                  .filter((cancion) => {
+                    // Ocultar canciones explícitas si el usuario actual es menor de edad
+                    if (currentUser?.esMenorDeEdad && cancion.esExplicita) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((cancion, index) => {
+                    const isCurrentSong = currentSong?._id === cancion._id;
+                    return (
+                      <SongRow
+                        key={cancion._id}
+                        cancion={cancion}
+                        index={index}
+                        isCurrentSong={isCurrentSong}
+                        isPlaying={isPlaying}
+                        onPlay={() => handlePlaySong(cancion)}
+                        onOpenComments={() => setComentariosCancion(cancion)}
+                        onLikeChange={(liked) => {
+                          // Actualizar inmediatamente el estado local
+                          setCanciones((prevCanciones) =>
+                            prevCanciones.map((c) =>
+                              c._id === cancion._id
+                                ? {
+                                    ...c,
+                                    likes: liked
+                                      ? [
+                                          ...(c.likes || []),
+                                          currentUser?._id || "",
+                                        ]
+                                      : (c.likes || []).filter(
+                                          (id) => id !== currentUser?._id
+                                        ),
+                                  }
+                                : c
+                            )
+                          );
+                        }}
+                      />
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -1032,29 +1080,31 @@ export default function Profile() {
               </div>
             ) : seguidores.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {seguidores.map((seguidor) => (
-                  <div
-                    key={seguidor._id}
-                    onClick={() => navigate(`/profile/${seguidor.nick}`)}
-                    className="bg-neutral-800/50 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer flex items-center gap-4"
-                  >
-                    <div className="w-16 h-16 bg-neutral-700 rounded-full shrink-0 overflow-hidden">
-                      <img
-                        src={seguidor.avatarUrl || "/avatar.png"}
-                        alt={seguidor.nick}
-                        className="w-full h-full object-cover"
-                      />
+                {seguidores
+                  .filter((seguidor) => seguidor && seguidor._id)
+                  .map((seguidor) => (
+                    <div
+                      key={seguidor._id}
+                      onClick={() => navigate(`/perfil/${seguidor.nick}`)}
+                      className="bg-neutral-800/50 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer flex items-center gap-4"
+                    >
+                      <div className="w-16 h-16 bg-neutral-700 rounded-full shrink-0 overflow-hidden">
+                        <img
+                          src={seguidor.avatarUrl || "/avatar.png"}
+                          alt={seguidor.nick}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">
+                          {seguidor.nombreArtistico || seguidor.nick}
+                        </p>
+                        <p className="text-sm text-neutral-400 truncate">
+                          @{seguidor.nick}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">
-                        {seguidor.nombreArtistico || seguidor.nick}
-                      </p>
-                      <p className="text-sm text-neutral-400 truncate">
-                        @{seguidor.nick}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             ) : (
               <div className="text-center py-12 text-neutral-500">
@@ -1074,29 +1124,31 @@ export default function Profile() {
               </div>
             ) : seguidos.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {seguidos.map((seguido) => (
-                  <div
-                    key={seguido._id}
-                    onClick={() => navigate(`/profile/${seguido.nick}`)}
-                    className="bg-neutral-800/50 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer flex items-center gap-4"
-                  >
-                    <div className="w-16 h-16 bg-neutral-700 rounded-full shrink-0 overflow-hidden">
-                      <img
-                        src={seguido.avatarUrl || "/avatar.png"}
-                        alt={seguido.nick}
-                        className="w-full h-full object-cover"
-                      />
+                {seguidos
+                  .filter((seguido) => seguido && seguido._id)
+                  .map((seguido) => (
+                    <div
+                      key={seguido._id}
+                      onClick={() => navigate(`/perfil/${seguido.nick}`)}
+                      className="bg-neutral-800/50 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer flex items-center gap-4"
+                    >
+                      <div className="w-16 h-16 bg-neutral-700 rounded-full shrink-0 overflow-hidden">
+                        <img
+                          src={seguido.avatarUrl || "/avatar.png"}
+                          alt={seguido.nick}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">
+                          {seguido.nombreArtistico || seguido.nick}
+                        </p>
+                        <p className="text-sm text-neutral-400 truncate">
+                          @{seguido.nick}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">
-                        {seguido.nombreArtistico || seguido.nick}
-                      </p>
-                      <p className="text-sm text-neutral-400 truncate">
-                        @{seguido.nick}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             ) : (
               <div className="text-center py-12 text-neutral-500">
@@ -1107,68 +1159,6 @@ export default function Profile() {
           </div>
         )}
       </div>
-
-      {/* Modal de confirmación de bloqueo */}
-      {showBlockModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 rounded-xl max-w-md w-full p-6 border border-neutral-800">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
-                <Ban size={24} className="text-red-500" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">Bloquear usuario</h3>
-                <p className="text-sm text-neutral-400">
-                  Esta acción es permanente
-                </p>
-              </div>
-            </div>
-
-            <div className="mb-6 space-y-3">
-              <p className="text-neutral-300">
-                ¿Estás seguro de que quieres bloquear a{" "}
-                <span className="font-semibold text-white">
-                  @{profileUser?.nick}
-                </span>
-                ?
-              </p>
-              <ul className="text-sm text-neutral-400 space-y-2 list-disc list-inside">
-                <li>No podrá ver tu perfil</li>
-                <li>No podrá enviarte solicitudes de amistad</li>
-                <li>Se eliminarán las notificaciones entre ustedes</li>
-                <li>Si eran amigos, se eliminará la amistad</li>
-              </ul>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowBlockModal(false)}
-                className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg font-semibold transition-colors"
-                disabled={loadingAction}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleBlockUser}
-                disabled={loadingAction}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loadingAction ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Bloqueando...
-                  </>
-                ) : (
-                  <>
-                    <Ban size={16} />
-                    Bloquear
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal de confirmación para eliminar amigo */}
       {showRemoveFriendModal && profileUser && (
@@ -1271,6 +1261,46 @@ export default function Profile() {
           contenidoId={profileUser._id}
           nombreContenido={`@${profileUser.nick}`}
         />
+      )}
+
+      {/* Modal de cuenta suspendida */}
+      {showSuspendedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-700">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="bg-yellow-600/20 p-3 rounded-full">
+                <Ban className="w-6 h-6 text-yellow-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Tu cuenta está suspendida
+                </h3>
+                <p className="text-gray-300 mb-3">
+                  No puedes ver perfiles de otros usuarios mientras tu cuenta
+                  esté suspendida.
+                </p>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                  <p className="text-sm text-gray-400 mb-1">
+                    Razón de la suspensión:
+                  </p>
+                  <p className="text-yellow-400 font-medium">
+                    {(currentUser as any)?.razonSuspension ||
+                      "Violación de normas comunitarias"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowSuspendedModal(false);
+                navigate("/", { replace: true });
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

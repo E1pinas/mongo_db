@@ -86,22 +86,48 @@ export const subirArchivoR2 = async (
 
 export const eliminarArchivoR2 = async (fileUrl) => {
   try {
-    if (!fileUrl || !fileUrl.includes(PUBLIC_URL)) {
+    if (!fileUrl) {
+      console.log("⚠️ No se proporcionó URL de archivo para eliminar");
+      return;
+    }
+
+    // Validar que sea una URL de Cloudflare R2
+    if (!fileUrl.includes("r2.dev") && !fileUrl.includes("cloudflare")) {
+      console.log(`⚠️ URL no es de R2, se omite eliminación: ${fileUrl}`);
       return;
     }
 
     const client = getR2Client();
-    const key = fileUrl.replace(`${PUBLIC_URL}/`, "");
+
+    // Extraer la key del archivo desde la URL
+    // URL format: https://pub-xxx.r2.dev/audio/filename.mp3 -> audio/filename.mp3
+    let key;
+    if (fileUrl.includes(PUBLIC_URL)) {
+      key = fileUrl.replace(`${PUBLIC_URL}/`, "");
+    } else {
+      // Fallback: extraer todo después del dominio
+      const urlParts = fileUrl.split(".r2.dev/");
+      key =
+        urlParts.length > 1
+          ? urlParts[1]
+          : fileUrl.split("/").slice(-2).join("/");
+    }
+
+    console.log(`🗑️ Intentando eliminar de R2: ${key}`);
 
     const command = new DeleteObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
     });
 
-    await client.send(command);
-    console.log(`✅ Archivo eliminado de R2: ${key}`);
+    const result = await client.send(command);
+    console.log(`✅ Archivo eliminado de R2 exitosamente: ${key}`);
+
+    return result;
   } catch (error) {
-    console.error("Error al eliminar archivo de R2:", error);
+    console.error(`❌ Error al eliminar archivo de R2 (${fileUrl}):`, error);
+    // No lanzar error para que la eliminación masiva continúe
+    return null;
   }
 };
 

@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Play, Heart, MessageCircle, Flag } from "lucide-react";
+import {
+  Play,
+  Heart,
+  MessageCircle,
+  Flag,
+  Edit2,
+  Trash2,
+  X as XIcon,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Cancion } from "../../types";
 import { musicService } from "../../services/music.service";
@@ -16,6 +24,13 @@ interface SongRowProps {
   onOpenComments?: () => void;
   onLikeChange?: (liked: boolean) => void;
   hideComments?: boolean;
+  // Opciones para creador
+  showCreatorActions?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  // Opciones para quitar de playlist/álbum
+  showRemoveFromCollection?: boolean;
+  onRemoveFromCollection?: () => void;
 }
 
 export default function SongRow({
@@ -27,6 +42,11 @@ export default function SongRow({
   onOpenComments,
   onLikeChange,
   hideComments = false,
+  showCreatorActions = false,
+  onEdit,
+  onDelete,
+  showRemoveFromCollection = false,
+  onRemoveFromCollection,
 }: SongRowProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +54,13 @@ export default function SongRow({
   const [showRemoveLikeModal, setShowRemoveLikeModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showOwnSongModal, setShowOwnSongModal] = useState(false);
+
+  // Verificar si el usuario es propietario de la canción
+  const isOwnSong = cancion.artistas?.some((artista) =>
+    typeof artista === "string"
+      ? artista === user?._id
+      : artista._id === user?._id
+  );
 
   // Sincronizar el estado de like con la canción
   useEffect(() => {
@@ -177,6 +204,11 @@ export default function SongRow({
               }`}
             >
               {cancion.titulo}
+              {cancion.esExplicita && (
+                <span className="ml-2 text-xs font-bold text-red-500 bg-red-500/20 px-1.5 py-0.5 rounded">
+                  E
+                </span>
+              )}
             </p>
             <p className="text-sm text-neutral-400 truncate">
               {getArtistNames()}
@@ -185,12 +217,51 @@ export default function SongRow({
         </div>
 
         {/* Duración */}
-        <div className="text-sm text-neutral-400 min-w-[60px] text-right">
+        <div className="text-sm text-neutral-400 w-[60px] text-right shrink-0">
           {formatDuration(cancion.duracionSegundos)}
         </div>
 
         {/* Acciones - Siempre visibles */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          {showCreatorActions && onEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="p-2 hover:bg-blue-500/20 rounded-full transition-colors text-blue-400 hover:text-blue-300"
+              title="Editar canción"
+            >
+              <Edit2 size={16} />
+            </button>
+          )}
+
+          {showCreatorActions && onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-2 hover:bg-red-500/20 rounded-full transition-colors text-red-400 hover:text-red-300"
+              title="Eliminar canción"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+
+          {showRemoveFromCollection && onRemoveFromCollection && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveFromCollection();
+              }}
+              className="p-2 hover:bg-orange-500/20 rounded-full transition-colors text-orange-400 hover:text-orange-300"
+              title="Quitar de esta colección"
+            >
+              <XIcon size={16} />
+            </button>
+          )}
+
           {!hideComments && (
             <button
               onClick={(e) => {
@@ -214,16 +285,19 @@ export default function SongRow({
             <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
           </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowReportModal(true);
-            }}
-            className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-neutral-400 hover:text-red-500"
-            title="Reportar canción"
-          >
-            <Flag size={16} />
-          </button>
+          {/* Botón reportar - Solo mostrar si NO es canción propia y NO son acciones de creador */}
+          {!showCreatorActions && !isOwnSong && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowReportModal(true);
+              }}
+              className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-neutral-400 hover:text-red-500"
+              title="Reportar canción"
+            >
+              <Flag size={16} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -284,7 +358,7 @@ export default function SongRow({
               <button
                 onClick={() => {
                   setShowOwnSongModal(false);
-                  navigate(`/profile/${user?.nick}`);
+                  navigate(`/perfil/${user?.nick}`);
                 }}
                 className="flex-1 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors font-medium"
               >

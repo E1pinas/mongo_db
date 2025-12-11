@@ -67,7 +67,7 @@ export default function SongListItem({
           <p className="font-medium text-sm truncate">
             {song.titulo}
             {song.esExplicita && (
-              <span className="ml-2 text-xs bg-neutral-700 px-2 py-0.5 rounded">
+              <span className="ml-2 text-xs font-bold text-red-500 bg-red-500/20 px-1.5 py-0.5 rounded">
                 E
               </span>
             )}
@@ -93,7 +93,7 @@ export default function SongListItem({
           onClick={onToggleLike}
           className={`p-2 hover:scale-110 transition-transform ${
             isLiked
-              ? "text-green-500"
+              ? "text-orange-500"
               : "text-neutral-400 opacity-0 group-hover:opacity-100"
           }`}
           title={isLiked ? "Quitar de Me gusta" : "Me gusta"}

@@ -19,6 +19,8 @@ export const obtenerCancionesGuardadas = async (req, res) => {
 
     const usuario = await Usuario.findById(usuarioId).populate({
       path: "biblioteca.cancionesGuardadas",
+      select:
+        "titulo audioUrl portadaUrl duracionSegundos artistas album generos likes esPrivada esExplicita oculta razonOculta",
       populate: [
         { path: "artistas", select: "nombre nombreArtistico nick avatarUrl" },
         { path: "album", select: "titulo portadaUrl" },
@@ -29,8 +31,12 @@ export const obtenerCancionesGuardadas = async (req, res) => {
       return sendNotFound(res, "Usuario");
     }
 
+    // Filtrar canciones ocultas por moderación
+    let canciones = usuario.biblioteca.cancionesGuardadas || [];
+    canciones = canciones.filter((cancion) => cancion && !cancion.oculta);
+
     return sendSuccess(res, {
-      canciones: usuario.biblioteca.cancionesGuardadas || [],
+      canciones: canciones,
     });
   } catch (error) {
     console.error("Error en obtenerCancionesGuardadas:", error);

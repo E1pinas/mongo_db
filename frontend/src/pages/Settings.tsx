@@ -200,7 +200,7 @@ export default function Settings() {
         // Redirigir al perfil después de 1.5 segundos usando el nick normalizado
         const nickNormalizado = formData.nick.toLowerCase().replace(/\s+/g, "");
         setTimeout(() => {
-          navigate(`/profile/${nickNormalizado}`);
+          navigate(`/perfil/${nickNormalizado}`);
         }, 1500);
       }
 
@@ -545,40 +545,6 @@ export default function Settings() {
                   className="w-5 h-5 rounded bg-neutral-700 border-neutral-600 text-green-500 focus:ring-2 focus:ring-green-500"
                 />
               </label>
-            </div>
-
-            {/* Botón para ver usuarios bloqueados */}
-            <div className="pt-4 border-t border-neutral-800">
-              <button
-                type="button"
-                onClick={() => navigate("/blocked-users")}
-                className="w-full px-4 py-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-medium flex items-center justify-between transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
-                    <span className="text-red-500">🚫</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold">Usuarios bloqueados</p>
-                    <p className="text-xs text-neutral-400">
-                      Administra tu lista de bloqueos
-                    </p>
-                  </div>
-                </div>
-                <svg
-                  className="w-5 h-5 text-neutral-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
             </div>
           </form>
         </div>

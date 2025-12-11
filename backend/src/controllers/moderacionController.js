@@ -4,6 +4,7 @@ import { Album } from "../models/albumModels.js";
 import { Playlist } from "../models/playlistModels.js";
 import { Reporte } from "../models/reporteModels.js";
 import { Comentario } from "../models/comentarioModels.js";
+import Post from "../models/postModels.js";
 import { notificacionesModeracion } from "../helpers/moderacionNotificaciones.js";
 
 /**
@@ -30,11 +31,18 @@ export const obtenerReportes = async (req, res) => {
     if (tipoContenido) filtros.tipoContenido = tipoContenido;
     if (prioridad) filtros.prioridad = prioridad;
 
+    // Si es admin (no super_admin), solo mostrar reportes asignados a él
+    if (req.usuario.role === "admin") {
+      filtros.asignadoA = req.usuario.id;
+    }
+    // Los super_admin ven todos los reportes
+
     const skip = (page - 1) * limit;
 
     const [reportes, total] = await Promise.all([
       Reporte.find(filtros)
         .populate("reportadoPor", "nick nombreArtistico avatarUrl")
+        .populate("asignadoA", "nick nombreArtistico")
         .populate("resolucion.resueltoPor", "nick nombreArtistico")
         .sort({ prioridad: -1, createdAt: -1 })
         .skip(skip)
@@ -109,6 +117,13 @@ export const obtenerReportes = async (req, res) => {
  */
 export const obtenerEstadisticasReportes = async (req, res) => {
   try {
+    // Filtro base según el rol
+    const filtroBase = {};
+    if (req.usuario.role === "admin") {
+      filtroBase.asignadoA = req.usuario.id;
+    }
+    // super_admin ve todo
+
     const [
       totalReportes,
       pendientes,
@@ -118,15 +133,17 @@ export const obtenerEstadisticasReportes = async (req, res) => {
       porTipo,
       porPrioridad,
     ] = await Promise.all([
-      Reporte.countDocuments(),
-      Reporte.countDocuments({ estado: "pendiente" }),
-      Reporte.countDocuments({ estado: "en_revision" }),
-      Reporte.countDocuments({ estado: "resuelto" }),
-      Reporte.countDocuments({ estado: "rechazado" }),
+      Reporte.countDocuments(filtroBase),
+      Reporte.countDocuments({ ...filtroBase, estado: "pendiente" }),
+      Reporte.countDocuments({ ...filtroBase, estado: "en_revision" }),
+      Reporte.countDocuments({ ...filtroBase, estado: "resuelto" }),
+      Reporte.countDocuments({ ...filtroBase, estado: "rechazado" }),
       Reporte.aggregate([
+        { $match: filtroBase },
         { $group: { _id: "$tipoContenido", total: { $sum: 1 } } },
       ]),
       Reporte.aggregate([
+        { $match: filtroBase },
         { $group: { _id: "$prioridad", total: { $sum: 1 } } },
       ]),
     ]);
@@ -211,30 +228,182 @@ export const resolverReporte = async (req, res) => {
       });
     }
 
+    let propietarioId = null;
+    let nombreContenido = "contenido reportado";
+
+    // Obtener el propietario del contenido reportado según el tipo
+    try {
+      switch (reporte.tipoContenido) {
+        case "cancion":
+          const cancion = await Cancion.findById(reporte.contenidoId).select(
+            "artistas titulo"
+          );
+          if (cancion && cancion.artistas.length > 0) {
+            propietarioId = cancion.artistas[0]; // Primer artista
+            nombreContenido = cancion.titulo;
+          }
+          break;
+
+        case "album":
+          const album = await Album.findById(reporte.contenidoId).select(
+            "artistas titulo"
+          );
+          if (album && album.artistas.length > 0) {
+            propietarioId = album.artistas[0];
+            nombreContenido = album.titulo;
+          }
+          break;
+
+        case "playlist":
+          const playlist = await Playlist.findById(reporte.contenidoId).select(
+            "creador nombre"
+          );
+          if (playlist) {
+            propietarioId = playlist.creador;
+            nombreContenido = playlist.nombre;
+          }
+          break;
+
+        case "comentario":
+          const comentario = await Comentario.findById(
+            reporte.contenidoId
+          ).select("autor texto");
+          if (comentario) {
+            propietarioId = comentario.autor;
+            nombreContenido =
+              comentario.texto.substring(0, 50) +
+              (comentario.texto.length > 50 ? "..." : "");
+          }
+          break;
+
+        case "usuario":
+          propietarioId = reporte.contenidoId;
+          const usuario = await Usuario.findById(propietarioId).select("nick");
+          nombreContenido = usuario ? `@${usuario.nick}` : "usuario";
+          break;
+      }
+    } catch (error) {
+      console.error("Error obteniendo propietario:", error);
+    }
+
+    // Obtener usuario propietario para sistema de vidas
+    let propietario = null;
+    if (propietarioId) {
+      propietario = await Usuario.findById(propietarioId);
+    }
+
     // Ejecutar la acción según el tipo
     switch (accion) {
       case "eliminar_contenido":
         await eliminarContenido(reporte.tipoContenido, reporte.contenidoId);
+
+        // Restar 1 vida al propietario y registrar en historial
+        if (propietario && propietario.role === "user") {
+          propietario.vidas = Math.max(0, propietario.vidas - 1);
+          propietario.historialConducta.push({
+            fecha: new Date(),
+            accion: "contenido_eliminado",
+            tipoContenido: reporte.tipoContenido,
+            nombreContenido,
+            razon: nota || "Violación de políticas de la comunidad",
+            vidasRestantes: propietario.vidas,
+            moderador: req.usuario.id,
+          });
+
+          // Si llega a 0 vidas, banear automáticamente
+          if (propietario.vidas === 0) {
+            propietario.estaActivo = false;
+            propietario.baneado = true;
+            propietario.razonBaneo =
+              "Cuenta desactivada por perder todas las vidas (múltiples violaciones)";
+            await notificacionesModeracion.baneo(
+              propietarioId,
+              "Has perdido todas tus vidas por múltiples violaciones. Tu cuenta ha sido desactivada permanentemente."
+            );
+          } else {
+            await propietario.save();
+            await notificacionesModeracion.contenidoEliminado(
+              propietarioId,
+              reporte.tipoContenido,
+              nombreContenido,
+              `${nota || "Violación de políticas"}. Te quedan ${
+                propietario.vidas
+              } vida(s).`
+            );
+          }
+        }
         break;
 
       case "suspender_usuario":
-        if (reporte.tipoContenido === "usuario") {
-          await suspenderUsuario(reporte.contenidoId, duracionSuspension);
+        // Suspender funcionalidades (no bloquea login)
+        if (propietario && propietario.role === "user") {
+          propietario.suspendido = true;
+          propietario.razonSuspension =
+            nota || "Suspensión por comportamiento inapropiado";
+          propietario.puedeSubirContenido = false;
+          propietario.vidas = Math.max(0, propietario.vidas - 1);
+
+          propietario.historialConducta.push({
+            fecha: new Date(),
+            accion: "suspension",
+            tipoContenido: reporte.tipoContenido,
+            nombreContenido,
+            razon: nota || "Suspensión por comportamiento inapropiado",
+            vidasRestantes: propietario.vidas,
+            moderador: req.usuario.id,
+          });
+          await propietario.save();
         }
         break;
 
       case "banear_usuario":
-        if (reporte.tipoContenido === "usuario") {
-          await banearUsuario(reporte.contenidoId);
+        // Banear permanentemente (bloquea login)
+        if (propietario && propietario.role === "user") {
+          propietario.baneado = true;
+          propietario.razonBaneo = nota || "Cuenta baneada permanentemente";
+          propietario.vidas = 0;
+          propietario.estaConectado = false;
+
+          propietario.historialConducta.push({
+            fecha: new Date(),
+            accion: "suspension",
+            tipoContenido: reporte.tipoContenido,
+            nombreContenido,
+            razon: nota || "Cuenta baneada permanentemente",
+            vidasRestantes: 0,
+            moderador: req.usuario.id,
+          });
+          await propietario.save();
         }
         break;
 
       case "advertencia":
-        // La advertencia se registra solo en el reporte
+        // Advertencia NO resta vidas, solo registra en historial
+        if (propietario && propietario.role === "user") {
+          propietario.historialConducta.push({
+            fecha: new Date(),
+            accion: "advertencia",
+            tipoContenido: reporte.tipoContenido,
+            nombreContenido,
+            razon: nota || "Advertencia por contenido reportado",
+            vidasRestantes: propietario.vidas,
+            moderador: req.usuario.id,
+          });
+          await propietario.save();
+        }
+
+        // Enviar advertencia al propietario
+        if (propietarioId) {
+          await notificacionesModeracion.advertencia(
+            propietarioId,
+            reporte.tipoContenido,
+            nota || "Has recibido una advertencia por contenido reportado"
+          );
+        }
         break;
 
       case "ninguna":
-        // No se toma acción
+        // No se toma acción, no se notifica al propietario
         break;
     }
 
@@ -298,7 +467,7 @@ export const obtenerUsuarios = async (req, res) => {
     if (role) filtros.role = role;
     if (estaActivo !== undefined) filtros.estaActivo = estaActivo === "true";
     if (suspendido === "true") {
-      filtros.suspendidoHasta = { $gt: new Date() };
+      filtros.suspendido = true;
     }
 
     const skip = (page - 1) * limit;
@@ -306,7 +475,7 @@ export const obtenerUsuarios = async (req, res) => {
     const [usuarios, total] = await Promise.all([
       Usuario.find(filtros)
         .select(
-          "nick nombreArtistico email role estaActivo suspendidoHasta avatarUrl estadisticas createdAt ultimoIngreso"
+          "nick nombreArtistico nombre apellidos email role estaActivo suspendido suspendidoHasta baneado razonSuspension razonBaneo avatarUrl estadisticas createdAt ultimoIngreso vidas"
         )
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -314,12 +483,38 @@ export const obtenerUsuarios = async (req, res) => {
       Usuario.countDocuments(filtros),
     ]);
 
+    // Calcular el estado de cada usuario
+    const ahora = new Date();
+    const usuariosConEstado = usuarios.map((usuario) => {
+      const obj = usuario.toObject();
+
+      // Verificar si la suspensión temporal ha expirado
+      if (
+        obj.suspendido &&
+        obj.suspendidoHasta &&
+        ahora > obj.suspendidoHasta
+      ) {
+        obj.suspendido = false;
+        obj.suspendidoHasta = null;
+        obj.razonSuspension = null;
+      }
+
+      if (obj.baneado) {
+        obj.estado = "baneado";
+      } else if (obj.suspendido) {
+        obj.estado = "suspendido";
+      } else {
+        obj.estado = "activo";
+      }
+      return obj;
+    });
+
     res.status(200).json({
       status: "success",
       total,
       page: Number(page),
       totalPages: Math.ceil(total / limit),
-      usuarios,
+      usuarios: usuariosConEstado,
     });
   } catch (error) {
     console.error("Error al obtener usuarios:", error);
@@ -331,9 +526,83 @@ export const obtenerUsuarios = async (req, res) => {
 };
 
 /**
- * Suspender usuario temporalmente
+ * Buscar usuarios para administración (incluye todos los datos necesarios)
  */
-export const suspenderUsuario = async (usuarioId, diasSuspension = 7) => {
+export const buscarUsuariosAdmin = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({
+        status: "error",
+        message: "La búsqueda debe tener al menos 2 caracteres",
+      });
+    }
+
+    const searchQuery = q.trim().replace(/^@/, "");
+    const regex = new RegExp(searchQuery, "i");
+
+    // Buscar por nick, nombreArtistico, nombre o email - INCLUYE TODOS los usuarios
+    const usuarios = await Usuario.find({
+      $or: [
+        { nick: regex },
+        { nombreArtistico: regex },
+        { nombre: regex },
+        { email: regex },
+      ],
+    })
+      .select(
+        "nick nombreArtistico nombre apellidos email role estaActivo suspendido suspendidoHasta baneado razonSuspension razonBaneo avatarUrl estadisticas createdAt vidas"
+      )
+      .limit(50);
+
+    // Calcular el estado de cada usuario
+    const ahora = new Date();
+    const usuariosConEstado = usuarios.map((usuario) => {
+      const obj = usuario.toObject();
+
+      // Verificar si la suspensión temporal ha expirado
+      if (
+        obj.suspendido &&
+        obj.suspendidoHasta &&
+        ahora > obj.suspendidoHasta
+      ) {
+        obj.suspendido = false;
+        obj.suspendidoHasta = null;
+        obj.razonSuspension = null;
+      }
+
+      if (obj.baneado) {
+        obj.estado = "baneado";
+      } else if (obj.suspendido) {
+        obj.estado = "suspendido";
+      } else {
+        obj.estado = "activo";
+      }
+      return obj;
+    });
+
+    res.status(200).json({
+      status: "success",
+      total: usuariosConEstado.length,
+      usuarios: usuariosConEstado,
+    });
+  } catch (error) {
+    console.error("Error en búsqueda de usuarios admin:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Error al buscar usuarios",
+    });
+  }
+};
+
+/**
+ * Suspender usuario (desactivar funcionalidades, no bloquea login)
+ */
+export const suspenderUsuario = async (
+  usuarioId,
+  razon = "Violación de normas"
+) => {
   const usuario = await Usuario.findById(usuarioId);
   if (!usuario) throw new Error("Usuario no encontrado");
 
@@ -342,19 +611,21 @@ export const suspenderUsuario = async (usuarioId, diasSuspension = 7) => {
     throw new Error("No se puede suspender a un administrador");
   }
 
-  const fechaSuspension = new Date();
-  fechaSuspension.setDate(fechaSuspension.getDate() + diasSuspension);
-
-  usuario.suspendidoHasta = fechaSuspension;
+  usuario.suspendido = true;
+  usuario.razonSuspension = razon;
+  usuario.puedeSubirContenido = false;
   await usuario.save();
 
   return usuario;
 };
 
 /**
- * Banear usuario permanentemente
+ * Banear usuario permanentemente (bloquea login)
  */
-export const banearUsuario = async (usuarioId) => {
+export const banearUsuario = async (
+  usuarioId,
+  razon = "Violación grave de términos"
+) => {
   const usuario = await Usuario.findById(usuarioId);
   if (!usuario) throw new Error("Usuario no encontrado");
 
@@ -363,15 +634,16 @@ export const banearUsuario = async (usuarioId) => {
     throw new Error("No se puede banear a un administrador");
   }
 
-  usuario.estaActivo = false;
-  usuario.suspendidoHasta = null; // El baneo es permanente
+  usuario.baneado = true;
+  usuario.razonBaneo = razon;
+  usuario.estaConectado = false;
   await usuario.save();
 
   return usuario;
 };
 
 /**
- * Reactivar usuario
+ * Reactivar usuario (quitar suspensión)
  */
 export const reactivarUsuario = async (req, res) => {
   try {
@@ -385,21 +657,40 @@ export const reactivarUsuario = async (req, res) => {
       });
     }
 
-    usuario.estaActivo = true;
+    // Reactivar funcionalidades (solo quitar suspensión, NO baneo)
+    usuario.suspendido = false;
     usuario.suspendidoHasta = null;
+    usuario.razonSuspension = null;
+    usuario.puedeSubirContenido = true;
+
+    // Agregar al historial de conducta
+    usuario.historialConducta.push({
+      fecha: new Date(),
+      accion: "vida_restaurada",
+      tipoContenido: "usuario",
+      nombreContenido: usuario.nick,
+      razon: "Reactivación por administrador",
+      vidasRestantes: usuario.vidas,
+      moderador: req.usuario._id,
+    });
+
     await usuario.save();
 
     // Enviar notificación de reactivación
-    await notificacionesModeracion.reactivacion(id);
+    try {
+      await notificacionesModeracion.reactivacion(id);
+    } catch (error) {
+      console.log("Error enviando notificación:", error);
+    }
 
     res.status(200).json({
       status: "success",
-      message: "Usuario reactivado exitosamente",
+      message: "Usuario reactivado exitosamente. Suspensión eliminada",
       usuario: {
         _id: usuario._id,
         nick: usuario.nick,
-        estaActivo: usuario.estaActivo,
-        suspendidoHasta: usuario.suspendidoHasta,
+        suspendido: false,
+        puedeSubirContenido: true,
       },
     });
   } catch (error) {
@@ -417,22 +708,26 @@ export const reactivarUsuario = async (req, res) => {
 export const suspenderUsuarioEndpoint = async (req, res) => {
   try {
     const { id } = req.params;
-    const { dias = 7, razon } = req.body;
+    const { razon = "Violación de normas comunitarias" } = req.body;
 
-    const usuario = await suspenderUsuario(id, dias);
+    const usuario = await suspenderUsuario(id, razon);
 
     // Enviar notificación al usuario
-    await notificacionesModeracion.suspension(id, dias, razon);
+    try {
+      await notificacionesModeracion.suspension(id, 0, razon);
+    } catch (error) {
+      console.log("Error enviando notificación:", error);
+    }
 
     res.status(200).json({
       status: "success",
-      message: `Usuario suspendido por ${dias} días`,
+      message: "Usuario suspendido. Funcionalidades desactivadas",
       usuario: {
         _id: usuario._id,
         nick: usuario.nick,
-        suspendidoHasta: usuario.suspendidoHasta,
+        suspendido: true,
+        razonSuspension: razon,
       },
-      razon,
     });
   } catch (error) {
     console.error("Error al suspender usuario:", error);
@@ -449,22 +744,26 @@ export const suspenderUsuarioEndpoint = async (req, res) => {
 export const banearUsuarioEndpoint = async (req, res) => {
   try {
     const { id } = req.params;
-    const { razon } = req.body;
+    const { razon = "Violación grave de términos de servicio" } = req.body;
 
-    const usuario = await banearUsuario(id);
+    const usuario = await banearUsuario(id, razon);
 
     // Enviar notificación al usuario
-    await notificacionesModeracion.baneo(id, razon);
+    try {
+      await notificacionesModeracion.baneo(id, razon);
+    } catch (error) {
+      console.log("Error enviando notificación:", error);
+    }
 
     res.status(200).json({
       status: "success",
-      message: "Usuario baneado permanentemente",
+      message: "Usuario baneado permanentemente. No podrá iniciar sesión",
       usuario: {
         _id: usuario._id,
         nick: usuario.nick,
-        estaActivo: usuario.estaActivo,
+        baneado: true,
+        razonBaneo: razon,
       },
-      razon,
     });
   } catch (error) {
     console.error("Error al banear usuario:", error);
@@ -487,17 +786,69 @@ export const banearUsuarioEndpoint = async (req, res) => {
 const eliminarContenido = async (tipo, contenidoId) => {
   switch (tipo) {
     case "cancion":
+      // Eliminar canción y limpiar todas sus referencias
       await Cancion.findByIdAndDelete(contenidoId);
+
+      // Eliminar de todos los álbumes
+      await Album.updateMany(
+        { canciones: contenidoId },
+        { $pull: { canciones: contenidoId } }
+      );
+
+      // Eliminar de todas las playlists
+      await Playlist.updateMany(
+        { canciones: contenidoId },
+        { $pull: { canciones: contenidoId } }
+      );
+
+      // Eliminar de biblioteca de usuarios
+      await Usuario.updateMany(
+        { misCanciones: contenidoId },
+        { $pull: { misCanciones: contenidoId } }
+      );
+
+      // Marcar posts relacionados como eliminados
+      await Post.updateMany(
+        { tipo: "repost_cancion", recursoId: contenidoId },
+        { estaEliminado: true }
+      );
       break;
+
     case "album":
       await Album.findByIdAndDelete(contenidoId);
+
+      // Eliminar de biblioteca de usuarios
+      await Usuario.updateMany(
+        { misAlbumes: contenidoId },
+        { $pull: { misAlbumes: contenidoId } }
+      );
+
+      // Marcar posts relacionados como eliminados
+      await Post.updateMany(
+        { tipo: "repost_album", recursoId: contenidoId },
+        { estaEliminado: true }
+      );
       break;
+
     case "playlist":
       await Playlist.findByIdAndDelete(contenidoId);
+
+      // Marcar posts relacionados como eliminados
+      await Post.updateMany(
+        { tipo: "repost_playlist", recursoId: contenidoId },
+        { estaEliminado: true }
+      );
       break;
+
     case "comentario":
       await Comentario.findByIdAndDelete(contenidoId);
       break;
+
+    case "post":
+      // Marcar el post como eliminado en lugar de borrarlo completamente
+      await Post.findByIdAndUpdate(contenidoId, { estaEliminado: true });
+      break;
+
     default:
       throw new Error("Tipo de contenido no válido");
   }
@@ -506,6 +857,75 @@ const eliminarContenido = async (tipo, contenidoId) => {
 /**
  * Eliminar canción
  */
+/**
+ * Ocultar canción (no eliminar, solo hacer que no se pueda reproducir)
+ */
+export const ocultarCancion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { razon } = req.body;
+
+    const cancion = await Cancion.findById(id).populate("artistas", "nick");
+    if (!cancion) {
+      return res.status(404).json({
+        status: "error",
+        message: "Canción no encontrada",
+      });
+    }
+
+    // Marcar como oculta
+    cancion.oculta = true;
+    cancion.razonOculta = razon || "Violación de normas comunitarias";
+    cancion.ocultadaPor = req.usuario._id;
+    cancion.fechaOculta = new Date();
+    await cancion.save();
+
+    const tituloCancion = cancion.titulo;
+    const artistasIds =
+      cancion.artistas && cancion.artistas.length > 0
+        ? cancion.artistas.map((a) => a._id)
+        : [];
+
+    // Notificar a los artistas si existen
+    if (artistasIds.length > 0) {
+      for (const artistaId of artistasIds) {
+        try {
+          await notificacionesModeracion.cancionOculta(
+            artistaId,
+            tituloCancion,
+            razon || "Violación de normas comunitarias"
+          );
+        } catch (notifError) {
+          console.error(
+            "Error enviando notificación a artista:",
+            artistaId,
+            notifError
+          );
+          // No fallar la operación si falla la notificación
+        }
+      }
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Canción ocultada exitosamente. No se podrá reproducir.",
+      cancion: {
+        _id: cancion._id,
+        titulo: cancion.titulo,
+        oculta: cancion.oculta,
+        razonOculta: cancion.razonOculta,
+      },
+    });
+  } catch (error) {
+    console.error("Error al ocultar canción:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Error al ocultar canción",
+      error: error.message,
+    });
+  }
+};
+
 export const eliminarCancion = async (req, res) => {
   try {
     const { id } = req.params;
@@ -523,6 +943,24 @@ export const eliminarCancion = async (req, res) => {
     const artistasIds = cancion.artistas.map((a) => a._id);
 
     await Cancion.findByIdAndDelete(id);
+
+    // Eliminar de todos los álbumes
+    await Album.updateMany({ canciones: id }, { $pull: { canciones: id } });
+
+    // Eliminar de todas las playlists
+    await Playlist.updateMany({ canciones: id }, { $pull: { canciones: id } });
+
+    // Eliminar de biblioteca de usuarios
+    await Usuario.updateMany(
+      { misCanciones: id },
+      { $pull: { misCanciones: id } }
+    );
+
+    // Marcar posts relacionados como eliminados
+    await Post.updateMany(
+      { tipo: "repost_cancion", recursoId: id },
+      { estaEliminado: true }
+    );
 
     // Notificar a los artistas
     for (const artistaId of artistasIds) {
@@ -549,6 +987,53 @@ export const eliminarCancion = async (req, res) => {
 };
 
 /**
+ * Quitar ocultamiento de canción
+ */
+export const mostrarCancion = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const cancion = await Cancion.findById(id);
+    if (!cancion) {
+      return res.status(404).json({
+        status: "error",
+        message: "Canción no encontrada",
+      });
+    }
+
+    if (!cancion.oculta) {
+      return res.status(400).json({
+        status: "error",
+        message: "Esta canción no está oculta",
+      });
+    }
+
+    // Limpiar campos de ocultamiento
+    cancion.oculta = false;
+    cancion.razonOculta = null;
+    cancion.ocultadaPor = null;
+    cancion.fechaOculta = null;
+    await cancion.save();
+
+    res.status(200).json({
+      status: "success",
+      message: "Canción visible nuevamente",
+      cancion: {
+        id: cancion._id,
+        titulo: cancion.titulo,
+        oculta: cancion.oculta,
+      },
+    });
+  } catch (error) {
+    console.error("Error al quitar ocultamiento:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Error al quitar ocultamiento",
+    });
+  }
+};
+
+/**
  * Eliminar álbum
  */
 export const eliminarAlbum = async (req, res) => {
@@ -570,6 +1055,15 @@ export const eliminarAlbum = async (req, res) => {
     // Eliminar álbum y sus canciones
     await Album.findByIdAndDelete(id);
     await Cancion.deleteMany({ album: id });
+
+    // Eliminar de biblioteca de usuarios
+    await Usuario.updateMany({ misAlbumes: id }, { $pull: { misAlbumes: id } });
+
+    // Marcar posts relacionados como eliminados
+    await Post.updateMany(
+      { tipo: "repost_album", recursoId: id },
+      { estaEliminado: true }
+    );
 
     // Notificar a los artistas
     for (const artistaId of artistasIds) {
@@ -615,6 +1109,12 @@ export const eliminarPlaylist = async (req, res) => {
     const creadorId = playlist.creador._id;
 
     await Playlist.findByIdAndDelete(id);
+
+    // Marcar posts relacionados como eliminados
+    await Post.updateMany(
+      { tipo: "repost_playlist", recursoId: id },
+      { estaEliminado: true }
+    );
 
     // Notificar al creador
     await notificacionesModeracion.contenidoEliminado(

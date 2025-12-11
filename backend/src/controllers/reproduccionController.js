@@ -49,6 +49,12 @@ export const registrarReproduccion = async (req, res) => {
       usuario.estadisticas.tiempoTotalEscuchado +=
         cancion.duracionSegundos / 60; // En minutos
 
+      // Actualizar canción actual que está escuchando
+      usuario.cancionActual = {
+        cancion: cancionId,
+        inicioReproduccion: new Date(),
+      };
+
       // Agregar al historial (mantener últimas 50)
       usuario.historialReproducciones.unshift({
         cancion: cancionId,

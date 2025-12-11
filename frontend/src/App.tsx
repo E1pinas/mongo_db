@@ -62,11 +62,11 @@ const router = createBrowserRouter([
             element: <Home />,
           },
           {
-            path: "search",
+            path: "buscar",
             element: <Search />,
           },
           {
-            path: "albums",
+            path: "albumes",
             element: <Albums />,
           },
           {
@@ -74,7 +74,7 @@ const router = createBrowserRouter([
             element: <AlbumDetail />,
           },
           {
-            path: "create-album",
+            path: "crear-album",
             element: <CreateAlbum />,
           },
           {
@@ -86,47 +86,47 @@ const router = createBrowserRouter([
             element: <PlaylistDetail />,
           },
           {
-            path: "liked-songs",
+            path: "canciones-favoritas",
             element: <LikedSongs />,
           },
           {
-            path: "library/artists",
+            path: "biblioteca/artistas",
             element: <LikedArtists />,
           },
           {
-            path: "library/albums",
+            path: "biblioteca/albumes",
             element: <LikedAlbums />,
           },
           {
-            path: "library/playlists",
+            path: "biblioteca/playlists",
             element: <LikedPlaylists />,
           },
           {
-            path: "upload",
+            path: "subir",
             element: <UploadSong />,
           },
           {
-            path: "my-songs",
+            path: "mis-canciones",
             element: <MySongs />,
           },
           {
-            path: "profile",
+            path: "perfil",
             element: <Profile />,
           },
           {
-            path: "profile/:nick",
+            path: "perfil/:nick",
             element: <Profile />,
           },
           {
-            path: "notifications",
+            path: "notificaciones",
             element: <Notifications />,
           },
           {
-            path: "requests",
+            path: "solicitudes",
             element: <Requests />,
           },
           {
-            path: "settings",
+            path: "configuracion",
             element: <Settings />,
           },
           {
@@ -134,7 +134,7 @@ const router = createBrowserRouter([
             element: <AdminPanel />,
           },
           {
-            path: "blocked-users",
+            path: "usuarios-bloqueados",
             element: <BlockedUsers />,
           },
         ],

@@ -5,22 +5,26 @@ export const userService = {
   // Buscar usuarios por nick
   async searchUsers(query: string): Promise<Usuario[]> {
     try {
-      const response = await api.get<ApiResponse<Usuario[]>>(
+      const response = await api.get<{ ok: boolean; usuarios: Usuario[] }>(
         `/usuarios/buscar?q=${encodeURIComponent(query)}`
       );
-      return response.data.data || [];
+      return response.data.usuarios || [];
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
   // Obtener perfil público de usuario
   async getUserProfile(userId: string): Promise<Usuario> {
     try {
-      const response = await api.get<ApiResponse<Usuario>>(`/perfil/${userId}`);
-      return response.data.data!;
+      const response = await api.get<{ ok: boolean; usuario: Usuario }>(
+        `/perfil/${userId}`
+      );
+      return response.data.usuario;
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
@@ -39,7 +43,8 @@ export const userService = {
       );
       return response.data.data!;
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
@@ -58,7 +63,8 @@ export const userService = {
       );
       return response.data.data!;
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
@@ -74,7 +80,8 @@ export const userService = {
       );
       return response.data.data!;
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
@@ -90,7 +97,8 @@ export const userService = {
       );
       return response.data.data || [];
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
@@ -106,7 +114,8 @@ export const userService = {
       });
       return response.data.data!;
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
@@ -124,7 +133,8 @@ export const userService = {
       );
       return response.data.data!;
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
@@ -136,7 +146,8 @@ export const userService = {
       );
       return response.data.data!;
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 
@@ -145,7 +156,8 @@ export const userService = {
     try {
       await api.delete(`/comentarios/${commentId}`);
     } catch (error) {
-      const errorData = handleApiError(error); throw new Error(errorData.message);
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
     }
   },
 };

@@ -174,15 +174,47 @@ const usuarioSchema = new Schema(
     // MODERACIÓN Y ADMIN
     baneado: { type: Boolean, default: false },
     razonBaneo: { type: String, default: null },
-    suspendidoHasta: { type: Date, default: null },
+    suspendido: { type: Boolean, default: false }, // Suspensión de funcionalidades (no bloquea login)
+    suspendidoHasta: { type: Date, default: null }, // Fecha de expiración de la suspensión
     razonSuspension: { type: String, default: null },
     verificado: { type: Boolean, default: false }, // Badge de verificación
     esVisible: { type: Boolean, default: true }, // Admins son invisibles (false)
+
+    // SISTEMA DE VIDAS Y CONDUCTA
+    vidas: { type: Number, default: 3, min: 0, max: 10 }, // Usuarios empiezan con 3 vidas
+    historialConducta: [
+      {
+        fecha: { type: Date, default: Date.now },
+        accion: {
+          type: String,
+          enum: [
+            "advertencia",
+            "contenido_eliminado",
+            "suspension",
+            "vida_restaurada",
+            "vida_agregada",
+          ],
+        },
+        tipoContenido: {
+          type: String,
+          enum: ["cancion", "album", "playlist", "comentario", "usuario"],
+        },
+        nombreContenido: { type: String },
+        razon: { type: String },
+        vidasRestantes: { type: Number },
+        moderador: { type: Schema.Types.ObjectId, ref: "Usuario" },
+      },
+    ],
 
     // CONEXIÓN WEB / ESTADO
     ultimaConexion: { type: Date },
     ultimaActividad: { type: Date }, // Para detectar inactividad
     estaConectado: { type: Boolean, default: false },
+    cancionActual: {
+      // Canción que está escuchando ahora
+      cancion: { type: Schema.Types.ObjectId, ref: "Cancion", default: null },
+      inicioReproduccion: { type: Date, default: null },
+    },
     cantidadIniciosSesion: { type: Number, default: 0 },
     estaActivo: { type: Boolean, default: true },
 

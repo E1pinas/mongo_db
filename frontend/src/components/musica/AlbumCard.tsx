@@ -1,5 +1,6 @@
 import { Play } from "lucide-react";
 import type { Album, Usuario } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface AlbumCardProps {
   album: Album;
@@ -11,6 +12,8 @@ interface AlbumCardProps {
  * AlbumCard - Tarjeta de álbum reutilizable
  */
 export default function AlbumCard({ album, onClick, onPlay }: AlbumCardProps) {
+  const { user } = useAuth();
+
   const getArtistName = () => {
     if (!album.artistas || album.artistas.length === 0)
       return "Artista desconocido";
@@ -20,6 +23,20 @@ export default function AlbumCard({ album, onClick, onPlay }: AlbumCardProps) {
     }
 
     const artistas = album.artistas as Usuario[];
+
+    // Si el usuario actual es uno de los artistas, mostrar "Tú"
+    if (user && artistas.some((a) => a._id === user._id)) {
+      if (artistas.length === 1) {
+        return "Tú";
+      }
+      // Si hay múltiples artistas, reemplazar el nombre del usuario con "Tú"
+      return artistas
+        .map((a) =>
+          a._id === user._id ? "Tú" : a.nombreArtistico || a.nick || a.nombre
+        )
+        .join(", ");
+    }
+
     return artistas
       .map((a) => a.nombreArtistico || a.nick || a.nombre)
       .join(", ");
@@ -44,21 +61,11 @@ export default function AlbumCard({ album, onClick, onPlay }: AlbumCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <svg
-                className="w-12 h-12 text-neutral-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                />
-              </svg>
-            </div>
+            <img
+              src="/cover.jpg"
+              alt={album.titulo}
+              className="w-full h-full object-cover opacity-50"
+            />
           )}
         </div>
         {onPlay && (

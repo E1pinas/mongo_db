@@ -29,22 +29,46 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
       setIsLoading(true);
       setError(null);
       const response = await postService.obtenerPostPorId(postId);
-      console.log("📌 Post cargado en modal:", response.data);
-      console.log("📌 usuario_dio_like:", response.data.usuario_dio_like);
-      console.log("📌 totalLikes:", response.data.totalLikes);
 
-      // Asegurar que usuario_dio_like siempre tenga un valor booleano
-      const postData = {
-        ...response.data,
-        usuario_dio_like: response.data.usuario_dio_like === true,
-        usuario_hizo_repost: response.data.usuario_hizo_repost === true,
-      };
+      // El servicio devuelve { success, post }
+      const fetched = response.post;
+
+      console.log("📌 Post cargado en modal:", fetched);
+      console.log("📌 usuario_dio_like:", fetched?.usuario_dio_like);
+      console.log("📌 totalLikes:", fetched?.totalLikes);
+
+      // Validar que el post tenga los campos mínimos necesarios
+      if (
+        !fetched ||
+        !fetched._id ||
+        !fetched.usuario ||
+        !fetched.usuario._id
+      ) {
+        throw new Error(
+          "Post inválido: faltan campos requeridos (usuario o usuario._id)"
+        );
+      }
+
+      const postData: Post = {
+        ...fetched,
+        usuario_dio_like: fetched?.usuario_dio_like === true,
+        usuario_hizo_repost: fetched?.usuario_hizo_repost === true,
+        totalLikes: fetched?.totalLikes ?? 0,
+        totalComentarios: fetched?.totalComentarios ?? 0,
+        totalReposts: fetched?.totalReposts ?? 0,
+      } as Post;
 
       console.log("📌 Post procesado:", postData);
       setPost(postData);
     } catch (err: any) {
       console.error("Error cargando post:", err);
-      setError(err.message || "Error al cargar el post");
+
+      // Si el post fue eliminado o no existe (404 o 410)
+      if (err.response?.status === 404 || err.response?.status === 410) {
+        setError("Este post ha sido eliminado");
+      } else {
+        setError(err.message || "Error al cargar el post");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -89,13 +113,19 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
       // Llamada al backend
       const response = await postService.toggleLike(postId);
       console.log("✅ Respuesta del backend:", response);
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Error al dar like:", err);
       // Revertir en caso de error
       setPost({
         ...post,
         ...previousState,
       });
+
+      // Si el post fue eliminado, cerrar modal
+      if (err.response?.status === 410) {
+        alert("Este post ha sido eliminado");
+        onClose();
+      }
     }
   };
 
@@ -142,12 +172,18 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
         await postService.crearRepost(postId);
         console.log("✅ Repost creado");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Error al manejar repost:", err);
       setPost({
         ...post,
         ...previousState,
       });
+
+      // Si el post fue eliminado, cerrar modal
+      if (err.response?.status === 410) {
+        alert("Este post ha sido eliminado");
+        onClose();
+      }
     }
   };
 
@@ -217,13 +253,34 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
 
           {error && (
             <div className="text-center py-12">
-              <p className="text-red-400 mb-4">{error}</p>
-              <button
-                onClick={loadPost}
-                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors"
-              >
-                Reintentar
-              </button>
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X className="w-8 h-8 text-red-400" />
+                </div>
+                <p className="text-red-400 text-lg font-semibold mb-2">
+                  {error}
+                </p>
+                {error.includes("eliminado") && (
+                  <p className="text-neutral-400 text-sm">
+                    Este contenido ya no está disponible
+                  </p>
+                )}
+              </div>
+              {!error.includes("eliminado") ? (
+                <button
+                  onClick={loadPost}
+                  className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 rounded-xl transition-colors font-semibold"
+                >
+                  Reintentar
+                </button>
+              ) : (
+                <button
+                  onClick={onClose}
+                  className="px-6 py-2.5 bg-neutral-700 hover:bg-neutral-600 rounded-xl transition-colors font-semibold"
+                >
+                  Cerrar
+                </button>
+              )}
             </div>
           )}
 
@@ -240,7 +297,9 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
               {/* Sección de comentarios */}
               {showComments && (
                 <div className="mt-6 border-t border-neutral-800 pt-6">
-                  <h3 className="text-lg font-semibold mb-4">Comentarios</h3>
+                  <h3 className="text-lg font-semibold mb-4">
+                    Escribe aqui tu comentario
+                  </h3>
 
                   {/* Input para nuevo comentario */}
                   <div className="mb-6">
@@ -264,9 +323,6 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
                   </div>
 
                   {/* Aquí se mostrarían los comentarios existentes */}
-                  <div className="text-neutral-500 text-sm text-center py-4">
-                    Los comentarios aparecerán aquí
-                  </div>
                 </div>
               )}
             </>

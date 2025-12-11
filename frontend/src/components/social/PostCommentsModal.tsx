@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Send, Loader2 } from "lucide-react";
+import { X, Send, Loader2, Ban } from "lucide-react";
 import { useAuth } from "../../contexts";
 import type { Post, PostComentario } from "../../types";
 import { formatTimeAgo } from "../../utils/dateFormat";
@@ -21,6 +21,7 @@ export default function PostCommentsModal({
   const [nuevoComentario, setNuevoComentario] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showSuspendedModal, setShowSuspendedModal] = useState(false);
 
   useEffect(() => {
     loadComentarios();
@@ -31,7 +32,13 @@ export default function PostCommentsModal({
       setLoading(true);
       const data = await postService.obtenerComentarios(post._id);
       setComentarios(data);
-    } catch (error) {
+    } catch (error: any) {
+      // Si el post fue eliminado, cerrar modal
+      if (error.response?.status === 410) {
+        alert("Este post ha sido eliminado");
+        onClose();
+        return;
+      }
       console.error("Error cargando comentarios:", error);
     } finally {
       setLoading(false);
@@ -43,18 +50,29 @@ export default function PostCommentsModal({
 
     if (!nuevoComentario.trim()) return;
 
+    // Verificar si el usuario está suspendido
+    if (user && (user as any).suspendido) {
+      setShowSuspendedModal(true);
+      return;
+    }
+
     try {
       setSubmitting(true);
-      const newComment = await postService.agregarComentario(
-        post._id,
-        nuevoComentario.trim()
-      );
+      await postService.agregarComentario(post._id, nuevoComentario.trim());
 
-      setComentarios([...comentarios, newComment]);
       setNuevoComentario("");
       onCommentAdded?.();
+      // Recargar comentarios para obtener datos completos
+      await loadComentarios();
     } catch (error: any) {
-      alert(error.response?.data?.message || "Error al agregar comentario");
+      const errorMessage =
+        error.response?.data?.message || "Error al agregar comentario";
+      alert(errorMessage);
+
+      // Si el post fue eliminado, cerrar modal
+      if (error.response?.status === 410) {
+        onClose();
+      }
     } finally {
       setSubmitting(false);
     }
@@ -201,6 +219,43 @@ export default function PostCommentsModal({
           </form>
         )}
       </div>
+
+      {/* Modal de cuenta suspendida */}
+      {showSuspendedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-700">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="bg-yellow-600/20 p-3 rounded-full">
+                <Ban className="w-6 h-6 text-yellow-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Tu cuenta está suspendida
+                </h3>
+                <p className="text-gray-300 mb-3">
+                  No puedes comentar en posts mientras tu cuenta esté
+                  suspendida.
+                </p>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                  <p className="text-sm text-gray-400 mb-1">
+                    Razón de la suspensión:
+                  </p>
+                  <p className="text-yellow-400 font-medium">
+                    {(user as any)?.razonSuspension ||
+                      "Violación de normas comunitarias"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSuspendedModal(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

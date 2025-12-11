@@ -2,6 +2,7 @@
 import { Seguidor } from "../models/seguidorModels.js";
 import { Usuario } from "../models/usuarioModels.js";
 import { Notificacion } from "../models/notificacionModels.js";
+import { Amistad } from "../models/amistadModels.js";
 
 /**
  * Seguir a un usuario
@@ -204,16 +205,21 @@ export const obtenerSeguidores = async (req, res) => {
       .limit(Number(limite))
       .skip((Number(pagina) - 1) * Number(limite));
 
+    // Filtrar seguidores que ya no existen (usuarios eliminados)
+    const seguidoresValidos = seguidores
+      .filter((s) => s.seguidor !== null)
+      .map((s) => s.seguidor);
+
     const total = await Seguidor.countDocuments({ seguido: usuarioId });
 
     return res.status(200).json({
       ok: true,
-      seguidores: seguidores.map((s) => s.seguidor),
+      seguidores: seguidoresValidos,
       paginacion: {
-        total,
+        total: seguidoresValidos.length,
         pagina: Number(pagina),
         limite: Number(limite),
-        totalPaginas: Math.ceil(total / Number(limite)),
+        totalPaginas: Math.ceil(seguidoresValidos.length / Number(limite)),
       },
     });
   } catch (error) {
@@ -243,16 +249,21 @@ export const obtenerSeguidos = async (req, res) => {
       .limit(Number(limite))
       .skip((Number(pagina) - 1) * Number(limite));
 
+    // Filtrar seguidos que ya no existen (usuarios eliminados)
+    const seguidosValidos = seguidos
+      .filter((s) => s.seguido !== null)
+      .map((s) => s.seguido);
+
     const total = await Seguidor.countDocuments({ seguidor: usuarioId });
 
     return res.status(200).json({
       ok: true,
-      seguidos: seguidos.map((s) => s.seguido),
+      seguidos: seguidosValidos,
       paginacion: {
-        total,
+        total: seguidosValidos.length,
         pagina: Number(pagina),
         limite: Number(limite),
-        totalPaginas: Math.ceil(total / Number(limite)),
+        totalPaginas: Math.ceil(seguidosValidos.length / Number(limite)),
       },
     });
   } catch (error) {
@@ -444,6 +455,43 @@ export const recalcularTodasEstadisticas = async (req, res) => {
     return res.status(500).json({
       ok: false,
       mensaje: "Error al recalcular estadísticas",
+    });
+  }
+};
+
+// Obtener usuarios sugeridos para seguir
+export const obtenerUsuariosSugeridos = async (req, res) => {
+  try {
+    const usuarioId = req.userId;
+
+    // Obtener IDs de usuarios que ya sigue
+    const seguidos = await Seguidor.find({ seguidor: usuarioId }).select(
+      "seguido"
+    );
+    const seguidsIds = seguidos.map((s) => s.seguido);
+
+    // Obtener usuarios sugeridos (excluir: el mismo usuario, usuarios que ya sigue, admins, baneados)
+    const usuariosSugeridos = await Usuario.find({
+      _id: {
+        $nin: [...seguidsIds, usuarioId],
+      },
+      activo: true,
+      role: { $nin: ["admin", "super_admin"] }, // Excluir administradores
+      baneado: false, // Excluir usuarios baneados
+    })
+      .select("_id nick nombreArtistico fotoPerfil estadisticas role")
+      .sort({ "estadisticas.totalSeguidores": -1 }) // Ordenar por popularidad
+      .limit(12); // Limitar a 12 usuarios
+
+    return res.status(200).json({
+      ok: true,
+      usuarios: usuariosSugeridos,
+    });
+  } catch (error) {
+    console.error("Error al obtener usuarios sugeridos:", error);
+    return res.status(500).json({
+      ok: false,
+      mensaje: "Error al obtener usuarios sugeridos",
     });
   }
 };

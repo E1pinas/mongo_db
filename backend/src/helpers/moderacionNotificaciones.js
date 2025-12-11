@@ -45,11 +45,25 @@ export const notificacionesModeracion = {
   /**
    * Notificación por advertencia
    */
-  advertencia: async (usuarioId, razon) => {
+  advertencia: async (usuarioId, tipoContenido, razon) => {
+    const tipos = {
+      cancion: "canción",
+      album: "álbum",
+      playlist: "playlist",
+      comentario: "comentario",
+      usuario: "comportamiento",
+    };
+
+    const tipo = tipos[tipoContenido] || "contenido";
+    const mensaje =
+      tipoContenido === "usuario"
+        ? "⚠️ Has recibido una advertencia del equipo de moderación."
+        : `⚠️ Has recibido una advertencia por tu ${tipo}.`;
+
     return await enviarNotificacionModeracion(
       usuarioId,
       "moderacion_advertencia",
-      "⚠️ Has recibido una advertencia del equipo de moderación.",
+      mensaje,
       razon
     );
   },
@@ -74,6 +88,18 @@ export const notificacionesModeracion = {
       usuarioId,
       "moderacion_baneo",
       "🚫 Tu cuenta ha sido desactivada permanentemente.",
+      razon
+    );
+  },
+
+  /**
+   * Notificación por canción oculta (no eliminada, solo no reproducible)
+   */
+  cancionOculta: async (usuarioId, nombreCancion, razon) => {
+    return await enviarNotificacionModeracion(
+      usuarioId,
+      "moderacion_cancion_oculta",
+      `🚫 Tu canción "${nombreCancion}" ha sido ocultada por el equipo de moderación. La canción sigue existiendo pero no se puede reproducir.`,
       razon
     );
   },

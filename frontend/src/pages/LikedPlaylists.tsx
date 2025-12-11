@@ -63,46 +63,87 @@ export default function LikedPlaylists() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-900/20 via-neutral-900 to-neutral-900">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-purple-600/40 to-transparent p-8 pb-6">
-        <div className="flex items-end gap-6">
-          <div className="w-56 h-56 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-2xl">
-            <ListMusic size={80} className="text-white" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold mb-2">COLECCIÓN</p>
-            <h1 className="text-6xl font-black mb-6">
-              Playlists que me gustan
-            </h1>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-semibold">
-                {playlists.length}{" "}
-                {playlists.length === 1 ? "playlist" : "playlists"}
-              </span>
+    <div className="min-h-screen bg-linear-to-b from-neutral-900 via-black to-black">
+      {/* Header con diseño único */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-br from-green-500/10 via-blue-500/10 to-purple-500/10 blur-3xl" />
+        <div className="relative px-6 pt-8 pb-12">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-green-500 to-blue-600 flex items-center justify-center shadow-xl">
+              <ListMusic size={32} className="text-white" />
             </div>
+            <div>
+              <p className="text-sm text-green-400 font-semibold mb-1">
+                TU COLECCIÓN
+              </p>
+              <h1 className="text-5xl font-black bg-linear-to-r from-green-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Playlists Guardadas
+              </h1>
+            </div>
+          </div>
+
+          <div className="px-4 py-2 bg-neutral-800/50 backdrop-blur-sm rounded-full text-sm inline-block">
+            <span className="text-neutral-400">Total:</span>
+            <span className="ml-2 font-bold text-white">
+              {playlists.length}{" "}
+              {playlists.length === 1 ? "playlist" : "playlists"}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Grid de playlists */}
-      <div className="px-8 py-6">
+      <div className="px-6 pb-20">
         {playlists.length === 0 ? (
-          <EmptyState
-            icon={ListMusic}
-            title="No tienes playlists guardadas"
-            description="Guarda playlists que te gusten para verlas aquí"
-          />
+          <div className="text-center py-20">
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-linear-to-br from-green-500/20 to-blue-500/20 flex items-center justify-center">
+              <ListMusic size={48} className="text-green-400" />
+            </div>
+            <h3 className="text-2xl font-bold mb-2">
+              No tienes playlists guardadas
+            </h3>
+            <p className="text-neutral-400">
+              Guarda playlists que te gusten para verlas aquí
+            </p>
+          </div>
         ) : (
-          <MediaGrid>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {playlists.map((playlist) => (
-              <PlaylistCard
+              <div
                 key={playlist._id}
-                playlist={playlist}
                 onClick={() => navigate(`/playlist/${playlist._id}`)}
-              />
+                className="group cursor-pointer"
+              >
+                <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-neutral-900">
+                  {playlist.portadaUrl ? (
+                    <img
+                      src={playlist.portadaUrl}
+                      alt={playlist.titulo}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-green-500 to-blue-600">
+                      <ListMusic size={48} className="text-white" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-green-500 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 flex items-center justify-center shadow-lg">
+                    <Play size={20} fill="white" className="ml-0.5" />
+                  </div>
+                </div>
+                <h3 className="font-semibold text-white truncate group-hover:text-green-400 transition-colors">
+                  {playlist.titulo}
+                </h3>
+                <p className="text-sm text-neutral-400 truncate">
+                  {getCreatorName(playlist.creador)} •{" "}
+                  {Array.isArray(playlist.canciones)
+                    ? playlist.canciones.length
+                    : 0}{" "}
+                  canciones
+                </p>
+              </div>
             ))}
-          </MediaGrid>
+          </div>
         )}
       </div>
     </div>

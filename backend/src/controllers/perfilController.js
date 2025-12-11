@@ -261,12 +261,12 @@ export const obtenerPerfilCompleto = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const usuario = await Usuario.findById(id)
+    const usuario = await Usuario.findOne({ nick: nickLowerCase })
       .select("-password")
       .populate({
         path: "misCanciones",
         select:
-          "titulo audioUrl portadaUrl duracionSegundos artistas generos reproduccionesTotales likes esPrivada",
+          "titulo audioUrl portadaUrl duracionSegundos artistas generos reproduccionesTotales likes esPrivada esExplicita oculta razonOculta",
         populate: {
           path: "artistas",
           select: "nick nombreArtistico avatarUrl",
@@ -284,7 +284,7 @@ export const obtenerPerfilCompleto = async (req, res) => {
           {
             path: "canciones",
             select:
-              "titulo audioUrl portadaUrl duracionSegundos artistas esPrivada",
+              "titulo audioUrl portadaUrl duracionSegundos artistas esPrivada esExplicita",
             populate: {
               path: "artistas",
               select: "nick nombreArtistico avatarUrl",
@@ -322,6 +322,84 @@ export const obtenerPerfilCompleto = async (req, res) => {
       );
     }
 
+    // Determinar si el usuario actual es el dueño del perfil
+    const esPropietario = usuarioId && usuarioId === usuario._id.toString();
+
+    // Calcular si el usuario solicitante es menor de edad
+    let esMenorDeEdad = false;
+    if (usuarioId) {
+      const { calcularEdad } = await import("../helpers/edadHelper.js");
+      const usuarioSolicitante = await Usuario.findById(usuarioId).select(
+        "fechaNacimiento"
+      );
+      if (usuarioSolicitante?.fechaNacimiento) {
+        esMenorDeEdad = calcularEdad(usuarioSolicitante.fechaNacimiento) < 18;
+        console.log(
+          `👶 Usuario solicitante es menor de edad: ${esMenorDeEdad}`
+        );
+      }
+    }
+
+    // Filtrar canciones ocultas por moderación (siempre)
+    if (usuario.misCanciones) {
+      usuario.misCanciones = usuario.misCanciones.filter(
+        (cancion) => !cancion.oculta
+      );
+    }
+
+    // Si NO es el propietario, filtrar canciones privadas
+    if (!esPropietario && usuario.misCanciones) {
+      usuario.misCanciones = usuario.misCanciones.filter(
+        (cancion) => !cancion.esPrivada
+      );
+    }
+
+    // Filtrar canciones explícitas si el usuario solicitante es menor de edad
+    if (esMenorDeEdad && usuario.misCanciones) {
+      usuario.misCanciones = usuario.misCanciones.filter(
+        (cancion) => !cancion.esExplicita
+      );
+      console.log(
+        `🔞 Canciones filtradas para menor de edad en perfil completo: ${usuario.misCanciones.length} canciones disponibles`
+      );
+    }
+
+    // Filtrar álbumes privados si no es el propietario
+    if (!esPropietario && usuario.misAlbumes) {
+      usuario.misAlbumes = usuario.misAlbumes.filter(
+        (album) => !album.esPrivado
+      );
+      // También filtrar canciones privadas dentro de álbumes públicos
+      usuario.misAlbumes.forEach((album) => {
+        if (album.canciones) {
+          album.canciones = album.canciones.filter(
+            (cancion) => cancion && !cancion.esPrivada
+          );
+        }
+      });
+    }
+
+    // Filtrar canciones explícitas de álbumes si el usuario solicitante es menor de edad
+    if (esMenorDeEdad && usuario.misAlbumes) {
+      usuario.misAlbumes.forEach((album) => {
+        if (album.canciones) {
+          album.canciones = album.canciones.filter(
+            (cancion) => cancion && !cancion.esExplicita
+          );
+        }
+      });
+      console.log(
+        `🔞 Canciones explícitas filtradas de álbumes para menor de edad en perfil completo`
+      );
+    }
+
+    // Filtrar playlists privadas si no es el propietario
+    if (!esPropietario && usuario.playlistsCreadas) {
+      usuario.playlistsCreadas = usuario.playlistsCreadas.filter(
+        (playlist) => playlist.esPublica
+      );
+    }
+
     return res.status(200).json({
       ok: true,
       usuario,
@@ -356,7 +434,7 @@ export const obtenerPerfilPorNick = async (req, res) => {
       .populate({
         path: "misCanciones",
         select:
-          "titulo audioUrl portadaUrl duracionSegundos artistas generos reproduccionesTotales likes esPrivada",
+          "titulo audioUrl portadaUrl duracionSegundos artistas generos reproduccionesTotales likes esPrivada esExplicita",
         populate: {
           path: "artistas",
           select: "nick nombreArtistico avatarUrl",
@@ -374,7 +452,7 @@ export const obtenerPerfilPorNick = async (req, res) => {
           {
             path: "canciones",
             select:
-              "titulo audioUrl portadaUrl duracionSegundos artistas esPrivada",
+              "titulo audioUrl portadaUrl duracionSegundos artistas esPrivada esExplicita",
             populate: {
               path: "artistas",
               select: "nick nombreArtistico avatarUrl",
@@ -412,11 +490,88 @@ export const obtenerPerfilPorNick = async (req, res) => {
       );
     }
 
+    // Determinar si el usuario actual es el dueño del perfil
+    const esPropietario =
+      usuarioActualId && usuarioActualId === usuario._id.toString();
+
+    // Calcular si el usuario actual es menor de edad
+    let esMenorDeEdad = false;
+    if (usuarioActualId) {
+      const { calcularEdad } = await import("../helpers/edadHelper.js");
+      const usuarioActual = await Usuario.findById(usuarioActualId).select(
+        "fechaNacimiento"
+      );
+      if (usuarioActual?.fechaNacimiento) {
+        esMenorDeEdad = calcularEdad(usuarioActual.fechaNacimiento) < 18;
+        console.log(`👶 Usuario actual es menor de edad: ${esMenorDeEdad}`);
+      }
+    }
+
+    // Filtrar canciones ocultas por moderación (siempre)
+    if (usuario.misCanciones) {
+      usuario.misCanciones = usuario.misCanciones.filter(
+        (cancion) => !cancion.oculta
+      );
+    }
+
+    // Si NO es el propietario, filtrar canciones privadas
+    if (!esPropietario && usuario.misCanciones) {
+      usuario.misCanciones = usuario.misCanciones.filter(
+        (cancion) => !cancion.esPrivada
+      );
+    }
+
+    // Filtrar canciones explícitas si el usuario actual es menor de edad
+    if (esMenorDeEdad && usuario.misCanciones) {
+      usuario.misCanciones = usuario.misCanciones.filter(
+        (cancion) => !cancion.esExplicita
+      );
+      console.log(
+        `🔞 Canciones filtradas para menor de edad: ${usuario.misCanciones.length} canciones disponibles`
+      );
+    }
+
+    // Filtrar álbumes privados si no es el propietario
+    if (!esPropietario && usuario.misAlbumes) {
+      usuario.misAlbumes = usuario.misAlbumes.filter(
+        (album) => !album.esPrivado
+      );
+      // También filtrar canciones privadas dentro de álbumes públicos
+      usuario.misAlbumes.forEach((album) => {
+        if (album.canciones) {
+          album.canciones = album.canciones.filter(
+            (cancion) => cancion && !cancion.esPrivada
+          );
+        }
+      });
+    }
+
+    // Filtrar canciones explícitas de álbumes si el usuario actual es menor de edad
+    if (esMenorDeEdad && usuario.misAlbumes) {
+      usuario.misAlbumes.forEach((album) => {
+        if (album.canciones) {
+          album.canciones = album.canciones.filter(
+            (cancion) => cancion && !cancion.esExplicita
+          );
+        }
+      });
+      console.log(
+        `🔞 Canciones explícitas filtradas de álbumes para menor de edad`
+      );
+    }
+
+    // Filtrar playlists privadas si no es el propietario
+    if (!esPropietario && usuario.playlistsCreadas) {
+      usuario.playlistsCreadas = usuario.playlistsCreadas.filter(
+        (playlist) => playlist.esPublica
+      );
+    }
+
     // Verificar privacidad y bloqueos
     if (usuarioActualId && usuarioActualId !== usuario._id.toString()) {
       const { Amistad } = await import("../models/amistadModels.js");
 
-      // 1. Verificar bloqueo
+      // 1. Verificar si existe un bloqueo entre los usuarios (en cualquier dirección)
       const bloqueado = await Amistad.findOne({
         $or: [
           {
@@ -433,15 +588,14 @@ export const obtenerPerfilPorNick = async (req, res) => {
       });
 
       if (bloqueado) {
-        // Si el usuario del perfil bloqueó al actual, denegar acceso
-        if (bloqueado.solicitante.toString() === usuario._id.toString()) {
-          console.log("🚫 Usuario bloqueado intentando acceder al perfil");
-          return res.status(403).json({
-            ok: false,
-            mensaje: "No tienes acceso a este perfil",
-            bloqueado: true,
-          });
-        }
+        console.log(
+          "🚫 Acceso denegado - existe un bloqueo entre los usuarios"
+        );
+        return res.status(403).json({
+          ok: false,
+          mensaje: "No tienes acceso a este perfil",
+          bloqueado: true,
+        });
       }
 
       // 2. Verificar si el perfil es privado

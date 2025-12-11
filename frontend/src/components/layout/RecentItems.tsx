@@ -37,7 +37,7 @@ export default function RecentItems() {
   const handleItemClick = (item: RecentItem) => {
     switch (item.type) {
       case "perfil":
-        navigate(`/profile/${item.id}`);
+        navigate(`/perfil/${item.id}`);
         break;
       case "cancion":
         // Las canciones no tienen página individual, podrías navegar al álbum o reproducir

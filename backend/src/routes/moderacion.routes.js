@@ -8,11 +8,14 @@ import {
 
   // Gestión de usuarios
   obtenerUsuarios,
+  buscarUsuariosAdmin,
   suspenderUsuarioEndpoint,
   banearUsuarioEndpoint,
   reactivarUsuario,
 
   // Gestión de contenido
+  ocultarCancion,
+  mostrarCancion,
   eliminarCancion,
   eliminarAlbum,
   eliminarPlaylist,
@@ -38,11 +41,14 @@ router.post("/reportes/:id/resolver", authAdmin, resolverReporte);
 
 // ========== USUARIOS ==========
 router.get("/usuarios", authAdmin, obtenerUsuarios);
+router.get("/usuarios/buscar", authAdmin, buscarUsuariosAdmin);
 router.post("/usuarios/:id/suspender", authAdmin, suspenderUsuarioEndpoint);
 router.post("/usuarios/:id/banear", authAdmin, banearUsuarioEndpoint);
 router.post("/usuarios/:id/reactivar", authAdmin, reactivarUsuario);
 
 // ========== CONTENIDO ==========
+router.post("/canciones/:id/ocultar", authAdmin, ocultarCancion);
+router.post("/canciones/:id/mostrar", authAdmin, mostrarCancion);
 router.delete("/canciones/:id", authAdmin, eliminarCancion);
 router.delete("/albumes/:id", authAdmin, eliminarAlbum);
 router.delete("/playlists/:id", authAdmin, eliminarPlaylist);

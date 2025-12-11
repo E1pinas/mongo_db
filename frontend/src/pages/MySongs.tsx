@@ -5,13 +5,14 @@ import { formatDuration } from "../utils/formatHelpers";
 import { usePlayer } from "../contexts/PlayerContext";
 import { useAuth } from "../contexts";
 import type { Cancion } from "../types";
-import { SongCommentsModal } from "../components/musica";
+import { SongCommentsModal, EditSongModal } from "../components/musica";
 import SongRow from "../components/musica/SongRow";
 import {
   Button,
   LoadingSpinner,
   EmptyState,
   SectionHeader,
+  ConfirmModal,
 } from "../components/common";
 
 export default function MySongs() {
@@ -25,6 +26,9 @@ export default function MySongs() {
   const [comentariosCancion, setComentariosCancion] = useState<Cancion | null>(
     null
   );
+  const [editingCancion, setEditingCancion] = useState<Cancion | null>(null);
+  const [deletingCancion, setDeletingCancion] = useState<Cancion | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadCanciones();
@@ -69,38 +73,39 @@ export default function MySongs() {
     playQueue(canciones, index);
   };
 
-  const handleToggleLike = async (cancionId: string) => {
+  const handleEditSong = async (data: {
+    titulo: string;
+    generos: string[];
+    esPrivada: boolean;
+    esExplicita: boolean;
+  }) => {
+    if (!editingCancion) return;
+
     try {
-      await musicService.toggleLike(cancionId);
-      // Actualizar el estado local
+      const updated = await musicService.updateSong(editingCancion._id, data);
       setCanciones((prev) =>
-        prev.map((c) => {
-          if (c._id === cancionId) {
-            const isLiked = c.likes.some((id) => id === "current-user"); // TODO: usar ID real del usuario
-            return {
-              ...c,
-              likes: isLiked
-                ? c.likes.filter((id) => id !== "current-user")
-                : [...c.likes, "current-user"],
-            };
-          }
-          return c;
-        })
+        prev.map((c) => (c._id === updated._id ? updated : c))
       );
+      setEditingCancion(null);
     } catch (err: any) {
-      console.error("Error toggling like:", err);
+      console.error("Error updating song:", err);
+      throw err;
     }
   };
 
-  const handleDeleteSong = async (cancionId: string) => {
-    if (!confirm("¿Estás seguro de eliminar esta canción?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deletingCancion) return;
 
     try {
-      await musicService.deleteSong(cancionId);
-      setCanciones((prev) => prev.filter((c) => c._id !== cancionId));
+      setIsDeleting(true);
+      await musicService.deleteSong(deletingCancion._id);
+      setCanciones((prev) => prev.filter((c) => c._id !== deletingCancion._id));
+      setDeletingCancion(null);
     } catch (err: any) {
       console.error("Error deleting song:", err);
       setError(err.message || "Error al eliminar canción");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -167,7 +172,7 @@ export default function MySongs() {
             <path d="m21 21-4.35-4.35"></path>
           </svg>
         </div>
-        <Button onClick={() => navigate("/upload")} variant="secondary">
+        <Button onClick={() => navigate("/subir")} variant="secondary">
           Subir Canción
         </Button>
         {canciones.length > 0 && (
@@ -184,7 +189,7 @@ export default function MySongs() {
           title="Aún no tienes canciones"
           description="Sube tu primera canción para comenzar"
           actionLabel="Subir Canción"
-          onAction={() => navigate("/upload")}
+          onAction={() => navigate("/subir")}
         />
       )}
 
@@ -217,6 +222,9 @@ export default function MySongs() {
                 onPlay={() => handlePlaySong(cancion, index)}
                 onOpenComments={() => setComentariosCancion(cancion)}
                 onLikeChange={() => loadCanciones()}
+                showCreatorActions={true}
+                onEdit={() => setEditingCancion(cancion)}
+                onDelete={() => setDeletingCancion(cancion)}
               />
             );
           })}
@@ -230,6 +238,29 @@ export default function MySongs() {
           onClose={() => setComentariosCancion(null)}
         />
       )}
+
+      {/* Modal de editar canción */}
+      {editingCancion && (
+        <EditSongModal
+          isOpen={true}
+          onClose={() => setEditingCancion(null)}
+          onSave={handleEditSong}
+          song={editingCancion}
+        />
+      )}
+
+      {/* Modal de confirmar eliminación */}
+      <ConfirmModal
+        isOpen={!!deletingCancion}
+        onClose={() => setDeletingCancion(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar canción?"
+        message={`Esta acción eliminará "${deletingCancion?.titulo}" de toda la plataforma, incluyendo todas las playlists y álbumes donde esté. Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDangerous={true}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

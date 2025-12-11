@@ -2,6 +2,8 @@
 import { Album } from "../models/albumModels.js";
 import { Usuario } from "../models/usuarioModels.js";
 import { Cancion } from "../models/cancionModels.js";
+import Post from "../models/postModels.js";
+import { Comentario } from "../models/comentarioModels.js";
 import { eliminarArchivoR2 } from "../services/r2Service.js";
 import { notificarNuevoAlbum } from "../helpers/notificacionHelper.js";
 import {
@@ -95,9 +97,12 @@ export const obtenerAlbumPorId = async (req, res) => {
       .populate("artistas", "nick nombreArtistico avatarUrl")
       .populate({
         path: "canciones",
-        match: { estaEliminada: false }, // solo canciones activas
+        match: {
+          estaEliminada: false,
+          // Si el álbum es público, filtrar canciones privadas
+        },
         select:
-          "titulo duracionSegundos audioUrl portadaUrl esPrivada artistas esExplicita generos likes",
+          "titulo duracionSegundos audioUrl portadaUrl esPrivada artistas esExplicita generos likes oculta razonOculta",
         populate: {
           path: "artistas",
           select: "nick nombreArtistico avatarUrl verificado",
@@ -107,6 +112,33 @@ export const obtenerAlbumPorId = async (req, res) => {
 
     if (!album) {
       return sendNotFound(res, "Álbum");
+    }
+
+    // Verificar si el usuario es menor de edad
+    let esMenorDeEdad = false;
+    if (req.userId) {
+      const { Usuario } = await import("../models/usuarioModels.js");
+      const usuario = await Usuario.findById(req.userId).select(
+        "fechaNacimiento"
+      );
+      if (usuario && usuario.fechaNacimiento) {
+        const { calcularEdad } = await import("../helpers/edadHelper.js");
+        esMenorDeEdad = calcularEdad(usuario.fechaNacimiento) < 18;
+      }
+    }
+
+    // Filtrar canciones privadas, ocultas y explícitas
+    if (album.canciones) {
+      album.canciones = album.canciones.filter((cancion) => {
+        if (!cancion) return false;
+        // Filtrar canciones ocultas por moderación
+        if (cancion.oculta) return false;
+        // Si el álbum es público, filtrar canciones privadas
+        if (!album.esPrivado && cancion.esPrivada) return false;
+        // Si el usuario es menor de edad, filtrar canciones explícitas
+        if (esMenorDeEdad && cancion.esExplicita === true) return false;
+        return true;
+      });
     }
 
     return sendSuccess(res, { album });
@@ -162,6 +194,14 @@ export const agregarCancionAAlbum = async (req, res) => {
       );
     }
 
+    // Validar privacidad: No permitir canciones privadas en álbumes públicos
+    if (!album.esPrivado && cancion.esPrivada) {
+      return sendValidationError(
+        res,
+        "No puedes agregar canciones privadas a un álbum público. Cambia el álbum a privado o la canción a pública."
+      );
+    }
+
     // Añadir canción al álbum (sin duplicados)
     album.canciones.addToSet(cancion._id);
     await album.save();
@@ -180,6 +220,51 @@ export const agregarCancionAAlbum = async (req, res) => {
   }
 };
 
+// 📌 Quitar canción de un álbum (solo dueño o admin)
+export const quitarCancionDeAlbum = async (req, res) => {
+  try {
+    const { idAlbum, idCancion } = req.params;
+
+    const album = await Album.findById(idAlbum);
+    if (!album || album.estaEliminado) {
+      return sendNotFound(res, "Álbum");
+    }
+
+    // Comprobar permisos: artista del álbum o admin
+    const esAutor = album.artistas.some(
+      (artistaId) => artistaId.toString() === req.userId
+    );
+    const esAdmin = req.userRole === "admin";
+
+    if (!esAutor && !esAdmin) {
+      return sendUnauthorized(
+        res,
+        "No tienes permisos para modificar este álbum"
+      );
+    }
+
+    // Quitar canción del álbum
+    album.canciones.pull(idCancion);
+    await album.save();
+
+    // Opcional: quitar referencia del álbum en la canción si ya no está en ningún álbum
+    const cancion = await Cancion.findById(idCancion);
+    if (cancion && cancion.album && cancion.album.toString() === idAlbum) {
+      cancion.album = null;
+      cancion.esSingle = true;
+      await cancion.save();
+    }
+
+    return sendSuccess(res, {
+      message: "Canción eliminada del álbum",
+      album,
+    });
+  } catch (error) {
+    console.error("Error en quitarCancionDeAlbum:", error);
+    return sendServerError(res, error, "Error al quitar canción del álbum");
+  }
+};
+
 // 📌 Eliminar álbum (borrado lógico, solo dueño o admin)
 export const eliminarAlbum = async (req, res) => {
   try {
@@ -187,7 +272,7 @@ export const eliminarAlbum = async (req, res) => {
 
     const album = await Album.findById(id);
 
-    if (!album || album.estaEliminado) {
+    if (!album) {
       return sendNotFound(res, "Álbum");
     }
 
@@ -203,21 +288,96 @@ export const eliminarAlbum = async (req, res) => {
       );
     }
 
-    album.estaEliminado = true;
-    await album.save();
+    // Eliminar portada de R2 si existe
+    if (album.portadaUrl && album.portadaUrl.includes("cloudflare")) {
+      eliminarArchivoR2(album.portadaUrl).catch((err) =>
+        console.error("Error eliminando portada de R2:", err)
+      );
+    }
 
-    // Opcional: quitar el álbum de misAlbumes del usuario
+    // Quitar el álbum de misAlbumes del usuario
     await Usuario.updateMany(
       { misAlbumes: album._id },
       { $pull: { misAlbumes: album._id } }
     );
 
+    // Eliminar comentarios y posts asociados al álbum
+    await Comentario.deleteMany({
+      postId: { $in: await Post.find({ recursoId: id }).select("_id") },
+    });
+    await Post.deleteMany({ recursoId: id });
+
+    // Eliminar el álbum completamente
+    await Album.findByIdAndDelete(id);
+
     return sendSuccess(res, {
-      message: "Álbum eliminado (marcado como eliminado)",
+      message: "Álbum eliminado correctamente",
     });
   } catch (error) {
     console.error("Error en eliminarAlbum:", error);
     return sendServerError(res, error, "Error al eliminar el álbum");
+  }
+};
+
+// 📌 ACTUALIZAR ÁLBUM (título, descripción, privacidad, etc.)
+export const actualizarAlbum = async (req, res) => {
+  try {
+    const { idAlbum } = req.params;
+    const { titulo, descripcion, generos, esPrivado } = req.body;
+    const usuarioId = req.userId;
+    const userRole = req.userRole;
+
+    const album = await Album.findById(idAlbum).populate({
+      path: "canciones",
+      select: "esPrivada",
+    });
+
+    if (!album || album.estaEliminado) {
+      return sendNotFound(res, "Álbum");
+    }
+
+    // Verificar permisos
+    const esAutor = album.artistas.some(
+      (artistaId) => artistaId.toString() === usuarioId
+    );
+    const esAdmin = userRole === "admin" || userRole === "super_admin";
+
+    if (!esAutor && !esAdmin) {
+      return sendUnauthorized(
+        res,
+        "No tienes permisos para modificar este álbum"
+      );
+    }
+
+    // Validar cambio a público: verificar que no haya canciones privadas
+    if (esPrivado === false && album.canciones && album.canciones.length > 0) {
+      const tieneCancionesPrivadas = album.canciones.some(
+        (cancion) => cancion.esPrivada === true
+      );
+
+      if (tieneCancionesPrivadas) {
+        return sendValidationError(
+          res,
+          "No puedes hacer público este álbum porque contiene canciones privadas. Cambia las canciones a públicas primero."
+        );
+      }
+    }
+
+    // Actualizar campos
+    if (titulo !== undefined) album.titulo = titulo;
+    if (descripcion !== undefined) album.descripcion = descripcion;
+    if (generos !== undefined) album.generos = generos;
+    if (esPrivado !== undefined) album.esPrivado = esPrivado;
+
+    await album.save();
+
+    return sendSuccess(res, {
+      message: "Álbum actualizado correctamente",
+      album,
+    });
+  } catch (error) {
+    console.error("Error en actualizarAlbum:", error);
+    return sendServerError(res, error, "Error al actualizar el álbum");
   }
 };
 
@@ -296,8 +456,12 @@ export const buscarAlbumes = async (req, res) => {
 
     const regex = new RegExp(q.trim(), "i");
 
+    // Buscar álbumes por título O género
     const albumes = await Album.find({
-      titulo: regex,
+      $or: [
+        { titulo: regex },
+        { generos: { $regex: regex } }, // Búsqueda por género
+      ],
       esPrivado: false,
     })
       .populate(

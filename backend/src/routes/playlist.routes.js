@@ -7,6 +7,7 @@ import {
   eliminarPlaylist,
   agregarCancionPlaylist,
   quitarCancionPlaylist,
+  actualizarPlaylist,
   actualizarPortadaPlaylist,
   toggleModoColaborativo,
   invitarColaborador,
@@ -16,14 +17,17 @@ import {
   buscarCancionesParaPlaylist,
   obtenerPlaylistsPublicas,
   toggleSeguirPlaylist,
+  buscarPlaylists,
 } from "../controllers/playlistController.js";
 
 const router = express.Router();
 
 router.post("/", authUsuario, crearPlaylist);
 router.get("/publicas", obtenerPlaylistsPublicas);
+router.get("/buscar", buscarPlaylists);
 router.get("/buscar-canciones", authUsuario, buscarCancionesParaPlaylist);
 router.get("/:id", obtenerPlaylistPorId);
+router.patch("/:id", authUsuario, actualizarPlaylist);
 router.delete("/:id", authUsuario, eliminarPlaylist);
 router.post("/:id/canciones", authUsuario, agregarCancionPlaylist);
 router.delete("/:id/canciones/:cancionId", authUsuario, quitarCancionPlaylist);

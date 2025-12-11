@@ -14,8 +14,19 @@ export interface Usuario {
   role: "user" | "admin" | "super_admin";
   verificado: boolean;
   banned: boolean;
+  baneado?: boolean;
+  suspendido?: boolean;
+  suspendidoHasta?: string;
+  razonSuspension?: string;
+  razonBaneo?: string;
   estaConectado?: boolean;
   ultimaConexion?: string;
+  fechaNacimiento?: string;
+  esMenorDeEdad?: boolean;
+  cancionActual?: {
+    cancion: Cancion;
+    inicioReproduccion: string;
+  };
   redes?: {
     instagram?: string;
     tiktok?: string;

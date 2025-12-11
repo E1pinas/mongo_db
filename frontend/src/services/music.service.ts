@@ -510,8 +510,10 @@ export const musicService = {
   // Obtener álbum por ID
   async getAlbumById(id: string): Promise<Album> {
     try {
-      const response = await api.get<ApiResponse<Album>>(`/albumes/${id}`);
-      return response.data.data!;
+      const response = await api.get<{ ok: boolean; album: Album }>(
+        `/albumes/${id}`
+      );
+      return response.data.album;
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
@@ -531,14 +533,14 @@ export const musicService = {
         portada: data.portada,
       });
 
-      const response = await api.post<ApiResponse<Album>>(
+      const response = await api.post<{ ok: boolean; album: Album }>(
         "/albumes",
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
         }
       );
-      return response.data.data!;
+      return response.data.album;
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
@@ -548,11 +550,11 @@ export const musicService = {
   // Agregar canción a álbum
   async addSongToAlbum(albumId: string, songId: string): Promise<Album> {
     try {
-      const response = await api.post<ApiResponse<Album>>(
+      const response = await api.post<{ ok: boolean; album: Album }>(
         `/albumes/${albumId}/canciones/${songId}`,
         {}
       );
-      return response.data.data!;
+      return response.data.album;
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
@@ -563,6 +565,21 @@ export const musicService = {
   async deleteAlbum(id: string): Promise<void> {
     try {
       await api.delete(`/albumes/${id}`);
+    } catch (error) {
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
+    }
+  },
+
+  // Eliminar canción de álbum
+  async removeSongFromAlbum(albumId: string, songId: string): Promise<Album> {
+    try {
+      const response = await api.delete<{
+        ok: boolean;
+        message: string;
+        album: Album;
+      }>(`/albumes/${albumId}/canciones/${songId}`);
+      return response.data.album;
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
@@ -592,7 +609,8 @@ export const musicService = {
       const playlistsGuardadas =
         response.data.usuario?.biblioteca?.playlistsGuardadas || [];
 
-      return [...playlistsCreadas, ...playlistsGuardadas];
+      // Retornar SOLO las playlists creadas, no las guardadas
+      return playlistsCreadas;
     } catch (error) {
       const errorData = handleApiError(error);
       // Si falla, retornar array vacío en lugar de error
@@ -687,9 +705,31 @@ export const musicService = {
   },
 
   // Eliminar playlist
-  async deletePlaylist(id: string): Promise<void> {
+  async deletePlaylist(id: string): Promise<boolean> {
     try {
       await api.delete(`/playlists/${id}`);
+      return true;
+    } catch (error) {
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
+    }
+  },
+
+  async updatePlaylist(
+    id: string,
+    data: {
+      titulo?: string;
+      descripcion?: string;
+      esPublica?: boolean;
+    }
+  ): Promise<Playlist> {
+    try {
+      const response = await api.patch<{
+        ok: boolean;
+        playlist: Playlist;
+        message: string;
+      }>(`/playlists/${id}`, data);
+      return response.data.playlist;
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);

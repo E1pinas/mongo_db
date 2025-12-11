@@ -23,6 +23,7 @@ export default function Notifications() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    fetchNotifications,
   } = useNotifications();
   const navigate = useNavigate();
   const { playSong, playQueue, clearQueue } = usePlayer();
@@ -33,6 +34,11 @@ export default function Notifications() {
 
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [showPostModal, setShowPostModal] = useState(false);
+
+  // Recargar notificaciones cuando se monta el componente
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   // Filtrar notificaciones según el filtro activo
   const filteredNotifications = notifications.filter((notif) => {
@@ -61,6 +67,18 @@ export default function Notifications() {
     // Marcar como leída
     if (!notif.leida) {
       await markAsRead(notif._id);
+    }
+
+    // Para notificaciones de seguidor y amistad, navegar directamente al perfil del usuario origen
+    if (
+      (notif.tipo === "nuevo_seguidor" ||
+        notif.tipo === "solicitud_amistad" ||
+        notif.tipo === "amistad_aceptada") &&
+      notif.usuarioOrigen &&
+      typeof notif.usuarioOrigen === "object"
+    ) {
+      navigate(`/perfil/${notif.usuarioOrigen.nick}`);
+      return;
     }
 
     // Navegar según el tipo de recurso
@@ -116,10 +134,13 @@ export default function Notifications() {
                 name: album.titulo,
               });
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error("Error al cargar el álbum:", error);
-            // Si falla, navegar a la página del álbum
-            navigate(`/album/${notif.recurso.id}`);
+            alert(
+              error.response?.status === 404
+                ? "Este álbum fue retirado de la página"
+                : "No se pudo cargar el álbum. Intenta más tarde."
+            );
           }
           break;
         case "playlist":
@@ -136,14 +157,17 @@ export default function Notifications() {
                 name: playlist.titulo,
               });
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error("Error al cargar la playlist:", error);
-            // Si falla, navegar a la página de la playlist
-            navigate(`/playlist/${notif.recurso.id}`);
+            alert(
+              error.response?.status === 404
+                ? "Esta playlist fue retirada de la página"
+                : "No se pudo cargar la playlist. Intenta más tarde."
+            );
           }
           break;
         case "usuario":
-          navigate(`/profile/${notif.recurso.id}`);
+          navigate(`/perfil/${notif.recurso.id}`);
           break;
         case "post":
           // Abrir modal del post en lugar de navegar al perfil
@@ -153,13 +177,13 @@ export default function Notifications() {
         case "comentario":
           // Navegar al perfil donde está el comentario
           if (typeof notif.usuarioOrigen === "object" && notif.usuarioOrigen) {
-            navigate(`/profile/${notif.usuarioOrigen._id}`);
+            navigate(`/perfil/${notif.usuarioOrigen._id}`);
           }
           break;
       }
     } else if (notif.usuarioOrigen && typeof notif.usuarioOrigen === "object") {
       // Si no hay recurso específico, ir al perfil del usuario origen
-      navigate(`/profile/${notif.usuarioOrigen._id}`);
+      navigate(`/perfil/${notif.usuarioOrigen._id}`);
     }
   };
 
@@ -308,166 +332,200 @@ export default function Notifications() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Notificaciones</h1>
-        <p className="text-neutral-400">Mantente al día con tu actividad</p>
-      </div>
+    <div className="min-h-screen bg-linear-to-b from-neutral-950 via-neutral-900 to-neutral-950 p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header con gradiente */}
+        <div className="mb-8 relative">
+          <div className="absolute inset-0 bg-linear-to-r from-orange-500/10 via-pink-500/10 to-purple-500/10 blur-3xl" />
+          <div className="relative">
+            <h1 className="text-5xl font-black mb-3 bg-linear-to-r from-orange-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
+              Notificaciones
+            </h1>
+            <p className="text-neutral-400 text-lg">
+              Mantente al día con tu actividad
+            </p>
+          </div>
+        </div>
 
-      {/* Filtros */}
-      <div className="flex items-center gap-2 mb-8">
-        <button
-          onClick={() => setFilter("todas")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold hover:scale-105 transition-transform ${
-            filter === "todas"
-              ? "bg-white text-black"
-              : "bg-neutral-800 text-white hover:bg-neutral-700"
-          }`}
-        >
-          Todas
-        </button>
-        <button
-          onClick={() => setFilter("musica")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold hover:scale-105 transition-transform ${
-            filter === "musica"
-              ? "bg-white text-black"
-              : "bg-neutral-800 text-white hover:bg-neutral-700"
-          }`}
-        >
-          Música
-        </button>
-        <button
-          onClick={() => setFilter("social")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold hover:scale-105 transition-transform ${
-            filter === "social"
-              ? "bg-white text-black"
-              : "bg-neutral-800 text-white hover:bg-neutral-700"
-          }`}
-        >
-          Social
-        </button>
-        <button
-          onClick={() => setFilter("sistema")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold hover:scale-105 transition-transform ${
-            filter === "sistema"
-              ? "bg-white text-black"
-              : "bg-neutral-800 text-white hover:bg-neutral-700"
-          }`}
-        >
-          Sistema
-        </button>
-      </div>
-
-      {/* Marcar todas como leídas */}
-      {notifications.some((n) => !n.leida) && (
-        <div className="flex justify-end mb-4">
+        {/* Filtros mejorados */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           <button
-            onClick={markAllAsRead}
-            className="text-sm text-green-500 hover:text-green-400 font-semibold"
+            onClick={() => setFilter("todas")}
+            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
+              filter === "todas"
+                ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg shadow-orange-500/30"
+                : "bg-neutral-800/50 backdrop-blur-sm text-neutral-300 hover:bg-neutral-700/50"
+            }`}
           >
-            Marcar todas como leídas
+            🔔 Todas
+          </button>
+          <button
+            onClick={() => setFilter("musica")}
+            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
+              filter === "musica"
+                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30"
+                : "bg-neutral-800/50 backdrop-blur-sm text-neutral-300 hover:bg-neutral-700/50"
+            }`}
+          >
+            🎵 Música
+          </button>
+          <button
+            onClick={() => setFilter("social")}
+            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
+              filter === "social"
+                ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30"
+                : "bg-neutral-800/50 backdrop-blur-sm text-neutral-300 hover:bg-neutral-700/50"
+            }`}
+          >
+            👥 Social
+          </button>
+          <button
+            onClick={() => setFilter("sistema")}
+            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
+              filter === "sistema"
+                ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg shadow-yellow-500/30"
+                : "bg-neutral-800/50 backdrop-blur-sm text-neutral-300 hover:bg-neutral-700/50"
+            }`}
+          >
+            ⚙️ Sistema
           </button>
         </div>
-      )}
 
-      {/* Lista de notificaciones */}
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : filteredNotifications.length === 0 ? (
-        <EmptyState
-          icon={() => (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="64"
-              height="64"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-neutral-600"
+        {/* Marcar todas como leídas - mejorado */}
+        {notifications.some((n) => !n.leida) && (
+          <div className="flex justify-end mb-6">
+            <button
+              onClick={markAllAsRead}
+              className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 backdrop-blur-sm border border-green-500/30"
             >
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
-            </svg>
-          )}
-          title="No hay notificaciones"
-          description={
-            filter === "todas"
-              ? "Estarás al día con tu actividad"
-              : `No hay notificaciones de ${filter}`
-          }
-        />
-      ) : (
-        <div className="space-y-2">
-          {filteredNotifications.map((notif) => (
-            <div
-              key={notif._id}
-              onClick={() => handleNotificationClick(notif)}
-              className={`bg-neutral-800/50 p-4 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer ${
-                !notif.leida ? "border-l-4 border-orange-500" : ""
-              } relative group`}
-            >
-              <div className="flex items-start gap-4">
-                {getNotificationIcon(notif)}
-                <div className="flex-1">
-                  <p
-                    className={`${
-                      !notif.leida ? "font-semibold" : "font-medium"
-                    } mb-1`}
-                  >
-                    {getFormattedMessage(notif)}
-                  </p>
-                  <span className="text-xs text-neutral-500">
-                    {formatDistanceToNow(new Date(notif.createdAt), {
-                      addSuffix: true,
-                      locale: es,
-                    })}
-                  </span>
-                </div>
+              ✓ Marcar todas como leídas
+            </button>
+          </div>
+        )}
 
-                {/* Botón eliminar */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteNotification(notif._id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-neutral-700 rounded-full"
-                  title="Eliminar notificación"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M18 6 6 18"></path>
-                    <path d="m6 6 12 12"></path>
-                  </svg>
-                </button>
-              </div>
+        {/* Lista de notificaciones */}
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : filteredNotifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="mb-6 flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-neutral-600"
+              >
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+              </svg>
             </div>
-          ))}
-        </div>
-      )}
+            <h3 className="text-xl font-bold text-neutral-300 mb-2">
+              No hay notificaciones
+            </h3>
+            <p className="text-neutral-500 text-center">
+              {filter === "todas"
+                ? "Estarás al día con tu actividad"
+                : `No hay notificaciones de ${filter}`}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredNotifications.map((notif, index) => {
+              // Determinar si la notificación lleva al perfil del usuario
+              const isProfileNotification =
+                notif.tipo === "nuevo_seguidor" ||
+                notif.tipo === "solicitud_amistad" ||
+                notif.tipo === "amistad_aceptada";
 
-      {/* Modal de Post */}
-      {selectedPostId && (
-        <PostModal
-          postId={selectedPostId}
-          isOpen={showPostModal}
-          onClose={() => {
-            setShowPostModal(false);
-            setSelectedPostId(null);
-          }}
-        />
-      )}
+              return (
+                <div
+                  key={notif._id}
+                  onClick={() => handleNotificationClick(notif)}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                  className={`bg-linear-to-r from-neutral-900/80 to-neutral-800/60 backdrop-blur-sm p-5 rounded-xl hover:from-neutral-800/90 hover:to-neutral-700/70 transition-all duration-300 cursor-pointer relative group border ${
+                    !notif.leida
+                      ? "border-l-4 border-orange-500 shadow-lg shadow-orange-500/20 animate-fade-in"
+                      : "border-neutral-800/50 hover:border-neutral-700"
+                  } ${
+                    isProfileNotification
+                      ? "hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="relative">
+                      {getNotificationIcon(notif)}
+                      {!notif.leida && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-neutral-900 animate-pulse" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`${
+                          !notif.leida
+                            ? "font-bold text-white"
+                            : "font-medium text-neutral-200"
+                        } mb-1.5 leading-relaxed`}
+                      >
+                        {getFormattedMessage(notif)}
+                      </p>
+                      <span className="text-xs text-neutral-500 font-medium">
+                        {formatDistanceToNow(new Date(notif.createdAt), {
+                          addSuffix: true,
+                          locale: es,
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Botón eliminar mejorado */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotification(notif._id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-all duration-300 p-2.5 hover:bg-red-500/20 hover:text-red-400 rounded-lg text-neutral-400"
+                      title="Eliminar notificación"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Modal de Post */}
+        {selectedPostId && (
+          <PostModal
+            postId={selectedPostId}
+            isOpen={showPostModal}
+            onClose={() => {
+              setShowPostModal(false);
+              setSelectedPostId(null);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

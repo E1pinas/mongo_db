@@ -79,6 +79,30 @@ export const albumService = {
     }
   },
 
+  // Actualizar álbum (privacidad, título, descripción, etc.)
+  async updateAlbum(
+    id: string,
+    data: {
+      titulo?: string;
+      descripcion?: string;
+      esPrivado?: boolean;
+    }
+  ): Promise<Album | null> {
+    try {
+      const { data: response } = await axios.patch(
+        `${API_URL}/albumes/${id}`,
+        data,
+        {
+          withCredentials: true,
+        }
+      );
+      return response.album || null;
+    } catch (error) {
+      console.error("Error updating album:", error);
+      return null;
+    }
+  },
+
   // Agregar canción a álbum
   async addSongToAlbum(albumId: string, songId: string): Promise<boolean> {
     try {

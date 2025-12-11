@@ -359,9 +359,13 @@ export const bloquearUsuario = async (req, res) => {
         });
       }
 
-      // Actualizar a bloqueada
-      relacion.estado = "bloqueada";
-      await relacion.save();
+      // Eliminar la relación existente y crear una nueva con el bloqueador como solicitante
+      await Amistad.findByIdAndDelete(relacion._id);
+      await Amistad.create({
+        solicitante: bloqueadorId,
+        receptor: usuarioId,
+        estado: "bloqueada",
+      });
     } else {
       // Crear nueva relación bloqueada
       await Amistad.create({
@@ -485,27 +489,18 @@ export const desbloquearUsuario = async (req, res) => {
     const usuarioId = req.userId;
     const { usuarioId: bloqueadoId } = req.params;
 
-    // Buscar la relación de bloqueo
+    // Buscar la relación de bloqueo donde el usuario actual es quien bloqueó
     const relacion = await Amistad.findOne({
-      $or: [
-        { solicitante: usuarioId, receptor: bloqueadoId, estado: "bloqueada" },
-        { solicitante: bloqueadoId, receptor: usuarioId, estado: "bloqueada" },
-      ],
+      solicitante: usuarioId,
+      receptor: bloqueadoId,
+      estado: "bloqueada",
     });
 
     if (!relacion) {
       return res.status(404).json({
         ok: false,
-        message: "No existe un bloqueo con este usuario",
-      });
-    }
-
-    // Verificar que el usuario actual fue quien bloqueó
-    if (relacion.solicitante.toString() !== usuarioId) {
-      return res.status(403).json({
-        ok: false,
         message:
-          "No puedes desbloquear a este usuario porque no lo bloqueaste tú",
+          "No existe un bloqueo con este usuario o no fuiste tú quien lo bloqueó",
       });
     }
 
@@ -564,14 +559,32 @@ export const obtenerMisAmigos = async (req, res) => {
         { receptor: usuarioId, estado: "aceptada" },
       ],
     })
-      .populate(
-        "solicitante",
-        "nick nombre apellidos nombreArtistico avatarUrl estaConectado ultimaConexion"
-      )
-      .populate(
-        "receptor",
-        "nick nombre apellidos nombreArtistico avatarUrl estaConectado ultimaConexion"
-      );
+      .populate({
+        path: "solicitante",
+        select:
+          "nick nombre apellidos nombreArtistico avatarUrl estaConectado ultimaConexion cancionActual",
+        populate: {
+          path: "cancionActual.cancion",
+          select: "titulo artistas portadaUrl duracionSegundos",
+          populate: {
+            path: "artistas",
+            select: "nombreArtistico nick nombre",
+          },
+        },
+      })
+      .populate({
+        path: "receptor",
+        select:
+          "nick nombre apellidos nombreArtistico avatarUrl estaConectado ultimaConexion cancionActual",
+        populate: {
+          path: "cancionActual.cancion",
+          select: "titulo artistas portadaUrl duracionSegundos",
+          populate: {
+            path: "artistas",
+            select: "nombreArtistico nick nombre",
+          },
+        },
+      });
 
     // Mapear para devolver solo el amigo (no el usuario actual)
     const amigos = amistades.map((amistad) => {

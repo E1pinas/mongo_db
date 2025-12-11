@@ -12,43 +12,43 @@ export const postService = {
   }) {
     const response = await api.post<{
       success: boolean;
-      data: Post;
+      post: Post;
       message: string;
     }>("/posts", data);
-    return response.data.data;
+    return response.data.post;
   },
 
   /**
    * Obtener posts de un usuario
    */
   async obtenerPostsUsuario(usuarioId: string, limit = 50, offset = 0) {
-    const response = await api.get<{ success: boolean; data: Post[] }>(
+    const response = await api.get<{ success: boolean; posts: Post[] }>(
       `/posts/usuario/${usuarioId}`,
       {
         params: { limit, offset },
       }
     );
-    return response.data.data;
+    return response.data.posts;
   },
 
   /**
    * Obtener feed de posts (usuarios seguidos)
    */
   async obtenerFeed(limit = 50, offset = 0) {
-    const response = await api.get<{ success: boolean; data: Post[] }>(
+    const response = await api.get<{ success: boolean; posts: Post[] }>(
       "/posts/feed",
       {
         params: { limit, offset },
       }
     );
-    return response.data.data;
+    return response.data.posts;
   },
 
   /**
    * Obtener un post específico
    */
   async obtenerPost(postId: string) {
-    const response = await api.get<{ success: boolean; data: Post }>(
+    const response = await api.get<{ success: boolean; post: Post }>(
       `/posts/${postId}`
     );
     return response.data;
@@ -89,10 +89,10 @@ export const postService = {
   async agregarComentario(postId: string, contenido: string) {
     const response = await api.post<{
       success: boolean;
-      data: PostComentario;
+      comentario: PostComentario;
       message: string;
     }>(`/posts/${postId}/comentarios`, { contenido });
-    return response.data.data;
+    return response.data.comentario;
   },
 
   /**
@@ -101,11 +101,11 @@ export const postService = {
   async obtenerComentarios(postId: string, limit = 50, offset = 0) {
     const response = await api.get<{
       success: boolean;
-      data: PostComentario[];
+      comentarios: PostComentario[];
     }>(`/posts/${postId}/comentarios`, {
       params: { limit, offset },
     });
-    return response.data.data;
+    return response.data.comentarios;
   },
 
   /**

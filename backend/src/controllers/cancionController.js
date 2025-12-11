@@ -242,6 +242,30 @@ export const actualizarCancion = async (req, res) => {
       actualizaciones.generos = [];
     }
 
+    // Obtener canción antes de actualizar para eliminar portada antigua
+    const cancionAnterior = await Cancion.findOne({
+      _id: req.params.id,
+      artistas: req.userId,
+      estaEliminada: false,
+    });
+
+    if (!cancionAnterior) {
+      return sendNotFound(res, "Canción o no tienes permisos");
+    }
+
+    // Si se está actualizando la portada, eliminar la anterior de R2
+    if (
+      "portadaUrl" in actualizaciones &&
+      cancionAnterior.portadaUrl &&
+      cancionAnterior.portadaUrl !== actualizaciones.portadaUrl &&
+      cancionAnterior.portadaUrl.includes("cloudflare")
+    ) {
+      const { eliminarArchivoR2 } = await import("../services/r2Service.js");
+      eliminarArchivoR2(cancionAnterior.portadaUrl).catch((err) =>
+        console.error("Error eliminando portada antigua de R2:", err)
+      );
+    }
+
     const cancion = await Cancion.findOneAndUpdate(
       { _id: req.params.id, artistas: req.userId, estaEliminada: false },
       { $set: actualizaciones },
@@ -269,6 +293,7 @@ export const actualizarCancion = async (req, res) => {
 };
 
 // 📌 Eliminar canción (borrado lógico, solo artista)
+// Al eliminar la canción, se quita automáticamente de todas las playlists y álbumes
 export const eliminarCancion = async (req, res) => {
   try {
     const cancion = await Cancion.findOneAndUpdate(
@@ -281,11 +306,43 @@ export const eliminarCancion = async (req, res) => {
       return sendNotFound(res, "Canción o no tienes permisos");
     }
 
-    // Opcional: borrar archivos en R2
-    // await borrarArchivoR2PorUrl(cancion.audioUrl);
-    // if (cancion.portadaUrl) await borrarArchivoR2PorUrl(cancion.portadaUrl);
+    // Importar modelos necesarios
+    const { Playlist } = await import("../models/playlistModels.js");
+    const { Album } = await import("../models/albumModels.js");
+    const { eliminarArchivoR2 } = await import("../services/r2Service.js");
 
-    return sendSuccess(res, null, "Canción eliminada correctamente");
+    // Eliminar la canción de todas las playlists
+    await Playlist.updateMany(
+      { canciones: cancion._id },
+      { $pull: { canciones: cancion._id } }
+    );
+
+    // Eliminar la canción de todos los álbumes
+    await Album.updateMany(
+      { canciones: cancion._id },
+      { $pull: { canciones: cancion._id } }
+    );
+
+    // Borrar archivos en R2 (ejecutar y esperar para asegurar eliminación)
+    try {
+      if (cancion.audioUrl) {
+        console.log(`🗑️ Eliminando audio de R2: ${cancion.audioUrl}`);
+        await eliminarArchivoR2(cancion.audioUrl);
+      }
+      if (cancion.portadaUrl && cancion.portadaUrl.includes("cloudflare")) {
+        console.log(`🗑️ Eliminando portada de R2: ${cancion.portadaUrl}`);
+        await eliminarArchivoR2(cancion.portadaUrl);
+      }
+    } catch (r2Error) {
+      // Si falla la eliminación en R2, registrar pero no fallar la operación
+      console.error("⚠️ Error eliminando archivos de R2:", r2Error);
+    }
+
+    return sendSuccess(
+      res,
+      null,
+      "Canción eliminada correctamente de toda la plataforma"
+    );
   } catch (error) {
     console.error("Error en eliminarCancion:", error);
     return sendServerError(res, error, "Error al eliminar la canción");
@@ -521,22 +578,43 @@ export const buscarCanciones = async (req, res) => {
 
     const artistaIds = artistasCoincidentes.map((a) => a._id);
 
-    // Buscar canciones por título O por artista
-    const canciones = await Cancion.find({
+    // Verificar si el usuario es menor de edad
+    let esMenorDeEdad = false;
+    if (req.userId) {
+      const usuario = await Usuario.findById(req.userId).select(
+        "fechaNacimiento"
+      );
+      if (usuario && usuario.fechaNacimiento) {
+        const { calcularEdad } = await import("../helpers/edadHelper.js");
+        esMenorDeEdad = calcularEdad(usuario.fechaNacimiento) < 18;
+      }
+    }
+
+    // Construir filtro de búsqueda
+    const searchFilter = {
       $or: [
         { titulo: regex },
         { artistas: { $in: artistaIds } }, // Canciones de artistas que coincidan
+        { generos: { $regex: regex } }, // Búsqueda por género
       ],
       esPrivada: false,
       estaEliminada: false,
-    })
+    };
+
+    // Si el usuario es menor de edad, filtrar canciones explícitas
+    if (esMenorDeEdad) {
+      searchFilter.esExplicita = { $ne: true };
+    }
+
+    // Buscar canciones por título, artista O género
+    const canciones = await Cancion.find(searchFilter)
       .populate(
         "artistas",
         "nombre apellidos nick nombreArtistico avatarUrl verificado"
       )
       .populate("album", "titulo portadaUrl")
       .select(
-        "titulo artistas audioUrl portadaUrl duracionSegundos generos reproduccionesTotales likes"
+        "titulo artistas audioUrl portadaUrl duracionSegundos generos reproduccionesTotales likes esExplicita oculta razonOculta"
       )
       .limit(50)
       .sort({ reproduccionesTotales: -1 }); // Ordenar por popularidad

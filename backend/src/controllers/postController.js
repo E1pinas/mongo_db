@@ -111,7 +111,7 @@ export const postController = {
       // Enriquecer posts con datos del usuario actual
       const posts = enrichPostsWithUserData(postsQuery, req.usuario?.id);
 
-      return sendSuccess(res, posts);
+      return sendSuccess(res, { posts });
     } catch (error) {
       console.error("Error obteniendo posts del usuario:", error);
       return sendServerError(res, error, "Error al obtener los posts");
@@ -148,7 +148,7 @@ export const postController = {
       // Enriquecer posts con datos del usuario actual
       const posts = enrichPostsWithUserData(postsQuery, usuarioId);
 
-      return sendSuccess(res, posts);
+      return sendSuccess(res, { posts });
     } catch (error) {
       console.error("Error obteniendo feed:", error);
       return sendServerError(res, error, "Error al obtener el feed");
@@ -169,10 +169,20 @@ export const postController = {
         return sendNotFound(res, "Post");
       }
 
+      // Validar que el post tenga usuario
+      if (!postDoc.usuario || !postDoc.usuario._id) {
+        console.error("⚠️ Post sin usuario:", postId);
+        return sendError(
+          res,
+          500,
+          "Post tiene datos incompletos (falta usuario)"
+        );
+      }
+
       const usuarioId = req.usuario?.id || req.userId;
       const post = enrichPostsWithUserData([postDoc], usuarioId)[0];
 
-      return sendSuccess(res, post);
+      return sendSuccess(res, { post });
     } catch (error) {
       console.error("Error obteniendo post:", error);
       return sendServerError(res, error, "Error al obtener el post");
@@ -219,6 +229,13 @@ export const postController = {
         return res.status(404).json({
           success: false,
           message: "Post no encontrado",
+        });
+      }
+
+      if (post.estaEliminado) {
+        return res.status(410).json({
+          success: false,
+          message: "Este post ha sido eliminado",
         });
       }
 
@@ -284,6 +301,13 @@ export const postController = {
         return sendNotFound(res, "Post");
       }
 
+      if (post.estaEliminado) {
+        return res.status(410).json({
+          success: false,
+          message: "Este post ha sido eliminado",
+        });
+      }
+
       post.comentarios.push({
         usuario: usuarioId,
         contenido: contenido.trim(),
@@ -331,7 +355,7 @@ export const postController = {
       const offset = parseInt(req.query.offset) || 0;
 
       const post = await Post.findById(postId)
-        .select("comentarios")
+        .select("comentarios estaEliminado")
         .populate(
           "comentarios.usuario",
           "nick nombre nombreArtistico avatarUrl verificado"
@@ -340,6 +364,13 @@ export const postController = {
 
       if (!post) {
         return sendNotFound(res, "Post");
+      }
+
+      if (post.estaEliminado) {
+        return res.status(410).json({
+          success: false,
+          message: "Este post ha sido eliminado",
+        });
       }
 
       const comentarios = post.comentarios
@@ -364,7 +395,14 @@ export const postController = {
 
       const postOriginal = await Post.findById(postId);
       if (!postOriginal) {
-        return sendNotFound(res, "Post");
+        return sendNotFound(res, "Post original");
+      }
+
+      if (postOriginal.estaEliminado) {
+        return res.status(410).json({
+          success: false,
+          message: "Este post ha sido eliminado",
+        });
       }
 
       if (postOriginal.usuario.toString() === usuarioId) {
@@ -473,7 +511,7 @@ export const postController = {
       await repost.save();
 
       const postOriginal = await Post.findById(postId);
-      if (postOriginal) {
+      if (postOriginal && !postOriginal.estaEliminado) {
         const repostIndex = postOriginal.reposts.findIndex(
           (r) => r.usuario.toString() === usuarioId
         );

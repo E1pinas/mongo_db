@@ -4,14 +4,13 @@ import { Plus, Upload, Search, X } from "lucide-react";
 import { musicService } from "../services/music.service";
 import { usePlayer } from "../contexts/PlayerContext";
 import { useAuth } from "../contexts/AuthContext";
-import type { Playlist, Cancion, Usuario } from "../types";
+import type { Playlist, Cancion } from "../types";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import EmptyState from "../components/common/EmptyState";
 import SectionHeader from "../components/common/SectionHeader";
 import MediaGrid from "../components/common/MediaGrid";
 import PlaylistCard from "../components/musica/PlaylistCard";
 import Button from "../components/common/Button";
-import { formatTimeAgo } from "../utils/dateFormat";
 
 /**
  * Playlists - Página de playlists
@@ -211,18 +210,6 @@ export default function Playlists() {
     }
   };
 
-  const getCreatorName = (creador: string | Usuario | undefined) => {
-    if (!creador) return "Tú";
-    if (typeof creador === "string") return "Tú";
-    return (
-      creador.nombreArtistico || creador.nick || creador.nombre || "Usuario"
-    );
-  };
-
-  const getSongCount = (canciones: string[] | Cancion[] | undefined) => {
-    return canciones?.length || 0;
-  };
-
   const handlePlayPlaylist = async (
     playlist: Playlist,
     e: React.MouseEvent
@@ -260,305 +247,414 @@ export default function Playlists() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Mis Playlists</h1>
-        <p className="text-neutral-400">Playlists que has creado</p>
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg">
-          <p className="text-red-400">{error}</p>
+    <div className="min-h-screen bg-linear-to-b from-neutral-900 via-black to-black">
+      {/* Header con diseño único */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-br from-green-500/10 via-blue-500/10 to-purple-500/10 blur-3xl" />
+        <div className="relative px-6 pt-8 pb-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-green-500 to-blue-600 flex items-center justify-center shadow-xl">
+                  <svg
+                    className="w-8 h-8 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-green-400 font-semibold mb-1">
+                    TU COLECCIÓN
+                  </p>
+                  <h1 className="text-5xl font-black bg-linear-to-r from-green-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    Playlists
+                  </h1>
+                  <p className="text-neutral-300 mt-2">
+                    Crea y gestiona tus playlists personalizadas
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setError("");
+                setShowCreateModal(true);
+              }}
+              className="px-8 py-4 bg-linear-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 rounded-full font-bold text-lg transition-all hover:scale-105 flex items-center gap-3 shadow-lg"
+            >
+              <Plus size={20} />
+              Crear Playlist
+            </button>
+          </div>
         </div>
-      )}
-
-      {/* Botón crear playlist */}
-      <div className="mb-8">
-        <Button
-          onClick={() => {
-            setError("");
-            setShowCreateModal(true);
-          }}
-          variant="secondary"
-          className="bg-white text-black hover:bg-white/90"
-        >
-          <Plus size={20} className="mr-2" />
-          Crear playlist
-        </Button>
       </div>
 
-      {loading && <LoadingSpinner text="Cargando playlists..." />}
+      <div className="px-6 pb-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border-2 border-red-500 rounded-xl backdrop-blur-sm">
+            <p className="text-red-400 font-semibold">{error}</p>
+          </div>
+        )}
+      </div>
 
-      {/* Tus playlists */}
-      {!loading && misPlaylists.length > 0 && (
-        <section className="mb-12">
-          <SectionHeader title="Tus playlists" />
-          <MediaGrid>
-            {misPlaylists
-              .filter((playlist) => playlist && playlist._id && playlist.titulo)
-              .map((playlist) => (
-                <PlaylistCard
-                  key={playlist._id}
-                  playlist={playlist}
-                  onClick={() => handleClickPlaylist(playlist._id)}
-                  onPlay={(e) => handlePlayPlaylist(playlist, e)}
-                />
-              ))}
-          </MediaGrid>
-        </section>
-      )}
+      <div className="px-6">
+        {loading && <LoadingSpinner text="Cargando playlists..." />}
 
-      {/* Playlists públicas de la comunidad */}
-      {!loading && playlistsPublicas.length > 0 && (
-        <section className="mb-12">
-          <SectionHeader title="Descubre playlists" />
-          <MediaGrid>
-            {playlistsPublicas
-              .filter((playlist) => playlist && playlist._id && playlist.titulo)
-              .map((playlist) => (
-                <PlaylistCard
-                  key={playlist._id}
-                  playlist={playlist}
-                  onClick={() => handleClickPlaylist(playlist._id)}
-                  onPlay={(e) => handlePlayPlaylist(playlist, e)}
-                />
-              ))}
-          </MediaGrid>
-        </section>
-      )}
+        {/* Tus playlists */}
+        {!loading && misPlaylists.length > 0 && (
+          <section className="mb-16">
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold bg-linear-to-r from-green-400 to-blue-500 bg-clip-text text-transparent mb-2">
+                Tus Playlists
+              </h2>
+              <p className="text-neutral-400">Playlists que has creado</p>
+            </div>
+            <MediaGrid>
+              {misPlaylists
+                .filter(
+                  (playlist) => playlist && playlist._id && playlist.titulo
+                )
+                .map((playlist) => (
+                  <PlaylistCard
+                    key={playlist._id}
+                    playlist={playlist}
+                    onClick={() => handleClickPlaylist(playlist._id)}
+                    onPlay={(e) => handlePlayPlaylist(playlist, e)}
+                  />
+                ))}
+            </MediaGrid>
+          </section>
+        )}
 
-      {!loading && misPlaylists.length === 0 && (
-        <EmptyState
-          title="Aún no tienes playlists"
-          description="Crea tu primera playlist para organizar tu música"
-          actionLabel="Crear Playlist"
-          onAction={() => setShowCreateModal(true)}
-        />
-      )}
+        {/* Playlists públicas de la comunidad */}
+        {!loading && playlistsPublicas.length > 0 && (
+          <section className="mb-16">
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold bg-linear-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
+                Descubre Playlists
+              </h2>
+              <p className="text-neutral-400">De la comunidad TCG Music</p>
+            </div>
+            <MediaGrid>
+              {playlistsPublicas
+                .filter(
+                  (playlist) => playlist && playlist._id && playlist.titulo
+                )
+                .map((playlist) => (
+                  <PlaylistCard
+                    key={playlist._id}
+                    playlist={playlist}
+                    onClick={() => handleClickPlaylist(playlist._id)}
+                    onPlay={(e) => handlePlayPlaylist(playlist, e)}
+                  />
+                ))}
+            </MediaGrid>
+          </section>
+        )}
+
+        {!loading && misPlaylists.length === 0 && (
+          <EmptyState
+            title="Aún no tienes playlists"
+            description="Crea tu primera playlist para organizar tu música"
+            actionLabel="Crear Playlist"
+            onAction={() => setShowCreateModal(true)}
+          />
+        )}
+      </div>
 
       {/* Modal crear playlist */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Nueva Playlist</h2>
-
-            {error && (
-              <div className="mb-4 p-4 bg-red-500/20 border border-red-500 rounded-lg">
-                <p className="text-red-400">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleCreatePlaylist} className="space-y-6">
-              {/* Portada */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Portada de la playlist
-                </label>
-                <div className="flex items-start gap-4">
-                  {portadaPreview ? (
-                    <div className="relative w-40 h-40 rounded-lg overflow-hidden group">
-                      <img
-                        src={portadaPreview}
-                        alt="Portada"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPortadaFile(null);
-                          setPortadaPreview("");
-                        }}
-                        className="absolute top-2 right-2 p-2 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="relative bg-linear-to-br from-neutral-900 via-neutral-900 to-neutral-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-neutral-800 shadow-2xl">
+            {/* Header con gradiente */}
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-0 bg-linear-to-r from-green-500/10 via-blue-500/10 to-purple-500/10 blur-xl" />
+              <div className="relative p-6 border-b border-neutral-800/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-linear-to-br from-green-500 to-blue-600 flex items-center justify-center">
+                      <svg
+                        className="w-6 h-6 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <X size={16} />
-                      </button>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                        />
+                      </svg>
                     </div>
-                  ) : (
-                    <label className="w-40 h-40 border-2 border-dashed border-neutral-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-neutral-400 transition-colors">
-                      <Upload size={28} className="text-neutral-500 mb-2" />
-                      <span className="text-xs text-neutral-400 text-center px-2">
-                        Subir portada
-                      </span>
-                      <span className="text-xs text-neutral-500 mt-1">
-                        JPG, PNG
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png"
-                        onChange={handlePortadaChange}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              {/* Nombre */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Nombre de la playlist *
-                </label>
-                <input
-                  type="text"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Mi playlist increíble"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
-                  maxLength={100}
-                  required
-                />
-              </div>
-
-              {/* Descripción */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Descripción
-                </label>
-                <textarea
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Describe tu playlist..."
-                  rows={3}
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                  maxLength={500}
-                />
-              </div>
-
-              {/* Buscar y agregar canciones */}
-              <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Agregar canciones
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <div className="flex-1 relative">
-                    <Search
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
-                      size={18}
-                    />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          searchSongs();
-                        }
-                      }}
-                      placeholder="Buscar canciones..."
-                      className="w-full pl-10 pr-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
-                    />
+                    <div>
+                      <h2 className="text-2xl font-black bg-linear-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
+                        Nueva Playlist
+                      </h2>
+                      <p className="text-sm text-neutral-400">
+                        Organiza tu música favorita
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
-                    onClick={searchSongs}
-                    disabled={searching || searchQuery.trim().length < 2}
-                    className="px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      resetForm();
+                    }}
+                    disabled={creating}
+                    className="w-10 h-10 rounded-full bg-neutral-800/80 hover:bg-neutral-700 flex items-center justify-center transition-colors"
                   >
-                    {searching ? "..." : "Buscar"}
+                    <X size={20} />
                   </button>
                 </div>
+              </div>
+            </div>
 
-                {/* Resultados de búsqueda */}
-                {searchQuery.trim().length >= 2 &&
-                  cancionesBuscadas.length === 0 &&
-                  !searching && (
-                    <div className="mt-3 p-4 bg-neutral-800/50 rounded-lg text-center">
-                      <p className="text-neutral-400 text-sm">
-                        No se encontraron canciones. Intenta con otro término de
-                        búsqueda.
-                      </p>
+            {/* Contenido con scroll */}
+            <div className="overflow-y-auto max-h-[calc(90vh-140px)] p-6">
+              {error && (
+                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl backdrop-blur-sm">
+                  <p className="text-red-400 text-sm">{error}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleCreatePlaylist} className="space-y-6">
+                {/* Portada */}
+                <div>
+                  <label className="block text-sm font-bold mb-3 text-neutral-300">
+                    Portada de la playlist
+                  </label>
+                  <div className="flex items-start gap-4">
+                    {portadaPreview ? (
+                      <div className="relative w-40 h-40 rounded-xl overflow-hidden group ring-2 ring-neutral-700">
+                        <img
+                          src={portadaPreview}
+                          alt="Portada"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPortadaFile(null);
+                            setPortadaPreview("");
+                          }}
+                          className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-40 h-40 border-2 border-dashed border-neutral-700 hover:border-green-500/50 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all bg-neutral-800/30 hover:bg-neutral-800/50">
+                        <Upload size={32} className="text-neutral-500 mb-2" />
+                        <span className="text-xs text-neutral-400 text-center px-2 font-semibold">
+                          Subir portada
+                        </span>
+                        <span className="text-xs text-neutral-600 mt-1">
+                          JPG, PNG
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png"
+                          onChange={handlePortadaChange}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nombre */}
+                <div>
+                  <label className="block text-sm font-bold mb-3 text-neutral-300">
+                    Nombre de la playlist{" "}
+                    <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    placeholder="Mi playlist increíble"
+                    className="w-full px-4 py-3 bg-neutral-800/50 border-2 border-neutral-700 hover:border-neutral-600 focus:border-green-500 rounded-xl outline-none transition-all backdrop-blur-sm"
+                    maxLength={100}
+                    required
+                  />
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="block text-sm font-bold mb-3 text-neutral-300">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    placeholder="Describe tu playlist..."
+                    rows={3}
+                    className="w-full px-4 py-3 bg-neutral-800/50 border-2 border-neutral-700 hover:border-neutral-600 focus:border-green-500 rounded-xl outline-none transition-all resize-none backdrop-blur-sm"
+                    maxLength={500}
+                  />
+                </div>
+
+                {/* Buscar y agregar canciones */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Agregar canciones
+                  </label>
+                  <div className="flex gap-2 mb-3">
+                    <div className="flex-1 relative">
+                      <Search
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
+                        size={18}
+                      />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            searchSongs();
+                          }
+                        }}
+                        placeholder="Buscar canciones..."
+                        className="w-full pl-10 pr-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={searchSongs}
+                      disabled={searching || searchQuery.trim().length < 2}
+                      className="px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {searching ? "..." : "Buscar"}
+                    </button>
+                  </div>
+
+                  {/* Resultados de búsqueda */}
+                  {searchQuery.trim().length >= 2 &&
+                    cancionesBuscadas.length === 0 &&
+                    !searching && (
+                      <div className="mt-3 p-4 bg-neutral-800/50 rounded-lg text-center">
+                        <p className="text-neutral-400 text-sm">
+                          No se encontraron canciones. Intenta con otro término
+                          de búsqueda.
+                        </p>
+                      </div>
+                    )}
+
+                  {cancionesBuscadas.length > 0 && (
+                    <div className="mt-3 p-4 bg-neutral-800/50 rounded-lg max-h-60 overflow-y-auto">
+                      <div className="space-y-2">
+                        {cancionesBuscadas.map((song) => (
+                          <label
+                            key={song._id}
+                            className="flex items-center gap-3 p-2 rounded hover:bg-neutral-700 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSongs.includes(song._id)}
+                              onChange={() => toggleSong(song._id)}
+                              className="w-4 h-4"
+                            />
+                            <div className="w-10 h-10 bg-neutral-700 rounded shrink-0 overflow-hidden">
+                              <img
+                                src={song.portadaUrl || "/cover.jpg"}
+                                alt={song.titulo}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {song.titulo}
+                              </p>
+                              <p className="text-xs text-neutral-400 truncate">
+                                {Array.isArray(song.artistas)
+                                  ? song.artistas
+                                      .map((a: any) =>
+                                        typeof a === "string"
+                                          ? a
+                                          : a.nombreArtistico ||
+                                            a.nick ||
+                                            a.nombre
+                                      )
+                                      .join(", ")
+                                  : "Artista"}
+                              </p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                {cancionesBuscadas.length > 0 && (
-                  <div className="mt-3 p-4 bg-neutral-800/50 rounded-lg max-h-60 overflow-y-auto">
-                    <div className="space-y-2">
-                      {cancionesBuscadas.map((song) => (
-                        <label
-                          key={song._id}
-                          className="flex items-center gap-3 p-2 rounded hover:bg-neutral-700 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedSongs.includes(song._id)}
-                            onChange={() => toggleSong(song._id)}
-                            className="w-4 h-4"
-                          />
-                          <div className="w-10 h-10 bg-neutral-700 rounded shrink-0 overflow-hidden">
-                            <img
-                              src={song.portadaUrl || "/cover.jpg"}
-                              alt={song.titulo}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {song.titulo}
-                            </p>
-                            <p className="text-xs text-neutral-400 truncate">
-                              {Array.isArray(song.artistas)
-                                ? song.artistas
-                                    .map((a: any) =>
-                                      typeof a === "string"
-                                        ? a
-                                        : a.nombreArtistico ||
-                                          a.nick ||
-                                          a.nombre
-                                    )
-                                    .join(", ")
-                                : "Artista"}
-                            </p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
+                  {selectedSongs.length > 0 && (
+                    <p className="text-xs text-neutral-400 mt-2">
+                      {selectedSongs.length} canción
+                      {selectedSongs.length !== 1 ? "es" : ""} seleccionada
+                      {selectedSongs.length !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+
+                {/* Opciones de privacidad */}
+                <div className="space-y-3 p-4 bg-neutral-800/30 rounded-xl border border-neutral-700/50">
+                  <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-700/30 transition-colors">
+                    <input
+                      type="checkbox"
+                      id="esPublica"
+                      checked={esPublica}
+                      onChange={(e) => setEsPublica(e.target.checked)}
+                      className="w-5 h-5 rounded accent-green-500"
+                    />
+                    <label
+                      htmlFor="esPublica"
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      <span className="font-semibold text-white">
+                        Playlist pública
+                      </span>
+                      <p className="text-xs text-neutral-400 mt-0.5">
+                        Otros usuarios podrán verla
+                      </p>
+                    </label>
                   </div>
-                )}
 
-                {selectedSongs.length > 0 && (
-                  <p className="text-xs text-neutral-400 mt-2">
-                    {selectedSongs.length} canción
-                    {selectedSongs.length !== 1 ? "es" : ""} seleccionada
-                    {selectedSongs.length !== 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
-
-              {/* Opciones de privacidad */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="esPublica"
-                    checked={esPublica}
-                    onChange={(e) => setEsPublica(e.target.checked)}
-                    className="w-5 h-5"
-                  />
-                  <label htmlFor="esPublica" className="text-sm cursor-pointer">
-                    Playlist pública (otros usuarios podrán verla)
-                  </label>
+                  <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-700/30 transition-colors">
+                    <input
+                      type="checkbox"
+                      id="esColaborativa"
+                      checked={esColaborativa}
+                      onChange={(e) => setEsColaborativa(e.target.checked)}
+                      className="w-5 h-5 rounded accent-blue-500"
+                    />
+                    <label
+                      htmlFor="esColaborativa"
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      <span className="font-semibold text-white">
+                        Playlist colaborativa
+                      </span>
+                      <p className="text-xs text-neutral-400 mt-0.5">
+                        Otros pueden agregar canciones
+                      </p>
+                    </label>
+                  </div>
                 </div>
+              </form>
+            </div>
 
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="esColaborativa"
-                    checked={esColaborativa}
-                    onChange={(e) => setEsColaborativa(e.target.checked)}
-                    className="w-5 h-5"
-                  />
-                  <label
-                    htmlFor="esColaborativa"
-                    className="text-sm cursor-pointer"
-                  >
-                    Playlist colaborativa (otros pueden agregar canciones)
-                  </label>
-                </div>
-              </div>
-
-              {/* Botones */}
-              <div className="flex gap-3 pt-4">
+            {/* Botones fijos */}
+            <div className="sticky bottom-0 bg-neutral-900/95 backdrop-blur-sm border-t border-neutral-800 p-6">
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -566,19 +662,20 @@ export default function Playlists() {
                     resetForm();
                   }}
                   disabled={creating}
-                  className="flex-1 px-4 py-3 rounded-lg font-semibold bg-neutral-800 hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                  className="flex-1 px-6 py-3.5 rounded-xl font-bold bg-neutral-800 hover:bg-neutral-700 transition-all disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
+                  onClick={handleCreatePlaylist}
                   disabled={creating || !nombre.trim()}
-                  className="flex-1 px-4 py-3 rounded-lg font-semibold bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-6 py-3.5 rounded-xl font-bold bg-linear-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-green-500/20"
                 >
                   {creating ? "Creando..." : "Crear Playlist"}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

@@ -12,6 +12,7 @@ import {
   obtenerSeguidoresMutuos,
   recalcularEstadisticas,
   recalcularTodasEstadisticas,
+  obtenerUsuariosSugeridos,
 } from "../controllers/seguidorController.js";
 
 const router = express.Router();
@@ -38,6 +39,9 @@ router.get("/seguidos/:usuarioId", obtenerSeguidos);
 
 // Obtener seguidores mutuos
 router.get("/mutuos", authUsuario, obtenerSeguidoresMutuos);
+
+// Obtener usuarios sugeridos para seguir
+router.get("/sugeridos", authUsuario, obtenerUsuariosSugeridos);
 
 // Recalcular estadísticas de un usuario específico
 router.post(

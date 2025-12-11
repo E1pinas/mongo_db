@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { Heart, Music, User } from "lucide-react";
+import {
+  Heart,
+  Music,
+  User,
+  Disc3,
+  ListMusic,
+  Play,
+  Search as SearchIcon,
+  TrendingUp,
+  Sparkles,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { musicService } from "../services/music.service";
 import { authService } from "../services/auth.service";
@@ -49,14 +59,19 @@ export default function Search() {
       const [songs, albums, playlistResults, users] = await Promise.all([
         musicService.searchSongs(searchQuery),
         musicService.searchAlbums(searchQuery),
-        musicService.getPublicPlaylists(), // Luego filtraremos por título
+        musicService.getPublicPlaylists(), // Luego filtraremos por título o descripción
         authService.searchUsers(searchQuery),
       ]);
 
-      // Filtrar playlists por el query
-      const filteredPlaylists = playlistResults.filter((p) =>
-        p.titulo?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      // Filtrar playlists por el query (título o descripción)
+      const queryLower = searchQuery.toLowerCase();
+      const filteredPlaylists = playlistResults.filter((p) => {
+        const matchTitle = p.titulo?.toLowerCase().includes(queryLower);
+        const matchDescription = p.descripcion
+          ?.toLowerCase()
+          .includes(queryLower);
+        return matchTitle || matchDescription;
+      });
 
       setCanciones(songs);
       setAlbumes(albums);
@@ -100,58 +115,103 @@ export default function Search() {
       .join(", ");
   };
 
-  return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-6">Buscar</h1>
+  const totalResults =
+    canciones.length + albumes.length + playlists.length + usuarios.length;
 
-        {/* Barra de búsqueda */}
-        <div className="relative max-w-2xl">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="¿Qué quieres escuchar?"
-            className="w-full px-6 py-4 pl-14 bg-white text-black rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg font-medium"
-            autoFocus
-          />
-          <svg
-            className="absolute left-5 top-1/2 -translate-y-1/2 text-black"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
+  return (
+    <div className="min-h-screen bg-linear-to-b from-neutral-900 via-black to-black">
+      {/* Header con búsqueda */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl" />
+        <div className="relative px-6 pt-8 pb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <SearchIcon size={24} className="text-white" />
+            </div>
+            <h1 className="text-5xl font-black bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Explorar
+            </h1>
+          </div>
+
+          {/* Barra de búsqueda mejorada */}
+          <div className="relative max-w-3xl">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Busca canciones, artistas, álbumes..."
+              className="w-full px-6 py-5 pl-16 pr-32 bg-neutral-800/50 backdrop-blur-xl text-white rounded-2xl border-2 border-neutral-700 focus:border-purple-500 focus:outline-none transition-all text-lg placeholder:text-neutral-500"
+              autoFocus
+            />
+            <SearchIcon
+              className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-400"
+              size={24}
+            />
+            {query && (
+              <>
+                <div className="absolute right-16 top-1/2 -translate-y-1/2 px-3 py-1 bg-purple-500/20 text-purple-400 text-xs font-semibold rounded-full">
+                  {totalResults} resultados
+                </div>
+                <button
+                  onClick={() => handleSearch("")}
+                  className="absolute right-5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-neutral-700 hover:bg-neutral-600 flex items-center justify-center transition-colors group"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <svg
+                    className="w-4 h-4 text-neutral-400 group-hover:text-white transition-colors"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Estado de carga */}
-      {loading && <LoadingSpinner text="Buscando..." />}
+      <div className="px-6 pb-20">
+        {/* Estado de carga */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-4" />
+            <p className="text-neutral-400">
+              Buscando en toda la biblioteca...
+            </p>
+          </div>
+        )}
 
-      {/* Resultados */}
-      {!loading &&
-        searched &&
-        (canciones.length > 0 ||
-          albumes.length > 0 ||
-          playlists.length > 0 ||
-          usuarios.length > 0) && (
-          <div className="space-y-8">
+        {/* Resultados */}
+        {!loading && searched && totalResults > 0 && (
+          <div className="space-y-12">
             {/* Canciones */}
             {canciones.length > 0 && (
               <section>
-                <SectionHeader
-                  title={`Canciones (${canciones.length})`}
-                  rightElement={
-                    <Button onClick={() => playQueue(canciones, 0)}>
-                      Reproducir todo
-                    </Button>
-                  }
-                />
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-green-500 to-green-600 flex items-center justify-center">
+                      <Music size={20} className="text-white" />
+                    </div>
+                    <h2 className="text-2xl font-bold">Canciones</h2>
+                    <span className="text-sm text-neutral-500">
+                      ({canciones.length})
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => playQueue(canciones, 0)}
+                    className="px-5 py-2.5 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-full font-semibold transition-all hover:scale-105 flex items-center gap-2"
+                  >
+                    <Play size={16} fill="white" />
+                    Reproducir todo
+                  </button>
+                </div>
 
                 <div className="space-y-2">
                   {canciones.map((cancion, index) => {
@@ -176,47 +236,50 @@ export default function Search() {
             {/* Álbumes */}
             {albumes.length > 0 && (
               <section>
-                <SectionHeader title={`Álbumes (${albumes.length})`} />
-                <div className="space-y-2">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-linear-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                    <Disc3 size={20} className="text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Álbumes</h2>
+                  <span className="text-sm text-neutral-500">
+                    ({albumes.length})
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {albumes.map((album) => (
                     <div
                       key={album._id}
                       onClick={() => navigate(`/album/${album._id}`)}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer group"
+                      className="group cursor-pointer"
                     >
-                      <div className="w-16 h-16 bg-neutral-700 rounded shrink-0 overflow-hidden">
-                        <img
-                          src={album.portadaUrl || "/cover.jpg"}
-                          alt={album.titulo}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-neutral-900">
+                        {album.portadaUrl ? (
+                          <img
+                            src={album.portadaUrl}
+                            alt={album.titulo}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Disc3 size={48} className="text-neutral-700" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-purple-500 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 flex items-center justify-center shadow-lg">
+                          <Play size={20} fill="white" className="ml-0.5" />
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">
-                          {album.titulo}
-                        </p>
-                        <p className="text-xs text-neutral-400 truncate">
-                          {album.artistas && album.artistas.length > 0
-                            ? typeof album.artistas[0] === "string"
-                              ? "Artista"
-                              : album.artistas
-                                  .map(
-                                    (a: any) =>
-                                      a.nombreArtistico || a.nick || a.nombre
-                                  )
-                                  .join(", ")
-                            : "Artista"}
-                        </p>
-                      </div>
-                      <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full">
-                        Álbum
-                      </span>
-                      <span className="text-sm text-neutral-400">
+                      <h3 className="font-semibold text-white truncate group-hover:text-purple-400 transition-colors">
+                        {album.titulo}
+                      </h3>
+                      <p className="text-sm text-neutral-400 truncate">
+                        {getArtistName(album.artistas)} •{" "}
                         {Array.isArray(album.canciones)
                           ? album.canciones.length
                           : 0}{" "}
                         canciones
-                      </span>
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -226,43 +289,55 @@ export default function Search() {
             {/* Playlists */}
             {playlists.length > 0 && (
               <section>
-                <SectionHeader title={`Playlists (${playlists.length})`} />
-                <div className="space-y-2">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-linear-to-br from-pink-500 to-pink-600 flex items-center justify-center">
+                    <ListMusic size={20} className="text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Playlists</h2>
+                  <span className="text-sm text-neutral-500">
+                    ({playlists.length})
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {playlists.map((playlist) => (
                     <div
                       key={playlist._id}
                       onClick={() => navigate(`/playlist/${playlist._id}`)}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer group"
+                      className="group cursor-pointer"
                     >
-                      <div className="w-16 h-16 bg-neutral-700 rounded shrink-0 overflow-hidden">
-                        <img
-                          src={playlist.portadaUrl || "/cover.jpg"}
-                          alt={playlist.titulo}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-neutral-900">
+                        {playlist.portadaUrl ? (
+                          <img
+                            src={playlist.portadaUrl}
+                            alt={playlist.titulo}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ListMusic size={48} className="text-neutral-700" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-pink-500 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 flex items-center justify-center shadow-lg">
+                          <Play size={20} fill="white" className="ml-0.5" />
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">
-                          {playlist.titulo}
-                        </p>
-                        <p className="text-xs text-neutral-400 truncate">
-                          {typeof playlist.creador === "string"
-                            ? "Usuario"
-                            : playlist.creador?.nombreArtistico ||
-                              playlist.creador?.nick ||
-                              playlist.creador?.nombre ||
-                              "Usuario"}
-                        </p>
-                      </div>
-                      <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">
-                        Playlist
-                      </span>
-                      <span className="text-sm text-neutral-400">
+                      <h3 className="font-semibold text-white truncate group-hover:text-pink-400 transition-colors">
+                        {playlist.titulo}
+                      </h3>
+                      <p className="text-sm text-neutral-400 truncate">
+                        {typeof playlist.creador === "string"
+                          ? "Usuario"
+                          : playlist.creador?.nombreArtistico ||
+                            playlist.creador?.nick ||
+                            "Usuario"}{" "}
+                        •{" "}
                         {Array.isArray(playlist.canciones)
                           ? playlist.canciones.length
                           : 0}{" "}
                         canciones
-                      </span>
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -272,46 +347,54 @@ export default function Search() {
             {/* Usuarios */}
             {usuarios.length > 0 && (
               <section>
-                <SectionHeader title={`Usuarios (${usuarios.length})`} />
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                    <User size={20} className="text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Artistas</h2>
+                  <span className="text-sm text-neutral-500">
+                    ({usuarios.length})
+                  </span>
+                </div>
 
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                   {usuarios.map((usuario) => (
                     <div
                       key={usuario._id}
-                      onClick={() => navigate(`/profile/${usuario.nick}`)}
-                      className="grid grid-cols-[auto_1fr_auto] gap-4 p-3 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer group items-center"
+                      onClick={() => navigate(`/perfil/${usuario.nick}`)}
+                      className="group cursor-pointer text-center"
                     >
-                      {/* Avatar */}
-                      <div className="relative">
+                      <div className="relative w-full aspect-square rounded-full overflow-hidden mb-3 bg-neutral-900 mx-auto">
                         <img
                           src={usuario.avatarUrl || "/avatar.png"}
                           alt={usuario.nombreArtistico || usuario.nick}
-                          className="w-12 h-12 object-cover rounded-full"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                         />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-
-                      {/* Info */}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold truncate">
-                            {usuario.nombreArtistico || usuario.nick}
-                          </h3>
-                          {usuario.verificado && (
-                            <span className="text-blue-400 text-sm">✓</span>
-                          )}
-                        </div>
-                        <p className="text-sm text-neutral-400 truncate">
-                          @{usuario.nick}
-                        </p>
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <h3 className="font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
+                          {usuario.nombreArtistico || usuario.nick}
+                        </h3>
+                        {usuario.verificado && (
+                          <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+                            <svg
+                              className="w-2.5 h-2.5 text-white"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                        )}
                       </div>
-
-                      {/* Badge de tipo */}
-                      <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-semibold flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          Artista
-                        </span>
-                      </div>
+                      <p className="text-xs text-neutral-500 truncate">
+                        @{usuario.nick}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -320,61 +403,73 @@ export default function Search() {
           </div>
         )}
 
-      {/* Sin resultados */}
-      {!loading &&
-        searched &&
-        canciones.length === 0 &&
-        albumes.length === 0 &&
-        playlists.length === 0 &&
-        usuarios.length === 0 &&
-        query.trim() && (
-          <EmptyState
-            title="No se encontraron resultados"
-            description={`No encontramos canciones con "${query}"`}
-          />
+        {/* Sin resultados */}
+        {!loading && searched && totalResults === 0 && query.trim() && (
+          <div className="text-center py-20">
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-linear-to-br from-neutral-800 to-neutral-900 flex items-center justify-center">
+              <SearchIcon size={40} className="text-neutral-600" />
+            </div>
+            <h3 className="text-2xl font-bold mb-2">
+              No encontramos resultados
+            </h3>
+            <p className="text-neutral-400 mb-8">
+              No hay coincidencias para{" "}
+              <span className="text-white font-semibold">"{query}"</span>
+            </p>
+            <p className="text-sm text-neutral-500">
+              Intenta con otras palabras clave
+            </p>
+          </div>
         )}
 
-      {/* Estado inicial */}
-      {!searched && (
-        <div className="text-center py-12">
-          <svg
-            className="w-20 h-20 mx-auto mb-6 text-neutral-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="m21 21-4.35-4.35"
-            ></path>
-          </svg>
-          <h3 className="text-2xl font-bold mb-2">Busca tu música favorita</h3>
-          <p className="text-neutral-400 mb-8">
-            Encuentra canciones, artistas y álbumes
-          </p>
+        {/* Estado inicial */}
+        {!searched && (
+          <div>
+            <div className="text-center py-12 mb-12">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-linear-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                <Sparkles size={40} className="text-purple-400" />
+              </div>
+              <h3 className="text-3xl font-bold mb-3">Descubre nueva música</h3>
+              <p className="text-neutral-400 text-lg">
+                Busca tus artistas, canciones y álbumes favoritos
+              </p>
+            </div>
 
-          {/* Sugerencias de búsqueda */}
-          <div className="max-w-md mx-auto">
-            <p className="text-sm text-neutral-500 mb-4">Búsquedas populares</p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {["Rock", "Pop", "Reggaeton", "Indie", "Electronic"].map(
-                (genre) => (
+            {/* Categorías de búsqueda */}
+            <div className="max-w-4xl mx-auto">
+              <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <TrendingUp size={20} className="text-orange-500" />
+                Géneros populares
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {[
+                  { name: "Rock", color: "from-red-500 to-red-600" },
+                  { name: "Pop", color: "from-pink-500 to-pink-600" },
+                  { name: "Reggaeton", color: "from-orange-500 to-orange-600" },
+                  { name: "Indie", color: "from-blue-500 to-blue-600" },
+                  {
+                    name: "Electronic",
+                    color: "from-purple-500 to-purple-600",
+                  },
+                  { name: "Hip Hop", color: "from-yellow-500 to-yellow-600" },
+                  { name: "Jazz", color: "from-green-500 to-green-600" },
+                  { name: "R&B", color: "from-indigo-500 to-indigo-600" },
+                  { name: "Metal", color: "from-gray-500 to-gray-600" },
+                  { name: "Cumbia", color: "from-teal-500 to-teal-600" },
+                ].map((genre) => (
                   <button
-                    key={genre}
-                    onClick={() => handleSearch(genre)}
-                    className="px-4 py-2 bg-neutral-800 rounded-full text-sm hover:bg-neutral-700 transition-colors"
+                    key={genre.name}
+                    onClick={() => handleSearch(genre.name)}
+                    className={`px-6 py-4 bg-linear-to-br ${genre.color} rounded-xl text-white font-semibold hover:scale-105 transition-all shadow-lg hover:shadow-xl`}
                   >
-                    {genre}
+                    {genre.name}
                   </button>
-                )
-              )}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modal de comentarios */}
       {selectedSongForComments && (

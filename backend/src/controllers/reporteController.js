@@ -1,5 +1,10 @@
 // src/controllers/reporteController.js
 import { Reporte } from "../models/reporteModels.js";
+import { Usuario } from "../models/usuarioModels.js";
+import { Cancion } from "../models/cancionModels.js";
+import { Album } from "../models/albumModels.js";
+import { Playlist } from "../models/playlistModels.js";
+import { Comentario } from "../models/comentarioModels.js";
 import {
   sendSuccess,
   sendError,
@@ -24,6 +29,82 @@ export const crearReporte = async (req, res) => {
       return sendValidationError(res, errors);
     }
 
+    // Validar que el usuario no se reporte a sí mismo ni su propio contenido
+    let esPropietario = false;
+
+    try {
+      switch (tipoContenido) {
+        case "usuario":
+          // No puede reportarse a sí mismo
+          if (contenidoId === req.userId) {
+            return sendError(res, "No puedes reportarte a ti mismo", 400);
+          }
+          break;
+
+        case "cancion":
+          const cancion = await Cancion.findById(contenidoId).select(
+            "artistas"
+          );
+          if (!cancion) {
+            return sendNotFound(res, "Canción no encontrada");
+          }
+          esPropietario = cancion.artistas.some(
+            (artistaId) => artistaId.toString() === req.userId
+          );
+          if (esPropietario) {
+            return sendError(res, "No puedes reportar tu propia canción", 400);
+          }
+          break;
+
+        case "album":
+          const album = await Album.findById(contenidoId).select("artistas");
+          if (!album) {
+            return sendNotFound(res, "Álbum no encontrado");
+          }
+          esPropietario = album.artistas.some(
+            (artistaId) => artistaId.toString() === req.userId
+          );
+          if (esPropietario) {
+            return sendError(res, "No puedes reportar tu propio álbum", 400);
+          }
+          break;
+
+        case "playlist":
+          const playlist = await Playlist.findById(contenidoId).select(
+            "creador"
+          );
+          if (!playlist) {
+            return sendNotFound(res, "Playlist no encontrada");
+          }
+          if (playlist.creador.toString() === req.userId) {
+            return sendError(res, "No puedes reportar tu propia playlist", 400);
+          }
+          break;
+
+        case "comentario":
+          const comentario = await Comentario.findById(contenidoId).select(
+            "autor"
+          );
+          if (!comentario) {
+            return sendNotFound(res, "Comentario no encontrado");
+          }
+          if (comentario.autor.toString() === req.userId) {
+            return sendError(
+              res,
+              "No puedes reportar tu propio comentario",
+              400
+            );
+          }
+          break;
+
+        default:
+          return sendError(res, "Tipo de contenido no válido", 400);
+      }
+    } catch (validationError) {
+      console.error("Error al validar propietario:", validationError);
+      return sendError(res, "Error al validar el contenido", 400);
+    }
+
     // Verificar si ya existe un reporte pendiente del mismo usuario para el mismo contenido
     const reporteExistente = await Reporte.findOne({
       reportadoPor: req.userId,
@@ -40,12 +121,38 @@ export const crearReporte = async (req, res) => {
       );
     }
 
+    // Obtener SOLO administradores regulares (NO super_admin) para distribuir equitativamente
+    // El super_admin solo supervisa y gestiona a los admins, no modera reportes directamente
+    const admins = await Usuario.find({
+      role: "admin", // Solo admins regulares, NO super_admin
+      estaActivo: true,
+    }).select("_id");
+
+    let asignadoA = null;
+    if (admins.length > 0) {
+      // Contar reportes pendientes/en_revision por cada admin
+      const adminConMenosReportes = await Promise.all(
+        admins.map(async (admin) => {
+          const count = await Reporte.countDocuments({
+            asignadoA: admin._id,
+            estado: { $in: ["pendiente", "en_revision"] },
+          });
+          return { adminId: admin._id, count };
+        })
+      );
+
+      // Asignar al admin con menos reportes activos
+      adminConMenosReportes.sort((a, b) => a.count - b.count);
+      asignadoA = adminConMenosReportes[0].adminId;
+    }
+
     const reporte = await Reporte.create({
       reportadoPor: req.userId,
       tipoContenido,
       contenidoId,
       motivo,
       descripcion: descripcion?.trim() || "",
+      asignadoA,
     });
 
     return sendCreated(res, {

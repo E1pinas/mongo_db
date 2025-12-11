@@ -44,6 +44,10 @@ const reporteSchema = new Schema(
       enum: ["baja", "media", "alta", "urgente"],
       default: "media",
     },
+    asignadoA: {
+      type: Schema.Types.ObjectId,
+      ref: "Usuario",
+    },
     resolucion: {
       accion: {
         type: String,
@@ -58,7 +62,7 @@ const reporteSchema = new Schema(
       nota: String,
       resueltoPor: {
         type: Schema.Types.ObjectId,
-        ref: "Admin",
+        ref: "Usuario",
       },
       fechaResolucion: Date,
     },

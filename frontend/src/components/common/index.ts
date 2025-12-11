@@ -6,3 +6,4 @@ export { default as SectionHeader } from "./SectionHeader";
 export { default as MediaGrid } from "./MediaGrid";
 export { default as QuickAccessCard } from "./QuickAccessCard";
 export { default as PlaceholderCard } from "./PlaceholderCard";
+export { default as ConfirmModal } from "./ConfirmModal";

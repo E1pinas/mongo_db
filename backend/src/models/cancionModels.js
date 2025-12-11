@@ -97,10 +97,29 @@ const cancionSchema = new Schema(
       },
     ],
 
-    // Borrado lógico (por si la “eliminan”)
+    // Borrado lógico (por si la "eliminan")
     estaEliminada: {
       type: Boolean,
       default: false,
+    },
+
+    // Moderación - canción oculta (no se puede reproducir pero existe)
+    oculta: {
+      type: Boolean,
+      default: false,
+    },
+    razonOculta: {
+      type: String,
+      default: null,
+    },
+    ocultadaPor: {
+      type: Schema.Types.ObjectId,
+      ref: "Usuario",
+      default: null,
+    },
+    fechaOculta: {
+      type: Date,
+      default: null,
     },
   },
   {

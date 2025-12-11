@@ -31,44 +31,90 @@ export default function LikedArtists() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-900/20 via-neutral-900 to-neutral-900">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-purple-600/40 to-transparent p-8 pb-6">
-        <div className="flex items-end gap-6">
-          <div className="w-56 h-56 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-2xl">
-            <Music size={80} className="text-white" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold mb-2">COLECCIÓN</p>
-            <h1 className="text-6xl font-black mb-6">Artistas que sigo</h1>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-semibold">
-                {artistas.length}{" "}
-                {artistas.length === 1 ? "artista" : "artistas"}
-              </span>
+    <div className="min-h-screen bg-linear-to-b from-neutral-900 via-black to-black">
+      {/* Header con diseño único */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl" />
+        <div className="relative px-6 pt-8 pb-12">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+              <User size={32} className="text-white" />
             </div>
+            <div>
+              <p className="text-sm text-blue-400 font-semibold mb-1">
+                TU COLECCIÓN
+              </p>
+              <h1 className="text-5xl font-black bg-linear-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                Artistas
+              </h1>
+            </div>
+          </div>
+
+          <div className="px-4 py-2 bg-neutral-800/50 backdrop-blur-sm rounded-full text-sm inline-block">
+            <span className="text-neutral-400">Siguiendo:</span>
+            <span className="ml-2 font-bold text-white">
+              {artistas.length} {artistas.length === 1 ? "artista" : "artistas"}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Grid de artistas */}
-      <div className="px-8 py-6">
+      <div className="px-6 pb-20">
         {artistas.length === 0 ? (
-          <EmptyState
-            icon={User}
-            title="No sigues a ningún artista"
-            description="Sigue a artistas que te gusten para verlos aquí"
-          />
+          <div className="text-center py-20">
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-linear-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center">
+              <User size={48} className="text-blue-400" />
+            </div>
+            <h3 className="text-2xl font-bold mb-2">
+              No sigues a ningún artista
+            </h3>
+            <p className="text-neutral-400">
+              Sigue a artistas que te gusten para verlos aquí
+            </p>
+          </div>
         ) : (
-          <MediaGrid>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {artistas.map((artista) => (
-              <ArtistCard
+              <div
                 key={artista._id}
-                artist={artista}
-                onClick={() => navigate(`/profile/${artista.nick}`)}
-              />
+                onClick={() => navigate(`/perfil/${artista.nick}`)}
+                className="group cursor-pointer text-center"
+              >
+                <div className="relative w-full aspect-square rounded-full overflow-hidden mb-3 bg-neutral-900 mx-auto ring-2 ring-neutral-800 group-hover:ring-blue-500 transition-all">
+                  <img
+                    src={artista.avatarUrl || "/avatar.png"}
+                    alt={artista.nombreArtistico || artista.nick}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <h3 className="font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
+                    {artista.nombreArtistico || artista.nick}
+                  </h3>
+                  {artista.verificado && (
+                    <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+                      <svg
+                        className="w-2.5 h-2.5 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-500 truncate">
+                  @{artista.nick}
+                </p>
+              </div>
             ))}
-          </MediaGrid>
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { Play } from "lucide-react";
 import type { Playlist, Usuario } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -15,6 +16,8 @@ export default function PlaylistCard({
   onClick,
   onPlay,
 }: PlaylistCardProps) {
+  const { user } = useAuth();
+
   const getCreatorName = () => {
     if (!playlist.creador) return "Desconocido";
 
@@ -23,6 +26,12 @@ export default function PlaylistCard({
     }
 
     const creador = playlist.creador as Usuario;
+
+    // Si el usuario actual es el creador, mostrar "Tú"
+    if (user && creador._id === user._id) {
+      return "Tú";
+    }
+
     return creador.nombreArtistico || creador.nick || creador.nombre;
   };
 
@@ -40,21 +49,11 @@ export default function PlaylistCard({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <svg
-                className="w-12 h-12 text-neutral-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                />
-              </svg>
-            </div>
+            <img
+              src="/cover.jpg"
+              alt={playlist.titulo}
+              className="w-full h-full object-cover opacity-50"
+            />
           )}
         </div>
         {onPlay && (
@@ -67,8 +66,8 @@ export default function PlaylistCard({
         )}
       </div>
       <p className="font-semibold text-sm mb-2 truncate">{playlist.titulo}</p>
-      <p className="text-xs text-neutral-400 line-clamp-2">
-        {playlist.descripcion || `Por ${getCreatorName()}`}
+      <p className="text-xs text-neutral-400 truncate">
+        Por {getCreatorName()}
       </p>
     </div>
   );

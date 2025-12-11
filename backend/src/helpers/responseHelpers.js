@@ -5,7 +5,7 @@
 /**
  * Respuesta exitosa estándar
  * @param {Object} res - Objeto response de Express
- * @param {Object} data - Datos a devolver
+ * @param {Object} data - Datos a devolver (debe ser un objeto con las propiedades específicas)
  * @param {string} message - Mensaje opcional
  * @param {number} statusCode - Código de estado HTTP (default: 200)
  */
@@ -20,8 +20,15 @@ export const sendSuccess = (
     success: true,
   };
 
+  // Si data es un objeto, hacer spread para incluir todas sus propiedades
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    Object.assign(response, data);
+  } else if (data !== null) {
+    // Si no es un objeto, guardarlo como 'data'
+    response.data = data;
+  }
+
   if (message) response.message = message;
-  if (data !== null) response.data = data;
 
   return res.status(statusCode).json(response);
 };

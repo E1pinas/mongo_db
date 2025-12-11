@@ -49,10 +49,21 @@ export const followerService = {
   async getFollowing(usuarioId: string): Promise<any[]> {
     try {
       const response = await api.get<any>(`/seguidores/seguidos/${usuarioId}`);
-      return response.data.seguidos || [];
+      return response.data.siguiendo || [];
     } catch (error: any) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);
+    }
+  },
+
+  // Obtener usuarios sugeridos para seguir
+  async getSuggestedUsers(): Promise<any[]> {
+    try {
+      const response = await api.get<any>("/seguidores/sugeridos");
+      return response.data.usuarios || [];
+    } catch (error: any) {
+      console.error("Error getting suggested users:", error);
+      return [];
     }
   },
 };

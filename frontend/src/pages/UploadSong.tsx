@@ -1,7 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import { musicService } from "../services/music.service";
 import { formatDuration } from "../utils/formatHelpers";
+import { Ban } from "lucide-react";
 
 const GENEROS = [
   "rock",
@@ -18,6 +20,7 @@ const GENEROS = [
 
 export default function UploadSong() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const audioInputRef = useRef<HTMLInputElement>(null);
   const portadaInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -25,6 +28,14 @@ export default function UploadSong() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showSuspendedModal, setShowSuspendedModal] = useState(false);
+
+  // Verificar si el usuario está suspendido
+  useEffect(() => {
+    if (user && (user as any).suspendido) {
+      setShowSuspendedModal(true);
+    }
+  }, [user]);
 
   const [formData, setFormData] = useState({
     titulo: "",
@@ -151,70 +162,16 @@ export default function UploadSong() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Subir Canción</h1>
-        <p className="text-neutral-400">Comparte tu música con el mundo</p>
-      </div>
-
-      {success && (
-        <div className="mb-6 p-4 bg-green-500/20 border border-green-500 rounded-lg">
-          <p className="text-green-400 font-semibold">
-            ✓ Canción subida correctamente
-          </p>
-          <p className="text-sm text-neutral-300 mt-1">Redirigiendo...</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg">
-          <p className="text-red-400">{error}</p>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Archivo de Audio */}
-        <div>
-          <label className="block text-sm font-semibold mb-2">
-            Archivo de Audio <span className="text-red-400">*</span>
-          </label>
-          <div
-            onClick={() => audioInputRef.current?.click()}
-            className="border-2 border-dashed border-neutral-700 rounded-lg p-8 text-center cursor-pointer hover:border-neutral-500 transition-colors"
-          >
-            <input
-              ref={audioInputRef}
-              type="file"
-              accept="audio/*"
-              onChange={handleAudioChange}
-              className="hidden"
-            />
-            {audioFile ? (
-              <div>
-                <p className="text-green-400 font-semibold mb-2">
-                  ✓ {audioFile.name}
-                </p>
-                <p className="text-sm text-neutral-400">
-                  {(audioFile.size / (1024 * 1024)).toFixed(2)} MB
-                </p>
-                {duracionSegundos > 0 && (
-                  <p className="text-sm text-neutral-400 mt-1">
-                    Duración: {formatDuration(duracionSegundos)}
-                  </p>
-                )}
-                {audioPreview && (
-                  <audio
-                    ref={audioRef}
-                    src={audioPreview}
-                    controls
-                    className="mt-4 w-full max-w-md mx-auto"
-                  />
-                )}
-              </div>
-            ) : (
-              <div>
+    <div className="min-h-screen bg-linear-to-b from-neutral-900 via-black to-black">
+      <div className="max-w-5xl mx-auto p-6 pb-24">
+        {/* Header con gradiente */}
+        <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 p-8 mb-8 border border-white/10">
+          <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 to-purple-500/5 blur-3xl" />
+          <div className="relative">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
                 <svg
-                  className="w-12 h-12 mx-auto mb-4 text-neutral-500"
+                  className="w-8 h-8 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -223,59 +180,280 @@ export default function UploadSong() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                   />
                 </svg>
-                <p className="text-neutral-300 font-semibold">
-                  Click para seleccionar un archivo de audio
-                </p>
-                <p className="text-sm text-neutral-500 mt-2">
-                  MP3, WAV, FLAC, AAC, OGG (Máx. 50MB)
+              </div>
+              <div>
+                <h1 className="text-4xl font-black bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Subir Canción
+                </h1>
+                <p className="text-neutral-400 mt-1">
+                  Comparte tu música con el mundo
                 </p>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* Portada (opcional) */}
-        <div>
-          <label className="block text-sm font-semibold mb-2">
-            Portada (opcional)
-          </label>
-          <div className="flex items-start gap-4">
+        {success && (
+          <div className="mb-6 p-5 bg-green-500/10 border border-green-500/50 rounded-xl backdrop-blur-sm animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                <svg
+                  className="w-5 h-5 text-green-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-green-400 font-semibold">
+                  ✓ Canción subida correctamente
+                </p>
+                <p className="text-sm text-neutral-400 mt-0.5">
+                  Redirigiendo a tus canciones...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 p-5 bg-red-500/10 border border-red-500/50 rounded-xl backdrop-blur-sm animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                <svg
+                  className="w-5 h-5 text-red-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </div>
+              <p className="text-red-400">{error}</p>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Archivo de Audio */}
+          <div className="bg-neutral-900/50 backdrop-blur-sm rounded-xl p-6 border border-neutral-800">
+            <label className="block text-sm font-bold mb-3 text-blue-400">
+              Archivo de Audio <span className="text-red-400">*</span>
+            </label>
             <div
-              onClick={() => portadaInputRef.current?.click()}
-              className="border-2 border-dashed border-neutral-700 rounded-lg p-4 cursor-pointer hover:border-neutral-500 transition-colors flex-1"
+              onClick={() => audioInputRef.current?.click()}
+              className="group relative border-2 border-dashed border-neutral-700 hover:border-blue-500/50 rounded-xl p-10 text-center cursor-pointer transition-all hover:bg-blue-500/5"
             >
               <input
-                ref={portadaInputRef}
+                ref={audioInputRef}
                 type="file"
-                accept="image/*"
-                onChange={handlePortadaChange}
+                accept="audio/*"
+                onChange={handleAudioChange}
                 className="hidden"
               />
-              {portadaFile ? (
-                <div className="flex items-center gap-4">
-                  {portadaPreview && (
-                    <img
-                      src={portadaPreview}
-                      alt="Preview"
-                      className="w-20 h-20 rounded object-cover"
-                    />
-                  )}
+              {audioFile ? (
+                <div className="space-y-4">
+                  <div className="w-20 h-20 mx-auto rounded-2xl bg-linear-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/25">
+                    <svg
+                      className="w-10 h-10 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                  </div>
                   <div>
-                    <p className="text-green-400 font-semibold">
+                    <p className="text-green-400 font-semibold text-lg">
+                      ✓ {audioFile.name}
+                    </p>
+                    <div className="flex items-center justify-center gap-4 mt-2 text-sm text-neutral-400">
+                      <span>
+                        {(audioFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </span>
+                      {duracionSegundos > 0 && (
+                        <>
+                          <span>•</span>
+                          <span>{formatDuration(duracionSegundos)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {audioPreview && (
+                    <div className="mt-6">
+                      <audio
+                        ref={audioRef}
+                        src={audioPreview}
+                        controls
+                        className="w-full max-w-md mx-auto rounded-lg"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-linear-to-br from-neutral-800 to-neutral-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <svg
+                      className="w-10 h-10 text-neutral-400 group-hover:text-blue-400 transition-colors"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-white font-semibold text-lg mb-2 group-hover:text-blue-400 transition-colors">
+                    Click para seleccionar un archivo de audio
+                  </p>
+                  <p className="text-sm text-neutral-500">
+                    MP3, WAV, FLAC, AAC, OGG (Máx. 50MB)
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Portada (opcional) */}
+          <div className="bg-neutral-900/50 backdrop-blur-sm rounded-xl p-6 border border-neutral-800">
+            <label className="block text-sm font-bold mb-3 text-purple-400">
+              Portada (opcional)
+            </label>
+            <div className="flex items-center gap-6">
+              {portadaPreview && (
+                <div className="w-32 h-32 rounded-xl overflow-hidden shrink-0 border-2 border-purple-500/30 shadow-lg shadow-purple-500/10">
+                  <img
+                    src={portadaPreview}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <div
+                onClick={() => portadaInputRef.current?.click()}
+                className="group flex-1 border-2 border-dashed border-neutral-700 hover:border-purple-500/50 rounded-xl p-6 cursor-pointer transition-all hover:bg-purple-500/5"
+              >
+                <input
+                  ref={portadaInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePortadaChange}
+                  className="hidden"
+                />
+                {portadaFile ? (
+                  <div>
+                    <p className="text-green-400 font-semibold mb-1">
                       ✓ {portadaFile.name}
                     </p>
                     <p className="text-sm text-neutral-400">
                       {(portadaFile.size / 1024).toFixed(2)} KB
                     </p>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center">
+                ) : (
+                  <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-3 rounded-xl bg-linear-to-br from-neutral-800 to-neutral-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <svg
+                        className="w-8 h-8 text-neutral-400 group-hover:text-purple-400 transition-colors"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-white font-medium mb-1 group-hover:text-purple-400 transition-colors">
+                      Click para subir imagen
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      JPG, PNG, WebP (Máx. 5MB)
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Título */}
+          <div className="bg-neutral-900/50 backdrop-blur-sm rounded-xl p-6 border border-neutral-800">
+            <label className="block text-sm font-bold mb-3 text-pink-400">
+              Título <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.titulo}
+              onChange={(e) =>
+                setFormData({ ...formData, titulo: e.target.value })
+              }
+              placeholder="Nombre de tu canción"
+              className="w-full px-5 py-4 bg-neutral-800/80 border-2 border-neutral-700 rounded-xl focus:outline-none focus:border-pink-500 focus:bg-neutral-800 transition-all text-lg"
+              maxLength={150}
+            />
+            <p className="text-xs text-neutral-500 mt-2">
+              {formData.titulo.length}/150 caracteres
+            </p>
+          </div>
+
+          {/* Géneros */}
+          <div className="bg-neutral-900/50 backdrop-blur-sm rounded-xl p-6 border border-neutral-800">
+            <label className="block text-sm font-bold mb-4 text-orange-400">
+              Géneros
+            </label>
+            <div className="flex flex-wrap gap-3">
+              {GENEROS.map((genero) => (
+                <button
+                  key={genero}
+                  type="button"
+                  onClick={() => handleGenreToggle(genero)}
+                  className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all hover:scale-105 ${
+                    formData.generos.includes(genero)
+                      ? "bg-linear-to-r from-orange-500 to-pink-500 text-white shadow-lg shadow-orange-500/25"
+                      : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border border-neutral-700"
+                  }`}
+                >
+                  {genero}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Opciones */}
+          <div className="bg-neutral-900/50 backdrop-blur-sm rounded-xl p-6 border border-neutral-800 space-y-4">
+            <label className="group flex items-start gap-4 cursor-pointer p-4 rounded-xl hover:bg-neutral-800/50 transition-all">
+              <input
+                type="checkbox"
+                checked={formData.esPrivada}
+                onChange={(e) =>
+                  setFormData({ ...formData, esPrivada: e.target.checked })
+                }
+                className="w-5 h-5 mt-1 rounded bg-neutral-800 border-neutral-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
                   <svg
-                    className="w-8 h-8 mx-auto mb-2 text-neutral-500"
+                    className="w-5 h-5 text-blue-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -284,115 +462,126 @@ export default function UploadSong() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                     />
                   </svg>
-                  <p className="text-sm text-neutral-300">
-                    Click para subir imagen
+                  <span className="font-bold text-white">Canción Privada</span>
+                </div>
+                <p className="text-sm text-neutral-400">
+                  Solo tú podrás ver y reproducir esta canción
+                </p>
+              </div>
+            </label>
+
+            <label className="group flex items-start gap-4 cursor-pointer p-4 rounded-xl hover:bg-neutral-800/50 transition-all">
+              <input
+                type="checkbox"
+                checked={formData.esExplicita}
+                onChange={(e) =>
+                  setFormData({ ...formData, esExplicita: e.target.checked })
+                }
+                className="w-5 h-5 mt-1 rounded bg-neutral-800 border-neutral-600 focus:ring-2 focus:ring-red-500 cursor-pointer"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-bold text-red-500 bg-red-500/20 px-2 py-1 rounded">
+                    E
+                  </span>
+                  <span className="font-bold text-white">
+                    Contenido Explícito
+                  </span>
+                </div>
+                <p className="text-sm text-neutral-400">
+                  Marca si contiene lenguaje o temas para adultos (+18)
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Botones */}
+          <div className="flex gap-4 pt-6">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              disabled={uploading}
+              className="px-8 py-4 rounded-xl font-bold bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={uploading || !audioFile || !formData.titulo.trim()}
+              className="flex-1 px-8 py-4 rounded-xl font-bold bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-blue-500/25"
+            >
+              {uploading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    className="animate-spin w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Subiendo...
+                </span>
+              ) : (
+                "Subir Canción"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Modal de cuenta suspendida */}
+      {showSuspendedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-700">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="bg-yellow-600/20 p-3 rounded-full">
+                <Ban className="w-6 h-6 text-yellow-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Tu cuenta está suspendida
+                </h3>
+                <p className="text-gray-300 mb-3">
+                  No puedes subir contenido mientras tu cuenta esté suspendida.
+                </p>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                  <p className="text-sm text-gray-400 mb-1">
+                    Razón de la suspensión:
                   </p>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    JPG, PNG, WebP (Máx. 5MB)
+                  <p className="text-yellow-400 font-medium">
+                    {(user as any)?.razonSuspension ||
+                      "Violación de normas comunitarias"}
                   </p>
                 </div>
-              )}
+              </div>
             </div>
+            <button
+              onClick={() => {
+                setShowSuspendedModal(false);
+                navigate("/", { replace: true });
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+            >
+              Aceptar
+            </button>
           </div>
         </div>
-
-        {/* Título */}
-        <div>
-          <label className="block text-sm font-semibold mb-2">
-            Título <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            value={formData.titulo}
-            onChange={(e) =>
-              setFormData({ ...formData, titulo: e.target.value })
-            }
-            placeholder="Nombre de tu canción"
-            className="w-full px-4 py-3 bg-neutral-800/60 border border-neutral-700 rounded-lg focus:outline-none focus:border-blue-400 transition-colors"
-            maxLength={150}
-          />
-        </div>
-
-        {/* Géneros */}
-        <div>
-          <label className="block text-sm font-semibold mb-3">Géneros</label>
-          <div className="flex flex-wrap gap-2">
-            {GENEROS.map((genero) => (
-              <button
-                key={genero}
-                type="button"
-                onClick={() => handleGenreToggle(genero)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  formData.generos.includes(genero)
-                    ? "bg-blue-500 text-white"
-                    : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                }`}
-              >
-                {genero}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Opciones */}
-        <div className="space-y-3">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.esPrivada}
-              onChange={(e) =>
-                setFormData({ ...formData, esPrivada: e.target.checked })
-              }
-              className="w-5 h-5 rounded bg-neutral-800 border-neutral-700 focus:ring-blue-400"
-            />
-            <div>
-              <span className="font-semibold">Canción Privada</span>
-              <p className="text-sm text-neutral-400">
-                Solo tú podrás ver y reproducir esta canción
-              </p>
-            </div>
-          </label>
-
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.esExplicita}
-              onChange={(e) =>
-                setFormData({ ...formData, esExplicita: e.target.checked })
-              }
-              className="w-5 h-5 rounded bg-neutral-800 border-neutral-700 focus:ring-blue-400"
-            />
-            <div>
-              <span className="font-semibold">Contenido Explícito</span>
-              <p className="text-sm text-neutral-400">
-                Marca si contiene lenguaje o temas para adultos (+18)
-              </p>
-            </div>
-          </label>
-        </div>
-
-        {/* Botones */}
-        <div className="flex gap-4 pt-4">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            disabled={uploading}
-            className="px-6 py-3 rounded-lg font-semibold bg-neutral-800 hover:bg-neutral-700 transition-colors disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={uploading || !audioFile || !formData.titulo.trim()}
-            className="flex-1 px-6 py-3 rounded-lg font-semibold bg-blue-500 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {uploading ? "Subiendo..." : "Subir Canción"}
-          </button>
-        </div>
-      </form>
+      )}
     </div>
   );
 }

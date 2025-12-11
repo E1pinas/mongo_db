@@ -8,9 +8,6 @@ import {
   Repeat1,
   Volume2,
   VolumeX,
-  Mic2,
-  ListMusic,
-  Maximize2,
   Heart,
   Disc3,
   Flag,
@@ -75,6 +72,11 @@ export default function PlayerBar() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showOwnSongModal, setShowOwnSongModal] = useState(false);
 
+  // Verificar si el usuario es propietario de la canción actual
+  const isOwnSong = currentSong?.artistas?.some(
+    (artista: any) => artista._id === user?._id || artista === user?._id
+  );
+
   // Sincronizar el estado de like con la canción actual
   useEffect(() => {
     if (user && currentSong?.likes) {
@@ -83,6 +85,41 @@ export default function PlayerBar() {
       setIsLiked(false);
     }
   }, [currentSong, currentSong?.likes, user]);
+
+  // Agregar listener para la tecla Espacio
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Verificar si la tecla presionada es Espacio
+      if (e.code !== "Space") return;
+
+      // Verificar si el usuario está escribiendo en un input, textarea o elemento editable
+      const target = e.target as HTMLElement;
+      const isInputField =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable ||
+        target.getAttribute("role") === "textbox";
+
+      // Si está en un campo de texto, no hacer nada
+      if (isInputField) return;
+
+      // Prevenir el scroll de la página al presionar Espacio
+      e.preventDefault();
+
+      // Alternar reproducción/pausa
+      if (currentSong) {
+        togglePlay();
+      }
+    };
+
+    // Agregar el event listener
+    window.addEventListener("keydown", handleKeyPress);
+
+    // Limpiar el event listener al desmontar
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [currentSong, togglePlay]);
 
   const handleToggleLike = async () => {
     if (!currentSong || !user) return;
@@ -147,231 +184,268 @@ export default function PlayerBar() {
     if (!currentContext) return;
 
     if (currentContext.type === "album") {
-      navigate(`/albums/${currentContext.id}`);
+      navigate(`/album/${currentContext.id}`);
     } else if (currentContext.type === "playlist") {
-      navigate(`/playlists/${currentContext.id}`);
+      // Si es la playlist especial de favoritos
+      if (currentContext.id === "liked-songs") {
+        navigate("/canciones-favoritas");
+      } else {
+        navigate(`/playlist/${currentContext.id}`);
+      }
     }
   };
   return (
-    <footer className="h-24 bg-black border-t border-neutral-800 px-4 flex items-center gap-4 shrink-0">
-      {/* IZQUIERDA - Información de la canción */}
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        {currentSong ? (
-          <>
-            {/* Thumbnail */}
-            <div className="w-14 h-14 bg-neutral-700 rounded shrink-0 overflow-hidden">
-              <img
-                src={currentSong.portadaUrl || "/cover.jpg"}
-                alt={currentSong.titulo}
-                className="w-full h-full object-cover"
-              />
-            </div>
+    <>
+      <footer className="h-28 bg-linear-to-t from-neutral-900 via-black to-black border-t border-neutral-800/50 px-6 flex items-center gap-6 shrink-0 backdrop-blur-xl">
+        {/* IZQUIERDA - Información de la canción */}
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          {currentSong ? (
+            <>
+              {/* Thumbnail con hover effect */}
+              <div className="relative w-16 h-16 bg-neutral-700 rounded-lg shrink-0 overflow-hidden group shadow-lg">
+                <img
+                  src={currentSong.portadaUrl || "/cover.jpg"}
+                  alt={currentSong.titulo}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+              </div>
 
-            {/* Info */}
-            <div className="overflow-hidden min-w-0 hidden sm:block">
-              <p className="text-sm font-medium truncate">
-                {currentSong.titulo}
-                {currentSong.esExplicita && (
-                  <span className="ml-2 text-xs bg-neutral-700 px-1.5 py-0.5 rounded">
-                    E
-                  </span>
-                )}
-              </p>
-              <p className="text-xs text-neutral-400 truncate">
-                {currentSong.artistas && currentSong.artistas.length > 0
-                  ? typeof currentSong.artistas[0] === "string"
-                    ? "Artista"
-                    : (currentSong.artistas[0] as any)?.nombreArtistico ||
-                      (currentSong.artistas[0] as any)?.nick ||
-                      (currentSong.artistas[0] as any)?.nombre ||
-                      "Artista desconocido"
-                  : "Artista desconocido"}
-              </p>
-              {currentContext && (
+              {/* Info */}
+              <div className="overflow-hidden min-w-0 hidden sm:block flex-1">
                 <button
-                  onClick={handleGoToContext}
-                  className="text-xs text-neutral-500 hover:text-white hover:underline transition-colors flex items-center gap-1 w-fit mt-0.5"
-                  title={`Ir a ${
-                    currentContext.type === "album" ? "álbum" : "playlist"
-                  }`}
+                  onClick={() => {
+                    // Navegar al álbum si existe, si no al single
+                    if (
+                      currentSong.album &&
+                      typeof currentSong.album === "object"
+                    ) {
+                      navigate(`/album/${currentSong.album._id}`);
+                    } else if (
+                      currentSong.album &&
+                      typeof currentSong.album === "string"
+                    ) {
+                      navigate(`/album/${currentSong.album}`);
+                    }
+                  }}
+                  className="text-base font-bold truncate text-white hover:underline cursor-pointer text-left w-full block"
                 >
-                  <Disc3 size={12} />
-                  <span className="truncate">{currentContext.name}</span>
+                  {currentSong.titulo}
+                  {currentSong.esExplicita && (
+                    <span className="ml-2 text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-semibold border border-red-500/30">
+                      E
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => {
+                    // Navegar al perfil del artista
+                    if (
+                      currentSong.artistas &&
+                      currentSong.artistas.length > 0
+                    ) {
+                      const artista = currentSong.artistas[0];
+                      if (typeof artista !== "string") {
+                        navigate(`/perfil/${artista.nick}`);
+                      }
+                    }
+                  }}
+                  className="text-xs text-neutral-400 hover:text-white hover:underline truncate cursor-pointer text-left w-full block"
+                >
+                  {currentSong.artistas && currentSong.artistas.length > 0
+                    ? typeof currentSong.artistas[0] === "string"
+                      ? "Artista"
+                      : (currentSong.artistas[0] as any)?.nombreArtistico ||
+                        (currentSong.artistas[0] as any)?.nick ||
+                        (currentSong.artistas[0] as any)?.nombre ||
+                        "Artista desconocido"
+                    : "Artista desconocido"}
+                </button>
+                {currentContext && (
+                  <button
+                    onClick={handleGoToContext}
+                    className="text-xs text-neutral-500 hover:text-green-400 hover:underline transition-colors flex items-center gap-1.5 w-fit mt-1 font-medium"
+                    title={`Ir a ${
+                      currentContext.type === "album"
+                        ? "álbum"
+                        : currentContext.id === "liked-songs"
+                        ? "canciones favoritas"
+                        : "playlist"
+                    }`}
+                  >
+                    <Disc3 size={14} className="text-green-500" />
+                    <span className="truncate">{currentContext.name}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Botón like mejorado */}
+              <button
+                onClick={handleToggleLike}
+                className={`p-2.5 rounded-full transition-all hidden md:flex items-center justify-center hover:scale-110 ${
+                  isLiked
+                    ? "bg-orange-500/20 text-orange-500"
+                    : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-orange-500"
+                }`}
+                title={isLiked ? "Quitar de me gusta" : "Me gusta"}
+              >
+                <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
+              </button>
+
+              {/* Botón reportar mejorado - Solo mostrar si NO es canción propia */}
+              {!isOwnSong && (
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="p-2.5 rounded-full bg-neutral-800 text-neutral-400 hover:bg-red-500/20 hover:text-red-400 transition-all hidden md:flex items-center justify-center hover:scale-110"
+                  title="Reportar canción"
+                >
+                  <Flag size={18} />
                 </button>
               )}
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 bg-neutral-700 rounded shrink-0" />
+              <div className="hidden sm:block">
+                <p className="text-sm text-neutral-400">
+                  No hay canción reproduciéndose
+                </p>
+              </div>
             </div>
-
-            {/* Botón like */}
-            <button
-              onClick={handleToggleLike}
-              className={`p-2 transition-colors hidden md:block ${
-                isLiked
-                  ? "text-orange-500"
-                  : "text-neutral-400 hover:text-orange-500"
-              }`}
-              title={isLiked ? "Quitar de me gusta" : "Me gusta"}
-            >
-              <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
-            </button>
-
-            {/* Botón reportar */}
-            <button
-              onClick={() => setShowReportModal(true)}
-              className="p-2 text-neutral-400 hover:text-red-500 transition-colors hidden md:block"
-              title="Reportar canción"
-            >
-              <Flag size={16} />
-            </button>
-          </>
-        ) : (
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 bg-neutral-700 rounded shrink-0" />
-            <div className="hidden sm:block">
-              <p className="text-sm text-neutral-400">
-                No hay canción reproduciéndose
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* CENTRO - Controles de reproducción */}
-      <div className="flex-1 flex flex-col items-center gap-2 max-w-2xl">
-        {/* Botones de control */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={toggleShuffle}
-            className={`p-2 transition-colors ${
-              shuffle ? "text-green-500" : "text-neutral-400 hover:text-white"
-            }`}
-            title="Shuffle"
-          >
-            <Shuffle size={16} />
-          </button>
-
-          <button
-            onClick={skipPrevious}
-            disabled={!currentSong}
-            className="p-2 hover:text-white text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Anterior"
-          >
-            <SkipBack size={20} />
-          </button>
-
-          <button
-            onClick={togglePlay}
-            disabled={!currentSong}
-            className="p-3 bg-white text-black rounded-full hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-            title={isPlaying ? "Pausar" : "Reproducir"}
-          >
-            {isPlaying ? (
-              <Pause size={20} />
-            ) : (
-              <Play size={20} className="ml-0.5" />
-            )}
-          </button>
-
-          <button
-            onClick={skipNext}
-            disabled={!currentSong}
-            className="p-2 hover:text-white text-neutral-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Siguiente"
-          >
-            <SkipForward size={20} />
-          </button>
-
-          <button
-            onClick={toggleRepeat}
-            className={`p-2 transition-colors ${
-              repeat !== "off"
-                ? "text-green-500"
-                : "text-neutral-400 hover:text-white"
-            }`}
-            title={
-              repeat === "off"
-                ? "Repetir"
-                : repeat === "all"
-                ? "Repetir todo"
-                : "Repetir una"
-            }
-          >
-            {repeat === "one" ? <Repeat1 size={16} /> : <Repeat size={16} />}
-          </button>
+          )}
         </div>
 
-        {/* Barra de progreso */}
-        <div className="flex items-center gap-2 w-full">
-          <span className="text-xs text-neutral-400 w-10 text-right">
-            {formatTime(currentTime)}
-          </span>
-          <div
-            className="flex-1 h-1 bg-neutral-700 rounded-full overflow-hidden group cursor-pointer"
-            onClick={(e) => {
-              if (!currentSong || !duration) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const percentage = x / rect.width;
-              seek(percentage * duration);
-            }}
-          >
+        {/* CENTRO - Controles de reproducción */}
+        <div className="flex-1 flex flex-col items-center gap-3 max-w-2xl">
+          {/* Botones de control */}
+          <div className="flex items-center gap-5">
+            <button
+              onClick={toggleShuffle}
+              className={`p-2 rounded-full transition-all hover:scale-110 ${
+                shuffle
+                  ? "bg-green-500/20 text-green-500"
+                  : "text-neutral-400 hover:text-white hover:bg-white/10"
+              }`}
+              title="Aleatorio"
+            >
+              <Shuffle size={18} />
+            </button>
+
+            <button
+              onClick={skipPrevious}
+              disabled={!currentSong}
+              className="p-2 rounded-full hover:bg-white/10 hover:text-white text-neutral-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110"
+              title="Anterior"
+            >
+              <SkipBack size={22} fill="currentColor" />
+            </button>
+
+            <button
+              onClick={togglePlay}
+              disabled={!currentSong}
+              className="p-4 bg-white text-black rounded-full hover:scale-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-white/20"
+              title={isPlaying ? "Pausar" : "Reproducir"}
+            >
+              {isPlaying ? (
+                <Pause size={24} fill="currentColor" />
+              ) : (
+                <Play size={24} className="ml-1" fill="currentColor" />
+              )}
+            </button>
+
+            <button
+              onClick={skipNext}
+              disabled={!currentSong}
+              className="p-2 rounded-full hover:bg-white/10 hover:text-white text-neutral-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110"
+              title="Siguiente"
+            >
+              <SkipForward size={22} fill="currentColor" />
+            </button>
+
+            <button
+              onClick={toggleRepeat}
+              className={`p-2 rounded-full transition-all hover:scale-110 ${
+                repeat !== "off"
+                  ? "bg-green-500/20 text-green-500"
+                  : "text-neutral-400 hover:text-white hover:bg-white/10"
+              }`}
+              title={
+                repeat === "off"
+                  ? "Repetir"
+                  : repeat === "all"
+                  ? "Repetir todo"
+                  : "Repetir una"
+              }
+            >
+              {repeat === "one" ? <Repeat1 size={18} /> : <Repeat size={18} />}
+            </button>
+          </div>
+
+          {/* Barra de progreso mejorada */}
+          <div className="flex items-center gap-3 w-full">
+            <span className="text-xs text-neutral-400 w-12 text-right font-medium tabular-nums">
+              {formatTime(currentTime)}
+            </span>
             <div
-              className="h-full bg-white group-hover:bg-green-500 transition-colors relative"
-              style={{
-                width: duration ? `${(currentTime / duration) * 100}%` : "0%",
+              className="flex-1 h-1.5 bg-neutral-700/50 rounded-full overflow-hidden group cursor-pointer relative"
+              onClick={(e) => {
+                if (!currentSong || !duration) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const percentage = x / rect.width;
+                seek(percentage * duration);
               }}
             >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div
+                className="h-full bg-linear-to-r from-orange-400 to-orange-500 group-hover:from-orange-500 group-hover:to-orange-600
+ transition-all relative shadow-lg shadow-green-500/50"
+                style={{
+                  width: duration ? `${(currentTime / duration) * 100}%` : "0%",
+                }}
+              >
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </div>
+            <span className="text-xs text-neutral-400 w-12 font-medium tabular-nums">
+              {duration ? formatTime(duration) : "0:00"}
+            </span>
           </div>
-          <span className="text-xs text-neutral-400 w-10">
-            {duration ? formatTime(duration) : "0:00"}
-          </span>
         </div>
-      </div>
 
-      {/* DERECHA - Opciones adicionales */}
-      <div className="flex items-center gap-2 flex-1 justify-end">
-        {/* Botones adicionales */}
-        <button className="p-2 hover:text-white text-neutral-400 transition-colors hidden lg:block">
-          <Mic2 size={18} />
-        </button>
-
-        <button className="p-2 hover:text-white text-neutral-400 transition-colors hidden lg:block">
-          <ListMusic size={18} />
-        </button>
-
-        {/* Control de volumen */}
-        <div className="hidden md:flex items-center gap-2">
-          <button
-            onClick={() => setVolume(volume > 0 ? 0 : 0.75)}
-            className="p-2 hover:text-white text-neutral-400 transition-colors"
-            title={volume > 0 ? "Silenciar" : "Activar sonido"}
-          >
-            {volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
-          </button>
-          <div
-            className="w-24 h-1 bg-neutral-700 rounded-full overflow-hidden group cursor-pointer"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const percentage = x / rect.width;
-              setVolume(percentage);
-            }}
-          >
-            <div
-              className="h-full bg-white group-hover:bg-green-500 transition-colors relative"
-              style={{ width: `${volume * 100}%` }}
+        {/* DERECHA - Control de volumen */}
+        <div className="flex items-center gap-3 flex-1 justify-end">
+          {/* Control de volumen mejorado */}
+          <div className="hidden md:flex items-center gap-3">
+            <button
+              onClick={() => setVolume(volume > 0 ? 0 : 0.75)}
+              className="p-2.5 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-all hover:scale-110"
+              title={volume > 0 ? "Silenciar" : "Activar sonido"}
             >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+              {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </button>
+            <div
+              className="w-28 h-1.5 bg-neutral-700/50 rounded-full overflow-hidden group cursor-pointer relative"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const percentage = x / rect.width;
+                setVolume(percentage);
+              }}
+            >
+              <div
+                className="h-full bg-white group-hover:bg-orange-500 transition-colors relative shadow-lg"
+                style={{ width: `${volume * 100}%` }}
+              >
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </div>
+            <span className="text-xs text-neutral-400 w-10 font-medium tabular-nums">
+              {Math.round(volume * 100)}%
+            </span>
           </div>
         </div>
-
-        {/* Pantalla completa */}
-        <button className="p-2 hover:text-white text-neutral-400 transition-colors hidden xl:block">
-          <Maximize2 size={18} />
-        </button>
-      </div>
+      </footer>
 
       {/* Modal de confirmación para quitar like */}
       {showRemoveLikeModal && (
@@ -430,7 +504,7 @@ export default function PlayerBar() {
               <button
                 onClick={() => {
                   setShowOwnSongModal(false);
-                  navigate(`/profile/${user.nick}`);
+                  if (user?.nick) navigate(`/perfil/${user.nick}`);
                 }}
                 className="flex-1 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors font-medium"
               >
@@ -451,6 +525,6 @@ export default function PlayerBar() {
           nombreContenido={currentSong.titulo}
         />
       )}
-    </footer>
+    </>
   );
 }
