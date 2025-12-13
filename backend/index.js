@@ -39,6 +39,7 @@ import postRoutes from "./src/routes/post.routes.js";
 import adminRoutes from "./src/routes/admin.routes.js";
 import moderacionRoutes from "./src/routes/moderacion.routes.js";
 import presenceRoutes from "./src/routes/presence.routes.js";
+import bloqueoRoutes from "./src/routes/bloqueo.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -110,6 +111,9 @@ app.use("/api/seguidores", seguidorRoutes);
 
 // Rutas de posts/tweets
 app.use("/api/posts", postRoutes);
+
+// Rutas de bloqueos
+app.use("/api/bloqueos", bloqueoRoutes);
 
 // Rutas de administración (solo super_admin)
 app.use("/api/admin", adminRoutes);

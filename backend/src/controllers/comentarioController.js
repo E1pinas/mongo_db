@@ -493,6 +493,38 @@ export const crearComentarioCancion = async (req, res) => {
 
     await comentario.populate("autor", "nick nombre nombreArtistico avatarUrl");
 
+    // ✅ Crear notificación al dueño de la canción
+    const { Cancion } = await import("../models/cancionModels.js");
+    const cancion = await Cancion.findById(cancionDestino).select(
+      "artistas titulo"
+    );
+
+    if (cancion && cancion.artistas && cancion.artistas.length > 0) {
+      const autor = await Usuario.findById(req.userId).select(
+        "nick nombreArtistico"
+      );
+      const nombreAutor = autor?.nombreArtistico || autor?.nick || "Alguien";
+      const tituloCancion = cancion.titulo || "una canción";
+
+      // Notificar a cada artista que no sea el autor del comentario
+      for (const artistaId of cancion.artistas) {
+        const artistaIdStr = artistaId.toString();
+        if (artistaIdStr !== req.userId) {
+          await Notificacion.create({
+            usuarioDestino: artistaId,
+            usuarioOrigen: req.userId,
+            tipo: "comentario_en_perfil",
+            mensaje: `${nombreAutor} comentó tu canción "${tituloCancion}"`,
+            recurso: {
+              tipo: "song",
+              id: cancionDestino,
+              comentarioId: comentario._id,
+            },
+          });
+        }
+      }
+    }
+
     return res.status(201).json({
       ok: true,
       mensaje: "Comentario creado correctamente",

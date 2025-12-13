@@ -11,7 +11,12 @@ dotenv.config();
 async function recalcularEstadisticas() {
   try {
     // Conectar a MongoDB
-    await mongoose.connect(process.env.MONGODB_URI);
+    const mongoUri =
+      process.env.NODE_ENV === "production"
+        ? process.env.MONGODB_URI_PROD
+        : process.env.MONGODB_URI_DEV;
+
+    await mongoose.connect(mongoUri);
     console.log("✅ Conectado a MongoDB");
 
     // Obtener todos los usuarios

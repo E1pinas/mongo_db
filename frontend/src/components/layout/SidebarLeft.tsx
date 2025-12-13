@@ -120,7 +120,7 @@ export default function SidebarLeft({
             >
               <Heart size={20} className="shrink-0" />
               {isOpen && (
-                <span className="text-sm">Canciones que me gustan</span>
+                <span className="text-sm">Favoritas</span>
               )}
             </NavLink>
 

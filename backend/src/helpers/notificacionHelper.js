@@ -100,12 +100,18 @@ export const notificarNuevaCancion = async (cancion, usuarioId) => {
 
       // Recargar la canción desde la base de datos para obtener datos frescos
       const cancionActualizada = await Cancion.findById(cancion._id).select(
-        "titulo"
+        "titulo esPrivada"
       );
       console.log("🔍 Canción recargada desde DB:", cancionActualizada);
 
       if (!cancionActualizada) {
         console.log("⚠️ Canción no encontrada, cancelando notificación");
+        return;
+      }
+
+      // No notificar si la canción es privada
+      if (cancionActualizada.esPrivada) {
+        console.log("🔒 Canción es privada, NO se enviarán notificaciones");
         return;
       }
 
@@ -155,11 +161,17 @@ export const notificarNuevoAlbum = async (album, usuarioId) => {
 
       // Recargar el álbum desde la base de datos para obtener datos frescos
       const albumActualizado = await Album.findById(album._id).select(
-        "titulo canciones"
+        "titulo canciones esPrivado"
       );
 
       if (!albumActualizado) {
         console.log("⚠️ Álbum no encontrado, cancelando notificación");
+        return;
+      }
+
+      // No notificar si el álbum es privado
+      if (albumActualizado.esPrivado) {
+        console.log("🔒 Álbum es privado, NO se enviarán notificaciones");
         return;
       }
 
@@ -206,11 +218,17 @@ export const notificarNuevaPlaylist = async (playlist, usuarioId) => {
 
       // Recargar la playlist desde la base de datos para obtener datos frescos
       const playlistActualizada = await Playlist.findById(playlist._id).select(
-        "titulo canciones"
+        "titulo canciones esPrivada"
       );
 
       if (!playlistActualizada) {
         console.log("⚠️ Playlist no encontrada, cancelando notificación");
+        return;
+      }
+
+      // No notificar si la playlist es privada
+      if (playlistActualizada.esPrivada) {
+        console.log("🔒 Playlist es privada, NO se enviarán notificaciones");
         return;
       }
 

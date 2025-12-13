@@ -24,6 +24,7 @@ import MySongs from "./pages/MySongs";
 import Search from "./pages/Search";
 import Auth from "./pages/auth/Auth";
 import AdminPanel from "./pages/AdminPanel";
+import SongPage from "./pages/SongPage";
 
 /**
  * App.tsx - Punto de entrada principal
@@ -35,6 +36,11 @@ import AdminPanel from "./pages/AdminPanel";
  */
 
 const router = createBrowserRouter([
+  // 🔓 Ruta pública de canción compartida (accesible sin login)
+  {
+    path: "/cancion/:id",
+    element: <SongPage />,
+  },
   // Rutas públicas (solo para usuarios NO autenticados)
   {
     element: <PublicRoute />,

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Navigate } from "react-router-dom";
+import Toast, { ToastType } from "../components/common/Toast";
 import {
   Users,
   AlertTriangle,
@@ -23,6 +24,31 @@ import {
   X,
   Eye,
 } from "lucide-react";
+
+const PAISES = [
+  { code: "MX", nombre: "México" },
+  { code: "ES", nombre: "España" },
+  { code: "CO", nombre: "Colombia" },
+  { code: "AR", nombre: "Argentina" },
+  { code: "CL", nombre: "Chile" },
+  { code: "PE", nombre: "Perú" },
+  { code: "VE", nombre: "Venezuela" },
+  { code: "EC", nombre: "Ecuador" },
+  { code: "GT", nombre: "Guatemala" },
+  { code: "CU", nombre: "Cuba" },
+  { code: "BO", nombre: "Bolivia" },
+  { code: "DO", nombre: "República Dominicana" },
+  { code: "HN", nombre: "Honduras" },
+  { code: "PY", nombre: "Paraguay" },
+  { code: "SV", nombre: "El Salvador" },
+  { code: "NI", nombre: "Nicaragua" },
+  { code: "CR", nombre: "Costa Rica" },
+  { code: "PA", nombre: "Panamá" },
+  { code: "UY", nombre: "Uruguay" },
+  { code: "PR", nombre: "Puerto Rico" },
+  { code: "US", nombre: "Estados Unidos" },
+  { code: "CA", nombre: "Canadá" },
+];
 
 interface Stats {
   usuarios: {
@@ -70,6 +96,17 @@ const AdminPanel = () => {
   const [reportes, setReportes] = useState<Reporte[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroReportes, setFiltroReportes] = useState<string>("pendiente");
+
+  // Estados para Toast
+  const [toastMessage, setToastMessage] = useState<string>("");
+  const [toastType, setToastType] = useState<ToastType>("info");
+  const [showToast, setShowToast] = useState(false);
+
+  const showToastNotification = (message: string, type: ToastType) => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
 
   // Estados para modal de ocultar canción
   const [showOcultarModal, setShowOcultarModal] = useState(false);
@@ -155,19 +192,20 @@ const AdminPanel = () => {
           mensaje = "Contenido eliminado exitosamente";
         } else if (accion === "suspender_usuario") {
           mensaje = "Usuario suspendido correctamente";
-        } else if (accion === "banear_usuario") {
-          mensaje = "Usuario baneado permanentemente";
         } else if (accion === "advertencia") {
           mensaje = "Advertencia enviada al usuario";
         }
 
-        alert(mensaje);
+        showToastNotification(mensaje, "success");
       } else {
-        alert(data.message || "Error al resolver reporte");
+        showToastNotification(
+          data.message || "Error al resolver reporte",
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error resolviendo reporte:", error);
-      alert("Error al resolver reporte");
+      showToastNotification("Error al resolver reporte", "error");
     }
   };
 
@@ -186,10 +224,10 @@ const AdminPanel = () => {
         }
       );
       loadDashboardData(); // Recargar datos
-      alert(`Reporte marcado como ${estado}`);
+      showToastNotification(`Reporte marcado como ${estado}`, "success");
     } catch (error) {
       console.error("Error cambiando estado:", error);
-      alert("Error al cambiar estado del reporte");
+      showToastNotification("Error al cambiar estado del reporte", "error");
     }
   };
 
@@ -202,12 +240,18 @@ const AdminPanel = () => {
 
   const ocultarCancion = async () => {
     if (!razonOcultar.trim()) {
-      alert("Debes proporcionar una razón para ocultar la canción");
+      showToastNotification(
+        "Debes proporcionar una razón para ocultar la canción",
+        "warning"
+      );
       return;
     }
 
     if (!cancionAOcultar || !cancionAOcultar._id) {
-      alert("Error: No se pudo identificar la canción");
+      showToastNotification(
+        "Error: No se pudo identificar la canción",
+        "error"
+      );
       return;
     }
 
@@ -231,16 +275,20 @@ const AdminPanel = () => {
         setShowOcultarModal(false);
         setCancionAOcultar(null);
         setRazonOcultar("");
-        alert("Canción ocultada exitosamente");
+        showToastNotification("Canción ocultada exitosamente", "success");
         // Recargar datos para reflejar los cambios
         window.location.reload();
       } else {
-        alert(data.message || "Error al ocultar canción");
+        showToastNotification(
+          data.message || "Error al ocultar canción",
+          "error"
+        );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error ocultando canción:", error);
-      alert(
-        `Error al ocultar canción: ${error.message || "Error desconocido"}`
+      showToastNotification(
+        `Error al ocultar canción: ${error.message || "Error desconocido"}`,
+        "error"
       );
     }
   };
@@ -252,7 +300,10 @@ const AdminPanel = () => {
 
   const quitarOcultamiento = async () => {
     if (!cancionAMostrar || !cancionAMostrar._id) {
-      alert("Error: No se pudo identificar la canción");
+      showToastNotification(
+        "Error: No se pudo identificar la canción",
+        "error"
+      );
       return;
     }
 
@@ -269,16 +320,19 @@ const AdminPanel = () => {
       if (response.ok) {
         setShowQuitarModal(false);
         setCancionAMostrar(null);
-        alert("Ocultamiento quitado exitosamente");
+        showToastNotification("Ocultamiento quitado exitosamente", "success");
         // Recargar datos para reflejar los cambios
         window.location.reload();
       } else {
         const data = await response.json();
-        alert(data.message || "Error al quitar ocultamiento");
+        showToastNotification(
+          data.message || "Error al quitar ocultamiento",
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error quitando ocultamiento:", error);
-      alert("Error al quitar ocultamiento");
+      showToastNotification("Error al quitar ocultamiento", "error");
     }
   };
 
@@ -392,7 +446,11 @@ const AdminPanel = () => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="backdrop-blur-sm">
           {activeTab === "dashboard" && stats && (
-            <DashboardView stats={stats} reportes={reportes} />
+            <DashboardView
+              stats={stats}
+              reportes={reportes}
+              showToastNotification={showToastNotification}
+            />
           )}
           {activeTab === "reportes" && (
             <ReportesView
@@ -401,6 +459,7 @@ const AdminPanel = () => {
               onCambiarEstado={handleCambiarEstado}
               filtroEstado={filtroReportes}
               setFiltroEstado={setFiltroReportes}
+              showToastNotification={showToastNotification}
             />
           )}
           {activeTab === "usuarios" && <UsuariosView />}
@@ -409,6 +468,9 @@ const AdminPanel = () => {
               abrirModalOcultar={abrirModalOcultar}
               abrirModalQuitar={abrirModalQuitar}
             />
+          )}
+          {activeTab === "administradores" && user?.role === "super_admin" && (
+            <AdministradoresView />
           )}
         </div>
       </div>
@@ -554,6 +616,432 @@ const AdminPanel = () => {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToast(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+// Administradores View
+const AdministradoresView = () => {
+  const [administradores, setAdministradores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showCrearModal, setShowCrearModal] = useState(false);
+  const [adminAEliminar, setAdminAEliminar] = useState<any>(null);
+  const [nuevoAdmin, setNuevoAdmin] = useState({
+    nombre: "",
+    apellidos: "",
+    email: "",
+    password: "",
+    nick: "",
+    pais: "",
+    fechaNacimiento: "",
+  });
+
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("info");
+  const [showToast, setShowToast] = useState(false);
+
+  const showToastNotification = (message: string, type: ToastType) => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
+
+  useEffect(() => {
+    cargarAdministradores();
+  }, []);
+
+  const cargarAdministradores = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:3900/api/admin", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (data.status === "success") {
+        setAdministradores(data.administradores || []);
+      }
+    } catch (error) {
+      console.error("Error cargando administradores:", error);
+      showToastNotification("Error al cargar administradores", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const crearAdministrador = async () => {
+    if (
+      !nuevoAdmin.nombre ||
+      !nuevoAdmin.apellidos ||
+      !nuevoAdmin.email ||
+      !nuevoAdmin.password ||
+      !nuevoAdmin.nick ||
+      !nuevoAdmin.pais ||
+      !nuevoAdmin.fechaNacimiento
+    ) {
+      showToastNotification("Todos los campos son obligatorios", "warning");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:3900/api/admin", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(nuevoAdmin),
+      });
+
+      const data = await res.json();
+
+      if (data.status === "success") {
+        showToastNotification("Administrador creado correctamente", "success");
+        setShowCrearModal(false);
+        setNuevoAdmin({
+          nombre: "",
+          apellidos: "",
+          email: "",
+          password: "",
+          nick: "",
+          pais: "",
+          fechaNacimiento: "",
+        });
+        cargarAdministradores();
+      } else {
+        showToastNotification(
+          data.message || "Error al crear administrador",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Error creando administrador:", error);
+      showToastNotification("Error al crear administrador", "error");
+    }
+  };
+
+  const eliminarAdministrador = async () => {
+    if (!adminAEliminar) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `http://localhost:3900/api/admin/${adminAEliminar._id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.status === "success") {
+        showToastNotification(
+          "Administrador eliminado correctamente",
+          "success"
+        );
+        setAdminAEliminar(null);
+        cargarAdministradores();
+      } else {
+        showToastNotification(
+          data.message || "Error al eliminar administrador",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Error eliminando administrador:", error);
+      showToastNotification("Error al eliminar administrador", "error");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-neutral-900/80 backdrop-blur-sm rounded-2xl p-6 border border-neutral-800">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
+            Gestión de Administradores
+          </h2>
+          <button
+            onClick={() => setShowCrearModal(true)}
+            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-red-500/30 font-semibold"
+          >
+            <UserPlus className="w-5 h-5" />
+            Crear Administrador
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"></div>
+            <p className="text-neutral-400 mt-4">Cargando administradores...</p>
+          </div>
+        ) : administradores.length === 0 ? (
+          <div className="text-center py-12">
+            <Shield className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
+            <p className="text-neutral-400 text-lg">No hay administradores</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {administradores.map((admin) => (
+              <div
+                key={admin._id}
+                className="bg-neutral-900 rounded-lg p-4 border border-neutral-800 hover:border-neutral-700 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="font-semibold text-lg text-white">
+                        {admin.nombreArtistico || admin.nombre}{" "}
+                        {admin.apellidos}
+                      </p>
+                      <span className="text-neutral-400 text-sm">
+                        (@{admin.nick})
+                      </span>
+                      <span className="px-3 py-1 text-xs rounded-full bg-gradient-to-r from-red-600 to-red-500 font-semibold">
+                        {admin.role === "super_admin" ? "SUPER ADMIN" : "ADMIN"}
+                      </span>
+                    </div>
+                    <p className="text-neutral-400 text-sm">{admin.email}</p>
+                    <p className="text-neutral-500 text-xs mt-1">
+                      Creado:{" "}
+                      {new Date(admin.createdAt).toLocaleDateString("es-ES", {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+
+                  {admin.role !== "super_admin" && (
+                    <button
+                      onClick={() => setAdminAEliminar(admin)}
+                      className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal Crear Administrador */}
+      {showCrearModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-90 p-4">
+          <div className="bg-neutral-900 rounded-2xl p-6 max-w-md w-full border border-neutral-800 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent flex items-center gap-2">
+                <UserPlus className="w-6 h-6 text-red-500" />
+                Crear Nuevo Administrador
+              </h3>
+              <button
+                onClick={() => setShowCrearModal(false)}
+                className="text-neutral-400 hover:text-white transition-colors"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
+                  Nombre *
+                </label>
+                <input
+                  type="text"
+                  value={nuevoAdmin.nombre}
+                  onChange={(e) =>
+                    setNuevoAdmin({ ...nuevoAdmin, nombre: e.target.value })
+                  }
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-red-500 focus:outline-none transition-colors"
+                  placeholder="Nombre del administrador"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
+                  Apellidos *
+                </label>
+                <input
+                  type="text"
+                  value={nuevoAdmin.apellidos}
+                  onChange={(e) =>
+                    setNuevoAdmin({ ...nuevoAdmin, apellidos: e.target.value })
+                  }
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-red-500 focus:outline-none transition-colors"
+                  placeholder="Apellidos"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
+                  Nick *
+                </label>
+                <input
+                  type="text"
+                  value={nuevoAdmin.nick}
+                  onChange={(e) =>
+                    setNuevoAdmin({ ...nuevoAdmin, nick: e.target.value })
+                  }
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-red-500 focus:outline-none transition-colors"
+                  placeholder="@nickname"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={nuevoAdmin.email}
+                  onChange={(e) =>
+                    setNuevoAdmin({ ...nuevoAdmin, email: e.target.value })
+                  }
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-red-500 focus:outline-none transition-colors"
+                  placeholder="email@ejemplo.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
+                  Contraseña *
+                </label>
+                <input
+                  type="password"
+                  value={nuevoAdmin.password}
+                  onChange={(e) =>
+                    setNuevoAdmin({ ...nuevoAdmin, password: e.target.value })
+                  }
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-red-500 focus:outline-none transition-colors"
+                  placeholder="Contraseña segura"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
+                  País *
+                </label>
+                <select
+                  value={nuevoAdmin.pais}
+                  onChange={(e) =>
+                    setNuevoAdmin({ ...nuevoAdmin, pais: e.target.value })
+                  }
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-red-500 focus:outline-none transition-colors"
+                >
+                  <option value="">Seleccionar país</option>
+                  {PAISES.map((pais) => (
+                    <option key={pais.code} value={pais.nombre}>
+                      {pais.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
+                  Fecha de Nacimiento *
+                </label>
+                <input
+                  type="date"
+                  value={nuevoAdmin.fechaNacimiento}
+                  onChange={(e) =>
+                    setNuevoAdmin({
+                      ...nuevoAdmin,
+                      fechaNacimiento: e.target.value,
+                    })
+                  }
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-red-500 focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCrearModal(false)}
+                className="flex-1 bg-neutral-700 hover:bg-neutral-600 px-4 py-2.5 rounded-xl font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={crearAdministrador}
+                className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-red-500/30"
+              >
+                Crear Administrador
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Eliminación */}
+      {adminAEliminar && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-900 rounded-2xl p-6 max-w-md w-full border-2 border-red-600/50 shadow-2xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-red-600 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <AlertTriangle className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">
+                  Eliminar Administrador
+                </h3>
+                <p className="text-neutral-400 text-sm">
+                  Esta acción no se puede deshacer
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-900/20 border border-red-600/30 rounded-xl p-4 mb-4">
+              <p className="text-white font-semibold mb-1">
+                ¿Eliminar a @{adminAEliminar.nick}?
+              </p>
+              <p className="text-neutral-300 text-sm">
+                {adminAEliminar.nombre} {adminAEliminar.apellidos}
+              </p>
+              <p className="text-neutral-400 text-sm">{adminAEliminar.email}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setAdminAEliminar(null)}
+                className="flex-1 bg-neutral-700 hover:bg-neutral-600 px-4 py-2.5 rounded-xl font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminarAdministrador}
+                className="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-red-500/30"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 };
@@ -562,9 +1050,11 @@ const AdminPanel = () => {
 const DashboardView = ({
   stats,
   reportes,
+  showToastNotification,
 }: {
   stats: Stats;
   reportes: Reporte[];
+  showToastNotification?: (message: string, type: ToastType) => void;
 }) => (
   <div className="space-y-6">
     {/* Stats Cards */}
@@ -623,7 +1113,12 @@ const DashboardView = ({
       ) : (
         <div className="space-y-3">
           {reportes.slice(0, 5).map((reporte) => (
-            <ReporteCard key={reporte._id} reporte={reporte} compact />
+            <ReporteCard
+              key={reporte._id}
+              reporte={reporte}
+              compact
+              showToastNotification={showToastNotification}
+            />
           ))}
         </div>
       )}
@@ -656,12 +1151,14 @@ const ReportesView = ({
   onCambiarEstado,
   filtroEstado,
   setFiltroEstado,
+  showToastNotification,
 }: {
   reportes: Reporte[];
   onResolve: (id: string, accion: string, razon: string) => void;
   onCambiarEstado: (id: string, estado: string) => void;
   filtroEstado: string;
   setFiltroEstado: (estado: string) => void;
+  showToastNotification?: (message: string, type: ToastType) => void;
 }) => {
   return (
     <div className="space-y-4">
@@ -722,6 +1219,7 @@ const ReportesView = ({
               reporte={reporte}
               onResolve={onResolve}
               onCambiarEstado={onCambiarEstado}
+              showToastNotification={showToastNotification}
             />
           ))
         )}
@@ -737,42 +1235,53 @@ const UsuariosView = () => {
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [showCrearAdmin, setShowCrearAdmin] = useState(false);
   const [historialConducta, setHistorialConducta] = useState<any[]>([]);
   const [loadingHistorial, setLoadingHistorial] = useState(false);
-  const [showOcultarModal, setShowOcultarModal] = useState(false);
-  const [cancionAOcultar, setCancionAOcultar] = useState<any>(null);
-  const [razonOcultar, setRazonOcultar] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<
+    "todos" | "activo" | "suspendido"
+  >("todos");
 
   // Estado para modal de eliminación de usuarios
   const [showEliminarUsuarioModal, setShowEliminarUsuarioModal] =
     useState(false);
   const [usuarioAEliminar, setUsuarioAEliminar] = useState<any>(null);
 
-  const [nuevoAdmin, setNuevoAdmin] = useState({
-    nombre: "",
-    apellidos: "",
-    email: "",
-    password: "",
-    nick: "",
-    pais: "",
-    fechaNacimiento: "",
-  });
+  // Estados para Toast
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("info");
+  const [showToast, setShowToast] = useState(false);
+
+  const showToastNotification = (message: string, type: ToastType) => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
 
   const buscarUsuarios = async () => {
     if (!busqueda.trim()) {
-      // Si no hay búsqueda, cargar todos los usuarios
+      // Si no hay búsqueda, cargar todos los usuarios según filtro
       try {
         setLoading(true);
         const token = localStorage.getItem("token");
+        const estadoParam =
+          filtroEstado !== "todos" ? `&estado=${filtroEstado}` : "";
         const res = await fetch(
-          `http://localhost:3900/api/moderacion/usuarios?limit=50`,
+          `http://localhost:3900/api/moderacion/usuarios?limit=50${estadoParam}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
         const data = await res.json();
-        setUsuarios(data.usuarios || []);
+        // Filtrar solo usuarios normales (role === "user") y por estado
+        const usuariosFiltrados = (data.usuarios || [])
+          .filter((u: any) => u.role === "user")
+          .filter((u: any) => {
+            if (filtroEstado === "todos") return true;
+            if (filtroEstado === "activo") return u.estado === "activo";
+            if (filtroEstado === "suspendido") return u.estado === "suspendido";
+            return true;
+          });
+        setUsuarios(usuariosFiltrados);
       } catch (error) {
         console.error("Error cargando usuarios:", error);
       } finally {
@@ -796,10 +1305,19 @@ const UsuariosView = () => {
       );
       const data = await res.json();
 
-      setUsuarios(data.usuarios || []);
+      // Filtrar solo usuarios normales (role === "user") y por estado
+      const usuariosFiltrados = (data.usuarios || [])
+        .filter((u: any) => u.role === "user")
+        .filter((u: any) => {
+          if (filtroEstado === "todos") return true;
+          if (filtroEstado === "activo") return u.estado === "activo";
+          if (filtroEstado === "suspendido") return u.estado === "suspendido";
+          return true;
+        });
+      setUsuarios(usuariosFiltrados);
     } catch (error) {
       console.error("Error buscando usuarios:", error);
-      alert("Error al buscar usuarios");
+      showToastNotification("Error al buscar usuarios", "error");
     } finally {
       setLoading(false);
     }
@@ -826,14 +1344,21 @@ const UsuariosView = () => {
 
       const data = await response.json();
       if (!response.ok) {
-        alert(data.message || "Error al suspender usuario");
+        showToastNotification(
+          data.message || "Error al suspender usuario",
+          "error"
+        );
+      } else {
+        showToastNotification("Usuario suspendido correctamente", "success");
       }
 
       buscarUsuarios();
-      setSelectedUser(null);
     } catch (error) {
       console.error("Error suspendiendo usuario:", error);
-      alert("Error al suspender usuario");
+      showToastNotification("Error al suspender usuario", "error");
+    } finally {
+      // Siempre cerrar el modal, haya éxito o error
+      setSelectedUser(null);
     }
   };
 
@@ -867,21 +1392,28 @@ const UsuariosView = () => {
         setUsuarioAEliminar(null);
 
         if (data.eliminado) {
-          alert(
-            `Usuario eliminado permanentemente.\n\n📊 Contenido eliminado:\n• Canciones: ${data.eliminado.canciones}\n• Álbumes: ${data.eliminado.albumes}\n• Playlists: ${data.eliminado.playlists}\n• Archivos R2: ${data.eliminado.archivosR2} (audio, imágenes, portadas)`
+          showToastNotification(
+            `Usuario eliminado permanentemente.\n\n📊 Contenido eliminado:\n• Canciones: ${data.eliminado.canciones}\n• Álbumes: ${data.eliminado.albumes}\n• Playlists: ${data.eliminado.playlists}\n• Archivos R2: ${data.eliminado.archivosR2}`,
+            "success"
           );
         } else {
-          alert("Administrador eliminado correctamente");
+          showToastNotification(
+            "Administrador eliminado correctamente",
+            "success"
+          );
         }
       } else {
-        alert(data.message || "Error al eliminar usuario");
+        showToastNotification(
+          data.message || "Error al eliminar usuario",
+          "error"
+        );
       }
 
       buscarUsuarios();
       setSelectedUser(null);
     } catch (error) {
       console.error("Error eliminando usuario:", error);
-      alert("Error al eliminar usuario");
+      showToastNotification("Error al eliminar usuario", "error");
     }
   };
 
@@ -897,9 +1429,10 @@ const UsuariosView = () => {
       );
       buscarUsuarios();
       setSelectedUser(null);
+      showToastNotification("Usuario reactivado correctamente", "success");
     } catch (error) {
       console.error("Error reactivando usuario:", error);
-      alert("Error al reactivar usuario");
+      showToastNotification("Error al reactivar usuario", "error");
     }
   };
 
@@ -916,14 +1449,15 @@ const UsuariosView = () => {
       const data = await res.json();
 
       if (data.status === "success") {
+        console.log("Historial recibido:", data.historialConducta[0]);
         setHistorialConducta(data.historialConducta || []);
       } else {
-        alert("Error al cargar historial");
+        showToastNotification("Error al cargar historial", "error");
         setHistorialConducta([]);
       }
     } catch (error) {
       console.error("Error cargando historial:", error);
-      alert("Error al cargar historial de conducta");
+      showToastNotification("Error al cargar historial de conducta", "error");
       setHistorialConducta([]);
     } finally {
       setLoadingHistorial(false);
@@ -937,54 +1471,12 @@ const UsuariosView = () => {
     }
   }, [selectedUser]);
 
-  const crearAdministrador = async () => {
-    if (
-      !nuevoAdmin.nombre ||
-      !nuevoAdmin.apellidos ||
-      !nuevoAdmin.email ||
-      !nuevoAdmin.password ||
-      !nuevoAdmin.nick ||
-      !nuevoAdmin.pais ||
-      !nuevoAdmin.fechaNacimiento
-    ) {
-      alert("Todos los campos son obligatorios");
-      return;
+  // Efecto para recargar usuarios cuando cambie el filtro
+  useEffect(() => {
+    if (usuarios.length > 0 || filtroEstado !== "todos") {
+      buscarUsuarios();
     }
-
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:3900/api/admin", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(nuevoAdmin),
-      });
-
-      const data = await res.json();
-
-      if (data.status === "success") {
-        alert("Administrador creado correctamente");
-        setShowCrearAdmin(false);
-        setNuevoAdmin({
-          nombre: "",
-          apellidos: "",
-          email: "",
-          password: "",
-          nick: "",
-          pais: "",
-          fechaNacimiento: "",
-        });
-        buscarUsuarios();
-      } else {
-        alert(data.message || "Error al crear administrador");
-      }
-    } catch (error) {
-      console.error("Error creando administrador:", error);
-      alert("Error al crear administrador");
-    }
-  };
+  }, [filtroEstado]);
 
   // Debug
   console.log("UsuariosView - Usuario:", user?.nick, "Role:", user?.role);
@@ -996,17 +1488,40 @@ const UsuariosView = () => {
           <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
             Gestión de Usuarios
           </h2>
+        </div>
 
-          {/* Botón para crear admin (solo super_admin) */}
-          {user?.role === "super_admin" && (
-            <button
-              onClick={() => setShowCrearAdmin(true)}
-              className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-purple-500/30 font-semibold"
-            >
-              <UserPlus className="w-5 h-5" />
-              Crear Administrador
-            </button>
-          )}
+        {/* Filtros de estado */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setFiltroEstado("todos")}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+              filtroEstado === "todos"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+                : "bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
+            }`}
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => setFiltroEstado("activo")}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+              filtroEstado === "activo"
+                ? "bg-green-600 text-white shadow-lg shadow-green-500/30"
+                : "bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
+            }`}
+          >
+            Activos
+          </button>
+          <button
+            onClick={() => setFiltroEstado("suspendido")}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+              filtroEstado === "suspendido"
+                ? "bg-yellow-600 text-white shadow-lg shadow-yellow-500/30"
+                : "bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
+            }`}
+          >
+            Suspendidos
+          </button>
         </div>
 
         {/* Buscador */}
@@ -1032,26 +1547,21 @@ const UsuariosView = () => {
         {usuarios.length > 0 && (
           <div className="space-y-3">
             {usuarios.map((usuario) => (
-              <div key={usuario._id} className="bg-gray-700 rounded-lg p-4">
+              <div
+                key={usuario._id}
+                className="bg-neutral-900 rounded-lg p-4 border border-neutral-800 hover:border-neutral-700 transition-colors"
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <p className="font-semibold text-lg">@{usuario.nick}</p>
                       {usuario.nombreArtistico && (
-                        <span className="text-purple-400 text-sm">
-                          ({usuario.nombreArtistico})
-                        </span>
+                        <p className="font-semibold text-lg">
+                          {usuario.nombreArtistico}
+                        </p>
                       )}
-
-                      {/* Vidas del usuario */}
-                      {usuario.role === "user" && (
-                        <div className="flex items-center gap-1 bg-linear-to-r from-pink-600 to-purple-600 px-3 py-1 rounded-full">
-                          <Heart className="w-4 h-4 fill-current" />
-                          <span className="font-bold text-sm">
-                            {usuario.vidas || 3}
-                          </span>
-                        </div>
-                      )}
+                      <span className="text-neutral-400 text-sm">
+                        (@{usuario.nick})
+                      </span>
 
                       {usuario.estado !== "activo" && (
                         <span
@@ -1178,23 +1688,25 @@ const UsuariosView = () => {
 
       {/* Modal de acción */}
       {selectedUser && selectedUser.accion === "suspender" && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-5 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-3">Suspender Usuario</h3>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-neutral-900 rounded-2xl p-6 max-w-md w-full mx-4 border border-neutral-800 shadow-2xl">
+            <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+              Suspender Usuario
+            </h3>
 
             <div className="mb-4">
-              <p className="text-gray-300 mb-2">
+              <p className="text-neutral-300 mb-4">
                 Usuario:{" "}
                 <span className="text-white font-semibold">
                   @{selectedUser.nick}
                 </span>
               </p>
 
-              <div className="mb-3 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded">
-                <p className="text-sm text-yellow-200">
+              <div className="mb-4 p-4 bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border border-yellow-600/30 rounded-xl">
+                <p className="text-sm text-yellow-200 font-semibold mb-2">
                   ℹ️ La suspensión desactiva funcionalidades:
                 </p>
-                <ul className="text-xs text-yellow-300 mt-2 ml-4 list-disc">
+                <ul className="text-xs text-yellow-300 mt-2 ml-4 list-disc space-y-1">
                   <li>No podrá escuchar música</li>
                   <li>No podrá crear álbumes, canciones o playlists</li>
                   <li>No podrá ver perfiles de otros usuarios</li>
@@ -1203,12 +1715,12 @@ const UsuariosView = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm text-gray-400 mb-2">
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
                   Duración de la suspensión:
                 </label>
                 <select
                   id="dias-suspension"
-                  className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600"
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-yellow-500 focus:outline-none transition-colors"
                 >
                   <option value="3">3 días</option>
                   <option value="7">7 días (1 semana)</option>
@@ -1221,22 +1733,22 @@ const UsuariosView = () => {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">
+                <label className="block text-sm text-neutral-400 mb-2 font-medium">
                   Razón:
                 </label>
                 <textarea
                   id="razon-moderacion"
-                  className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600"
+                  className="w-full bg-neutral-800 text-white px-4 py-2.5 rounded-xl border border-neutral-700 focus:border-yellow-500 focus:outline-none transition-colors resize-none"
                   rows={3}
                   placeholder="Describe el motivo..."
                 ></textarea>
               </div>
             </div>
 
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setSelectedUser(null)}
-                className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded"
+                className="bg-neutral-700 hover:bg-neutral-600 px-6 py-2.5 rounded-xl font-semibold transition-colors"
               >
                 Cancelar
               </button>
@@ -1258,7 +1770,7 @@ const UsuariosView = () => {
                   );
                   suspenderUsuario(selectedUser._id, razon, dias);
                 }}
-                className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded"
+                className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 px-6 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-yellow-500/30"
               >
                 Confirmar
               </button>
@@ -1267,204 +1779,7 @@ const UsuariosView = () => {
         </div>
       )}
 
-      {/* Modal para crear administrador */}
-      {showCrearAdmin && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-5 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-purple-500" />
-                Crear Nuevo Administrador
-              </h3>
-              <button
-                onClick={() => {
-                  setShowCrearAdmin(false);
-                  setNuevoAdmin({
-                    nombre: "",
-                    apellidos: "",
-                    email: "",
-                    password: "",
-                    nick: "",
-                    pais: "",
-                    fechaNacimiento: "",
-                  });
-                }}
-                className="text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Nombre <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={nuevoAdmin.nombre}
-                    onChange={(e) =>
-                      setNuevoAdmin({ ...nuevoAdmin, nombre: e.target.value })
-                    }
-                    className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none"
-                    placeholder="Juan"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Apellidos <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={nuevoAdmin.apellidos}
-                    onChange={(e) =>
-                      setNuevoAdmin({
-                        ...nuevoAdmin,
-                        apellidos: e.target.value,
-                      })
-                    }
-                    className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none"
-                    placeholder="Pérez"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Nick <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={nuevoAdmin.nick}
-                  onChange={(e) =>
-                    setNuevoAdmin({ ...nuevoAdmin, nick: e.target.value })
-                  }
-                  className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none"
-                  placeholder="admin_juan"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={nuevoAdmin.email}
-                  onChange={(e) =>
-                    setNuevoAdmin({ ...nuevoAdmin, email: e.target.value })
-                  }
-                  className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none"
-                  placeholder="admin@tcgmusic.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Contraseña <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={nuevoAdmin.password}
-                  onChange={(e) =>
-                    setNuevoAdmin({ ...nuevoAdmin, password: e.target.value })
-                  }
-                  className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none"
-                  placeholder="Mínimo 6 caracteres"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  País <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={nuevoAdmin.pais}
-                  onChange={(e) =>
-                    setNuevoAdmin({ ...nuevoAdmin, pais: e.target.value })
-                  }
-                  className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none"
-                >
-                  <option value="">Seleccionar país</option>
-                  <option value="Argentina">Argentina</option>
-                  <option value="Chile">Chile</option>
-                  <option value="Colombia">Colombia</option>
-                  <option value="España">España</option>
-                  <option value="México">México</option>
-                  <option value="Perú">Perú</option>
-                  <option value="Uruguay">Uruguay</option>
-                  <option value="Venezuela">Venezuela</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Fecha de Nacimiento <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={nuevoAdmin.fechaNacimiento}
-                  onChange={(e) =>
-                    setNuevoAdmin({
-                      ...nuevoAdmin,
-                      fechaNacimiento: e.target.value,
-                    })
-                  }
-                  className="w-full bg-gray-700 text-white px-3 py-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none"
-                  max={
-                    new Date(
-                      new Date().setFullYear(new Date().getFullYear() - 18)
-                    )
-                      .toISOString()
-                      .split("T")[0]
-                  }
-                />
-              </div>
-
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
-                <p className="text-sm text-purple-300">
-                  <Shield className="w-4 h-4 inline mr-1" />
-                  El nuevo usuario tendrá permisos de{" "}
-                  <strong>administrador</strong> y podrá moderar contenido y
-                  usuarios.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 justify-end mt-6">
-              <button
-                onClick={() => {
-                  setShowCrearAdmin(false);
-                  setNuevoAdmin({
-                    nombre: "",
-                    apellidos: "",
-                    email: "",
-                    password: "",
-                    nick: "",
-                    pais: "",
-                    fechaNacimiento: "",
-                  });
-                }}
-                className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={crearAdministrador}
-                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded transition-colors flex items-center gap-2"
-              >
-                <UserPlus className="w-4 h-4" />
-                Crear Administrador
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Historial de Conducta  fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start justify-center z-5 p-4*/}
+      {/* Modal de Historial de Conducta */}
       {selectedUser && selectedUser.accion === "historial" && (
         <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-10 p-4">
           <div className="bg-gray-800 rounded-lg p-4 max-w-2xl w-full max-h-[50vh] overflow-hidden flex flex-col">
@@ -1485,14 +1800,6 @@ const UsuariosView = () => {
             </div>
 
             <div className="flex items-center gap-3 mb-3 bg-gray-700/50 p-2.5 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Heart className="w-4 h-4 text-pink-500 fill-current" />
-                <span className="text-white font-bold text-base">
-                  {selectedUser.vidas || 3}
-                </span>
-                <span className="text-gray-400 text-xs">vidas actuales</span>
-              </div>
-              <div className="h-5 w-px bg-gray-600"></div>
               <div className="text-xs text-gray-300">
                 <strong>{historialConducta.length}</strong> registros en
                 historial
@@ -1609,12 +1916,6 @@ const UsuariosView = () => {
                               {registro.moderador?.nick || "Sistema"}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Heart className="w-3 h-3 text-pink-500 fill-current" />
-                            <span className="text-gray-400">
-                              {registro.vidasRestantes} vidas
-                            </span>
-                          </div>
                         </div>
                       </div>
                     );
@@ -1727,6 +2028,15 @@ const UsuariosView = () => {
           </div>
         </div>
       )}
+
+      {/* Toast */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 };
@@ -1746,10 +2056,27 @@ const ContenidoView = ({
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Estados para el reproductor
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(
+    null
+  );
+
   // Estados para modal de eliminación
   const [showEliminarModal, setShowEliminarModal] = useState(false);
   const [contenidoAEliminar, setContenidoAEliminar] = useState<any>(null);
   const [razonEliminacion, setRazonEliminacion] = useState("");
+
+  // Estados para Toast
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("info");
+  const [showToast, setShowToast] = useState(false);
+
+  const showToastNotification = (message: string, type: ToastType) => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
 
   const buscarContenido = async () => {
     if (!busqueda.trim()) return;
@@ -1789,7 +2116,7 @@ const ContenidoView = ({
       }
     } catch (error) {
       console.error("Error buscando contenido:", error);
-      alert("Error al buscar contenido");
+      showToastNotification("Error al buscar contenido", "error");
     } finally {
       setLoading(false);
     }
@@ -1803,7 +2130,10 @@ const ContenidoView = ({
 
   const eliminarContenido = async () => {
     if (!razonEliminacion.trim()) {
-      alert("Debes proporcionar una razón para la eliminación");
+      showToastNotification(
+        "Debes proporcionar una razón para la eliminación",
+        "warning"
+      );
       return;
     }
 
@@ -1833,19 +2163,23 @@ const ContenidoView = ({
         setShowEliminarModal(false);
         setContenidoAEliminar(null);
         setRazonEliminacion("");
-        alert(
+        showToastNotification(
           `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} "${
             titulo || nombre
-          }" eliminado correctamente`
+          }" eliminado correctamente`,
+          "success"
         );
         buscarContenido();
       } else {
         const data = await response.json();
-        alert(data.message || "Error al eliminar contenido");
+        showToastNotification(
+          data.message || "Error al eliminar contenido",
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error eliminando contenido:", error);
-      alert("Error al eliminar contenido");
+      showToastNotification("Error al eliminar contenido", "error");
     }
   };
 
@@ -1859,7 +2193,11 @@ const ContenidoView = ({
         {/* Selector de tipo */}
         <div className="flex gap-3 mb-6">
           <button
-            onClick={() => setTipoContenido("canciones")}
+            onClick={() => {
+              setTipoContenido("canciones");
+              setBusqueda("");
+              setContenido([]);
+            }}
             className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
               tipoContenido === "canciones"
                 ? "bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg shadow-green-500/30"
@@ -1870,7 +2208,11 @@ const ContenidoView = ({
             Canciones
           </button>
           <button
-            onClick={() => setTipoContenido("albumes")}
+            onClick={() => {
+              setTipoContenido("albumes");
+              setBusqueda("");
+              setContenido([]);
+            }}
             className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
               tipoContenido === "albumes"
                 ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30"
@@ -1881,7 +2223,11 @@ const ContenidoView = ({
             Álbumes
           </button>
           <button
-            onClick={() => setTipoContenido("playlists")}
+            onClick={() => {
+              setTipoContenido("playlists");
+              setBusqueda("");
+              setContenido([]);
+            }}
             className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
               tipoContenido === "playlists"
                 ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30"
@@ -1918,20 +2264,57 @@ const ContenidoView = ({
             {contenido.map((item) => (
               <div
                 key={item._id}
-                className="bg-gray-700 rounded-lg p-4 flex items-center justify-between gap-4"
+                className="bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-xl p-4 flex items-center justify-between gap-4 transition-all"
               >
                 <div className="flex items-center gap-4 flex-1">
-                  {/* Botón de Play Grande (solo para canciones) */}
+                  {/* Botón de Play/Pausa Grande (solo para canciones) */}
                   {tipoContenido === "canciones" && item.audioUrl && (
                     <button
-                      onClick={() => {
-                        const audio = new Audio(item.audioUrl);
-                        audio.play();
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Si ya está reproduciendo esta canción, pausar
+                        if (playingAudioId === item._id && currentAudio) {
+                          currentAudio.pause();
+                          setPlayingAudioId(null);
+                          setCurrentAudio(null);
+                        } else {
+                          // Pausar cualquier audio anterior
+                          if (currentAudio) {
+                            currentAudio.pause();
+                          }
+
+                          // Crear y reproducir nuevo audio
+                          const audio = new Audio(item.audioUrl);
+                          audio
+                            .play()
+                            .catch((err) =>
+                              console.error("Error reproduciendo:", err)
+                            );
+
+                          // Evento cuando termina la canción
+                          audio.addEventListener("ended", () => {
+                            setPlayingAudioId(null);
+                            setCurrentAudio(null);
+                          });
+
+                          setCurrentAudio(audio);
+                          setPlayingAudioId(item._id);
+                        }
                       }}
-                      className="flex-shrink-0 w-14 h-14 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center transition-colors"
-                      title="Reproducir canción"
+                      className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 rounded-full flex items-center justify-center transition-all shadow-lg shadow-green-500/30"
+                      title={
+                        playingAudioId === item._id
+                          ? "Pausar canción"
+                          : "Reproducir canción"
+                      }
                     >
-                      <Play className="w-7 h-7 ml-1" />
+                      {playingAudioId === item._id ? (
+                        <Pause className="w-7 h-7 text-white" />
+                      ) : (
+                        <Play className="w-7 h-7 ml-1 text-white" />
+                      )}
                     </button>
                   )}
 
@@ -1946,11 +2329,11 @@ const ContenidoView = ({
 
                   {/* Info */}
                   <div className="flex-1">
-                    <p className="font-semibold text-lg">
+                    <p className="font-semibold text-lg text-white">
                       {item.titulo || item.nombre}
                     </p>
                     {item.artista && (
-                      <p className="text-blue-400 text-base font-medium">
+                      <p className="text-green-400 text-base font-medium">
                         {typeof item.artista === "string"
                           ? item.artista
                           : item.artista.nombreArtistico || item.artista.nick}
@@ -2114,6 +2497,15 @@ const ContenidoView = ({
           </div>
         </div>
       )}
+
+      {/* Toast */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 };
@@ -2170,11 +2562,13 @@ const ReporteCard = ({
   compact,
   onResolve,
   onCambiarEstado,
+  showToastNotification,
 }: {
   reporte: Reporte;
   compact?: boolean;
   onResolve?: (id: string, accion: string, razon: string) => void;
   onCambiarEstado?: (id: string, estado: string) => void;
+  showToastNotification?: (message: string, type: ToastType) => void;
 }) => {
   const [showActions, setShowActions] = useState(false);
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
@@ -2185,6 +2579,43 @@ const ReporteCard = ({
     alta: "bg-orange-600",
     media: "bg-yellow-600",
     baja: "bg-blue-600",
+  };
+
+  const cambiarPrioridad = async (nuevaPrioridad: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:3900/api/moderacion/reportes/${reporte._id}/prioridad`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prioridad: nuevaPrioridad }),
+        }
+      );
+
+      if (response.ok) {
+        if (showToastNotification) {
+          showToastNotification(
+            `Prioridad cambiada a ${nuevaPrioridad}`,
+            "success"
+          );
+        }
+        // Recargar la página para ver los cambios
+        window.location.reload();
+      } else {
+        if (showToastNotification) {
+          showToastNotification("Error al cambiar prioridad", "error");
+        }
+      }
+    } catch (error) {
+      console.error("Error cambiando prioridad:", error);
+      if (showToastNotification) {
+        showToastNotification("Error al cambiar prioridad", "error");
+      }
+    }
   };
 
   const tipoIcons = {
@@ -2270,15 +2701,41 @@ const ReporteCard = ({
             <span className="font-semibold capitalize text-white">
               {reporte.tipoContenido}
             </span>
-            <span
-              className={`px-2 py-1 text-xs rounded font-medium ${
-                prioridadColors[
-                  reporte.prioridad as keyof typeof prioridadColors
-                ]
-              }`}
-            >
-              {reporte.prioridad.toUpperCase()}
-            </span>
+            {/* Selector de prioridad (solo si no es resuelto) */}
+            {reporte.estado !== "resuelto" ? (
+              <select
+                value={reporte.prioridad}
+                onChange={(e) => cambiarPrioridad(e.target.value)}
+                className={`px-2 py-1 text-xs rounded font-medium cursor-pointer border-2 border-transparent hover:border-white/30 transition-all ${
+                  prioridadColors[
+                    reporte.prioridad as keyof typeof prioridadColors
+                  ]
+                }`}
+              >
+                <option value="baja" className="bg-neutral-900">
+                  BAJA
+                </option>
+                <option value="media" className="bg-neutral-900">
+                  MEDIA
+                </option>
+                <option value="alta" className="bg-neutral-900">
+                  ALTA
+                </option>
+                <option value="urgente" className="bg-neutral-900">
+                  URGENTE
+                </option>
+              </select>
+            ) : (
+              <span
+                className={`px-2 py-1 text-xs rounded font-medium ${
+                  prioridadColors[
+                    reporte.prioridad as keyof typeof prioridadColors
+                  ]
+                }`}
+              >
+                {reporte.prioridad.toUpperCase()}
+              </span>
+            )}
             <span
               className={`px-2 py-1 text-xs rounded font-medium ${
                 reporte.estado === "pendiente"
@@ -2298,6 +2755,7 @@ const ReporteCard = ({
               <h3 className="text-lg font-bold text-white mb-1">
                 {reporte.contenidoDetalle.titulo ||
                   reporte.contenidoDetalle.nombre ||
+                  reporte.contenidoDetalle.nombreArtistico ||
                   reporte.contenidoDetalle.nick ||
                   "Sin título"}
               </h3>
@@ -2352,8 +2810,8 @@ const ReporteCard = ({
           <div className="space-y-1">
             <p className="text-gray-400 text-sm">
               Reportado por: @
-              {reporte.reportadoPor.nombreArtistico ||
-                reporte.reportadoPor.nick}{" "}
+              {reporte.reportadoPor.nick ||
+                reporte.reportadoPor.nombreArtistico}{" "}
               •{" "}
               {new Date(reporte.createdAt).toLocaleDateString("es-ES", {
                 day: "2-digit",
@@ -2367,10 +2825,58 @@ const ReporteCard = ({
               <p className="text-purple-400 text-sm flex items-center gap-1">
                 <Shield className="w-3 h-3" />
                 Asignado a: @
-                {reporte.asignadoA.nombreArtistico || reporte.asignadoA.nick}
+                {reporte.asignadoA.nick || reporte.asignadoA.nombreArtistico}
               </p>
             )}
           </div>
+
+          {/* Información de resolución */}
+          {reporte.estado === "resuelto" && (reporte as any).resolucion && (
+            <div className="mt-3 bg-green-900/20 border border-green-700/50 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <p className="text-green-400 text-sm font-semibold">
+                  Reporte Resuelto
+                </p>
+              </div>
+              <div className="space-y-1 text-sm">
+                <p className="text-gray-300">
+                  <span className="text-gray-400">Acción tomada:</span>{" "}
+                  <span className="font-semibold text-white">
+                    {(reporte as any).resolucion.accion ===
+                      "eliminar_contenido" && "🗑️ Contenido Eliminado"}
+                    {(reporte as any).resolucion.accion ===
+                      "suspender_usuario" && "⏸️ Usuario Suspendido"}
+                    {(reporte as any).resolucion.accion === "advertencia" &&
+                      "⚠️ Advertencia Enviada"}
+                    {(reporte as any).resolucion.accion === "ninguna" &&
+                      "❌ Reporte Rechazado"}
+                  </span>
+                </p>
+
+                {(reporte as any).resolucion.resueltoPor && (
+                  <p className="text-gray-300">
+                    <span className="text-gray-400">Resuelto por:</span> @
+                    {(reporte as any).resolucion.resueltoPor.nick ||
+                      (reporte as any).resolucion.resueltoPor.nombreArtistico}
+                  </p>
+                )}
+                {(reporte as any).resolucion.fechaResolucion && (
+                  <p className="text-gray-400 text-xs">
+                    {new Date(
+                      (reporte as any).resolucion.fechaResolucion
+                    ).toLocaleDateString("es-ES", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Reproductor para canciones */}
           {reporte.tipoContenido === "cancion" &&
@@ -2470,7 +2976,9 @@ const ReporteCard = ({
                 onResolve(
                   reporte._id,
                   "advertencia",
-                  "Advertencia enviada al usuario"
+                  `Advertencia por ${reporte.motivo.replace(/_/g, " ")}: ${
+                    reporte.descripcion || "Contenido reportado"
+                  }`
                 )
               }
               className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"

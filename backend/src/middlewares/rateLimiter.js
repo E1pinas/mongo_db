@@ -56,7 +56,7 @@ export const uploadLimiter = rateLimit({
  */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 500, // Máximo 500 requests por ventana (aumentado para desarrollo)
+  max: 2000, // Máximo 2000 requests por ventana (aumentado para desarrollo local)
   message: {
     ok: false,
     message: "Demasiadas peticiones. Intenta de nuevo más tarde",
@@ -79,4 +79,36 @@ export const socialLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+});
+
+/**
+ * Rate limiter para compartir canciones públicamente
+ * Previene scraping masivo de canciones compartidas
+ */
+export const compartirPublicoLimiter = rateLimit({
+  windowMs: 2 * 60 * 1000, // 2 minutos
+  max: process.env.NODE_ENV === "production" ? 5 : 50, // 5 en producción, 50 en desarrollo
+  message: {
+    ok: false,
+    message:
+      "Máximo 5 canciones compartidas cada 2 minutos. Intenta de nuevo pronto",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+});
+
+/**
+ * Rate limiter para streaming de audio público
+ * Controla el consumo de ancho de banda
+ */
+export const audioStreamLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutos
+  max: 100, // Máximo 100 chunks de audio (~2 canciones completas)
+  message: {
+    ok: false,
+    message: "Límite de reproducción alcanzado. Intenta de nuevo en 10 minutos",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });

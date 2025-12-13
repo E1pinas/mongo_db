@@ -12,6 +12,14 @@ const recursoSchema = new Schema(
     id: {
       type: Schema.Types.ObjectId,
     },
+    // ID del comentario específico (opcional, para notificaciones de comentarios en posts)
+    comentarioId: {
+      type: Schema.Types.ObjectId,
+    },
+    // ID de la respuesta específica (opcional, para notificaciones de respuestas a comentarios)
+    respuestaId: {
+      type: Schema.Types.ObjectId,
+    },
   },
   { _id: false }
 );

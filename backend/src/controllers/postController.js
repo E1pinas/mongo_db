@@ -163,7 +163,11 @@ export const postController = {
       const { postId } = req.params;
       const postDoc = await Post.findOne({ _id: postId, estaEliminado: false })
         .populate("usuario", "nick nombre nombreArtistico avatarUrl verificado")
-        .populate("recursoId");
+        .populate("recursoId")
+        .populate(
+          "comentarios.usuario",
+          "nick nombreArtistico avatarUrl verificado"
+        ); // ✅ Poblar usuarios en comentarios
 
       if (!postDoc) {
         return sendNotFound(res, "Post");
@@ -321,23 +325,34 @@ export const postController = {
         select: "nick nombre nombreArtistico avatarUrl verificado",
       });
 
-      // Crear notificación
+      const nuevoComentario = post.comentarios[post.comentarios.length - 1];
+
+      // Crear notificación con el ID del comentario específico
       if (!isPostAuthor(post, usuarioId)) {
         const usuario = await Usuario.findById(usuarioId).select(
           "nick nombreArtistico"
         );
         const nombreUsuario = usuario.nombreArtistico || usuario.nick;
 
+        // Obtener el ID del usuario dueño del post (puede ser ObjectId o objeto poblado)
+        const postOwnerId =
+          typeof post.usuario === "object" && post.usuario._id
+            ? post.usuario._id
+            : post.usuario;
+
         await crearNotificacion(
-          post.usuario,
+          postOwnerId,
           usuarioId,
           "comentario_post",
           `${nombreUsuario} comentó tu post`,
-          { tipo: "post", id: postId }
+          {
+            tipo: "post",
+            id: postId,
+            comentarioId: nuevoComentario._id, // ✅ ID del comentario específico
+          }
         );
       }
 
-      const nuevoComentario = post.comentarios[post.comentarios.length - 1];
       return sendCreated(res, nuevoComentario, "Comentario agregado");
     } catch (error) {
       console.error("Error agregando comentario:", error);
@@ -381,6 +396,126 @@ export const postController = {
     } catch (error) {
       console.error("Error obteniendo comentarios:", error);
       return sendServerError(res, error, "Error al obtener comentarios");
+    }
+  },
+
+  /**
+   * Responder a un comentario
+   */
+  async responderComentario(req, res) {
+    try {
+      const usuarioId = req.usuario?.id || req.userId;
+      const { postId, comentarioId } = req.params;
+      const { contenido } = req.body;
+
+      if (!contenido?.trim()) {
+        return sendValidationError(res, "El contenido es requerido");
+      }
+
+      const post = await Post.findById(postId);
+      if (!post || post.estaEliminado) {
+        return sendNotFound(res, "Post");
+      }
+
+      const comentario = post.comentarios.id(comentarioId);
+      if (!comentario) {
+        return sendNotFound(res, "Comentario");
+      }
+
+      comentario.respuestas.push({
+        usuario: usuarioId,
+        contenido: contenido.trim(),
+      });
+
+      await post.save();
+
+      // Poblar la respuesta recién agregada
+      await post.populate({
+        path: "comentarios.respuestas.usuario",
+        select: "nick nombreArtistico avatarUrl verificado",
+      });
+
+      const nuevaRespuesta =
+        comentario.respuestas[comentario.respuestas.length - 1];
+
+      // Crear notificación al dueño del comentario original
+      const comentarioOwner =
+        typeof comentario.usuario === "object" && comentario.usuario._id
+          ? comentario.usuario._id.toString()
+          : comentario.usuario.toString();
+
+      if (comentarioOwner !== usuarioId) {
+        const { crearNotificacion } = await import(
+          "../helpers/notificacionHelper.js"
+        );
+        const Usuario = (await import("../models/usuarioModels.js")).default;
+        const usuario = await Usuario.findById(usuarioId).select(
+          "nick nombreArtistico"
+        );
+        const nombreUsuario = usuario.nombreArtistico || usuario.nick;
+
+        await crearNotificacion(
+          comentarioOwner,
+          usuarioId,
+          "respuesta_comentario",
+          `${nombreUsuario} respondió a tu comentario`,
+          {
+            tipo: "post",
+            id: postId,
+            comentarioId: comentarioId,
+            respuestaId: nuevaRespuesta._id,
+          }
+        );
+      }
+
+      return sendCreated(res, nuevaRespuesta, "Respuesta agregada");
+    } catch (error) {
+      console.error("Error respondiendo comentario:", error);
+      return sendServerError(res, error, "Error al responder comentario");
+    }
+  },
+
+  /**
+   * Dar/quitar like a un comentario
+   */
+  async toggleLikeComentario(req, res) {
+    try {
+      const usuarioId = req.usuario?.id || req.userId;
+      const { postId, comentarioId } = req.params;
+
+      const post = await Post.findById(postId);
+      if (!post || post.estaEliminado) {
+        return sendNotFound(res, "Post");
+      }
+
+      const comentario = post.comentarios.id(comentarioId);
+      if (!comentario) {
+        return sendNotFound(res, "Comentario");
+      }
+
+      const likeIndex = comentario.likes.indexOf(usuarioId);
+
+      if (likeIndex > -1) {
+        // Quitar like
+        comentario.likes.splice(likeIndex, 1);
+      } else {
+        // Agregar like
+        comentario.likes.push(usuarioId);
+      }
+
+      await post.save();
+
+      return sendSuccess(
+        res,
+        {
+          liked: likeIndex === -1,
+          totalLikes: comentario.likes.length,
+        },
+        "Like actualizado"
+      );
+    } catch (error) {
+      console.error("Error toggle like comentario:", error);
+      return sendServerError(res, error, "Error al procesar like");
     }
   },
 

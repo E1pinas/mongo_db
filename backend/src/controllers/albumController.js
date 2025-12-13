@@ -89,6 +89,7 @@ export const crearAlbum = async (req, res) => {
 export const obtenerAlbumPorId = async (req, res) => {
   try {
     const { id } = req.params;
+    const usuarioActualId = req.usuario?.id; // Usuario autenticado (puede ser undefined)
 
     const album = await Album.findOne({
       _id: id,
@@ -114,11 +115,25 @@ export const obtenerAlbumPorId = async (req, res) => {
       return sendNotFound(res, "Álbum");
     }
 
+    // Verificar si el usuario actual es uno de los artistas del álbum
+    const esArtista = album.artistas.some(
+      (artista) => artista._id.toString() === usuarioActualId
+    );
+
+    // Si el álbum es privado y el usuario NO es artista, denegar acceso
+    if (album.esPrivado && !esArtista) {
+      return res.status(403).json({
+        ok: false,
+        mensaje: "Este álbum es privado",
+        esPrivado: true,
+      });
+    }
+
     // Verificar si el usuario es menor de edad
     let esMenorDeEdad = false;
-    if (req.userId) {
+    if (usuarioActualId) {
       const { Usuario } = await import("../models/usuarioModels.js");
-      const usuario = await Usuario.findById(req.userId).select(
+      const usuario = await Usuario.findById(usuarioActualId).select(
         "fechaNacimiento"
       );
       if (usuario && usuario.fechaNacimiento) {
@@ -133,8 +148,15 @@ export const obtenerAlbumPorId = async (req, res) => {
         if (!cancion) return false;
         // Filtrar canciones ocultas por moderación
         if (cancion.oculta) return false;
-        // Si el álbum es público, filtrar canciones privadas
-        if (!album.esPrivado && cancion.esPrivada) return false;
+
+        // Si la canción es privada, solo mostrarla si el usuario es uno de los artistas
+        if (cancion.esPrivada) {
+          const esArtistaDeCancion = cancion.artistas?.some(
+            (artista) => artista._id?.toString() === usuarioActualId
+          );
+          if (!esArtistaDeCancion) return false; // Ocultar canción privada
+        }
+
         // Si el usuario es menor de edad, filtrar canciones explícitas
         if (esMenorDeEdad && cancion.esExplicita === true) return false;
         return true;

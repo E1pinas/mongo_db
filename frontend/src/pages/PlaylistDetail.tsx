@@ -34,6 +34,10 @@ export default function PlaylistDetail() {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [playlistError, setPlaylistError] = useState<{
+    type: "not_found" | "private" | "unavailable";
+    message: string;
+  } | null>(null);
   const [selectedSongForComments, setSelectedSongForComments] =
     useState<Cancion | null>(null);
   const [removingSong, setRemovingSong] = useState<Cancion | null>(null);
@@ -84,8 +88,30 @@ export default function PlaylistDetail() {
         subtitulo: creadorNombre,
         imagenUrl: data.portadaUrl || "/cover.jpg",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading playlist:", error);
+      // Si la playlist es privada o fue eliminada
+      if (
+        error.response?.status === 403 ||
+        error.response?.data?.esPrivada ||
+        error.message.includes("privada")
+      ) {
+        setPlaylistError({
+          type: "private",
+          message: "Esta playlist es privada. Solo el creador puede verla.",
+        });
+      } else if (error.response?.status === 404) {
+        setPlaylistError({
+          type: "not_found",
+          message: "Esta playlist no existe o fue eliminada.",
+        });
+      } else {
+        setPlaylistError({
+          type: "unavailable",
+          message: "No se pudo cargar esta playlist. Intenta nuevamente.",
+        });
+      }
+      setPlaylist(null);
     } finally {
       setIsLoading(false);
     }
@@ -343,17 +369,65 @@ export default function PlaylistDetail() {
     );
   }
 
-  if (!playlist) {
+  if (!playlist || playlistError) {
+    const errorConfig = playlistError
+      ? {
+          private: {
+            icon: "🔒",
+            title: "Playlist Privada",
+            color: "yellow",
+            gradient: "from-yellow-900/10 to-orange-900/10",
+          },
+          unavailable: {
+            icon: "🚫",
+            title: "Playlist No Disponible",
+            color: "orange",
+            gradient: "from-orange-900/10 to-red-900/10",
+          },
+          not_found: {
+            icon: "❌",
+            title: "Playlist No Encontrada",
+            color: "red",
+            gradient: "from-red-900/10 to-pink-900/10",
+          },
+        }[playlistError.type]
+      : {
+          icon: "❌",
+          title: "Playlist No Encontrada",
+          color: "red",
+          gradient: "from-red-900/10 to-pink-900/10",
+        };
+
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <Music size={64} className="text-neutral-600 mb-4" />
-        <p className="text-xl text-neutral-400 mb-4">Playlist no encontrada</p>
-        <button
-          onClick={() => navigate("/playlists")}
-          className="px-6 py-3 bg-neutral-800 rounded-full font-semibold hover:bg-neutral-700 transition-colors"
-        >
-          Volver a Playlists
-        </button>
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div
+            className={`bg-gradient-to-br ${errorConfig.gradient} bg-neutral-900/80 backdrop-blur-sm rounded-2xl p-8 border border-neutral-800 shadow-2xl`}
+          >
+            <div className="text-center space-y-6">
+              <div className="text-6xl opacity-80">{errorConfig.icon}</div>
+
+              <div className="space-y-2">
+                <h2
+                  className={`text-2xl font-bold text-${errorConfig.color}-500`}
+                >
+                  {errorConfig.title}
+                </h2>
+                <p className="text-gray-400">
+                  {playlistError?.message ||
+                    "Esta playlist no existe o fue eliminada."}
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate("/playlists")}
+                className="w-full px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-lg transition-all duration-200 border border-neutral-700"
+              >
+                Volver a Playlists
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -5,6 +5,9 @@ import { authService } from "../services/auth.service";
 import { friendshipService } from "../services/friendship.service";
 import { followerService } from "../services/follower.service";
 import { recentService } from "../services/recent.service";
+import { musicService } from "../services/music.service";
+import BlockButton from "../components/BlockButton";
+import EditSongModal from "../components/musica/EditSongModal";
 import {
   Music,
   Users,
@@ -90,6 +93,10 @@ export default function Profile() {
   const [aceptaSolicitudes, setAceptaSolicitudes] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
   const [showBlockModal, setShowBlockModal] = useState(false);
+  const [profileError, setProfileError] = useState<{
+    type: "not_found" | "private" | "unavailable";
+    message: string;
+  } | null>(null);
   const [showRemoveFriendModal, setShowRemoveFriendModal] = useState(false);
   const [showUnfollowModal, setShowUnfollowModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -97,6 +104,10 @@ export default function Profile() {
   const [comentariosCancion, setComentariosCancion] = useState<Cancion | null>(
     null
   );
+  const [showDeleteSongModal, setShowDeleteSongModal] = useState(false);
+  const [songToDelete, setSongToDelete] = useState<Cancion | null>(null);
+  const [showEditSongModal, setShowEditSongModal] = useState(false);
+  const [songToEdit, setSongToEdit] = useState<Cancion | null>(null);
 
   const { playQueue, currentSong, isPlaying, togglePlay } = usePlayer();
 
@@ -152,21 +163,26 @@ export default function Profile() {
           userData = await authService.getProfileByNick(nick);
         } catch (error: any) {
           console.error("Error loading profile by nick:", error);
-          // Mostrar el error específico
+          // Bloqueo - mostrar "Usuario no encontrado" para privacidad
           if (
+            error.response?.status === 403 ||
+            error.response?.data?.bloqueado ||
             error.message.includes("403") ||
             error.message.includes("bloqueado")
           ) {
-            alert(
-              "No tienes acceso a este perfil. Es posible que hayas sido bloqueado."
-            );
-            navigate("/");
+            // No mostrar alert, solo establecer como usuario no encontrado
+            setProfileUser(null);
+            setLoading(false);
             return;
           }
           // Perfil privado
           if (error.message.includes("privado")) {
-            alert("Este perfil es privado. Solo los amigos pueden verlo.");
-            navigate("/");
+            setProfileError({
+              type: "private",
+              message: "Este perfil es privado. Solo los amigos pueden verlo.",
+            });
+            setProfileUser(null);
+            setLoading(false);
             return;
           }
           // Si no se encuentra el usuario, dejar userData como null
@@ -214,7 +230,29 @@ export default function Profile() {
 
       // Siempre obtener datos actualizados del backend para asegurar que tenemos toda la info
       // especialmente las canciones con sus datos completos (duracionSegundos, etc.)
-      userData = await authService.getProfileByNick(user.nick);
+      try {
+        userData = await authService.getProfileByNick(user.nick);
+      } catch (error: any) {
+        // Si el perfil ahora es privado, bloqueado, o fue eliminado
+        if (
+          error.response?.status === 403 ||
+          error.response?.data?.bloqueado ||
+          error.response?.data?.perfilPrivado ||
+          error.message.includes("403") ||
+          error.message.includes("bloqueado") ||
+          error.message.includes("privado")
+        ) {
+          console.log("🔒 Perfil cambió a privado/bloqueado - redirigiendo");
+          setProfileError({
+            type: "unavailable",
+            message: "Este perfil ya no está disponible o es privado.",
+          });
+          setProfileUser(null);
+          setLoadingContent(false);
+          return;
+        }
+        throw error; // Re-lanzar otros errores
+      }
 
       // Extraer las canciones, álbumes y playlists del usuario
       setCanciones(userData.misCanciones || []);
@@ -464,6 +502,61 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteSong = async () => {
+    if (!songToDelete) return;
+
+    try {
+      setLoadingAction(true);
+      const response = await fetch(
+        `http://localhost:3900/api/canciones/${songToDelete._id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Error al eliminar canción");
+      }
+
+      // Actualizar la lista de canciones eliminando la canción
+      setCanciones(canciones.filter((c) => c._id !== songToDelete._id));
+      setShowDeleteSongModal(false);
+      setSongToDelete(null);
+
+      // Recargar perfil para actualizar contadores
+      if (profileUser) {
+        await loadUserContent(profileUser);
+      }
+    } catch (error) {
+      console.error("Error al eliminar canción:", error);
+      alert("Error al eliminar la canción");
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const handleEditSong = (cancion: Cancion) => {
+    setSongToEdit(cancion);
+    setShowEditSongModal(true);
+  };
+
+  const handleSaveEditedSong = async (data: {
+    titulo: string;
+    generos: string[];
+    esPrivada: boolean;
+    esExplicita: boolean;
+  }) => {
+    if (!songToEdit) return;
+
+    await musicService.updateSong(songToEdit._id, data);
+    setShowEditSongModal(false);
+    setSongToEdit(null);
+    loadProfile();
+  };
+
   const isOwnProfile = profileUser?._id === currentUser?._id;
 
   // Debug: verificar IDs
@@ -481,16 +574,50 @@ export default function Profile() {
   }
 
   if (!profileUser) {
+    const errorConfig = profileError
+      ? {
+          private: {
+            icon: "🔒",
+            title: "Perfil Privado",
+            message: profileError.message,
+            color: "text-yellow-400",
+          },
+          unavailable: {
+            icon: "🚫",
+            title: "Perfil No Disponible",
+            message: profileError.message,
+            color: "text-orange-400",
+          },
+          not_found: {
+            icon: "❌",
+            title: "Usuario No Encontrado",
+            message: "Este usuario no existe o ha sido eliminado.",
+            color: "text-red-400",
+          },
+        }[profileError.type]
+      : {
+          icon: "❌",
+          title: "Usuario No Encontrado",
+          message: "Este usuario no existe o ha sido eliminado.",
+          color: "text-red-400",
+        };
+
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Usuario no encontrado</h2>
-          <button
-            onClick={() => navigate("/")}
-            className="text-blue-500 hover:underline"
-          >
-            Volver al inicio
-          </button>
+      <div className="flex items-center justify-center min-h-screen bg-neutral-950">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-neutral-900 rounded-2xl p-8 border border-neutral-800 text-center">
+            <div className="text-6xl mb-4">{errorConfig.icon}</div>
+            <h2 className={`text-2xl font-bold mb-3 ${errorConfig.color}`}>
+              {errorConfig.title}
+            </h2>
+            <p className="text-neutral-400 mb-6">{errorConfig.message}</p>
+            <button
+              onClick={() => navigate("/")}
+              className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-xl font-semibold transition-all"
+            >
+              Volver al Inicio
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -762,6 +889,19 @@ export default function Profile() {
                     <Flag size={16} />
                     Reportar
                   </button>
+
+                  {/* Botón de Bloquear */}
+                  {profileUser._id && (
+                    <BlockButton
+                      usuarioId={profileUser._id}
+                      onBlockChange={(bloqueado) => {
+                        if (bloqueado) {
+                          // Si bloqueó al usuario, redirigir al home
+                          navigate("/");
+                        }
+                      }}
+                    />
+                  )}
                 </>
               )}
             </div>
@@ -926,6 +1066,15 @@ export default function Profile() {
                   })
                   .map((cancion, index) => {
                     const isCurrentSong = currentSong?._id === cancion._id;
+                    const isCreator = isOwnProfile;
+                    console.log(
+                      "🎵 Canción:",
+                      cancion.titulo,
+                      "- isOwnProfile:",
+                      isOwnProfile,
+                      "- showCreatorActions:",
+                      isCreator
+                    );
                     return (
                       <SongRow
                         key={cancion._id}
@@ -935,6 +1084,12 @@ export default function Profile() {
                         isPlaying={isPlaying}
                         onPlay={() => handlePlaySong(cancion)}
                         onOpenComments={() => setComentariosCancion(cancion)}
+                        showCreatorActions={isCreator}
+                        onEdit={() => handleEditSong(cancion)}
+                        onDelete={() => {
+                          setSongToDelete(cancion);
+                          setShowDeleteSongModal(true);
+                        }}
                         onLikeChange={(liked) => {
                           // Actualizar inmediatamente el estado local
                           setCanciones((prevCanciones) =>
@@ -1264,6 +1419,67 @@ export default function Profile() {
       )}
 
       {/* Modal de cuenta suspendida */}
+      {showDeleteSongModal && songToDelete && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Eliminar canción</h3>
+              <button
+                onClick={() => {
+                  setShowDeleteSongModal(false);
+                  setSongToDelete(null);
+                }}
+                className="p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-neutral-400 mb-2">
+              ¿Estás seguro de que deseas eliminar{" "}
+              <span className="text-white font-semibold">
+                "{songToDelete.titulo}"
+              </span>
+              ?
+            </p>
+
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 mt-4">
+              <p className="text-red-400 text-sm font-medium mb-2">
+                ⚠️ Esta acción es permanente y eliminará:
+              </p>
+              <ul className="text-red-300 text-sm space-y-1 ml-4 list-disc">
+                <li>La canción de toda la aplicación</li>
+                <li>De todas las playlists donde aparece</li>
+                <li>De todos los álbumes donde aparece</li>
+                <li>De las canciones guardadas de otros usuarios</li>
+                <li>Los archivos de audio de nuestros servidores</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteSongModal(false);
+                  setSongToDelete(null);
+                }}
+                disabled={loadingAction}
+                className="flex-1 px-4 py-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteSong}
+                disabled={loadingAction}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
+              >
+                {loadingAction ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de cuenta suspendida */}
       {showSuspendedModal && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-700">
@@ -1301,6 +1517,19 @@ export default function Profile() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal de editar canción */}
+      {songToEdit && (
+        <EditSongModal
+          isOpen={showEditSongModal}
+          onClose={() => {
+            setShowEditSongModal(false);
+            setSongToEdit(null);
+          }}
+          onSave={handleSaveEditedSong}
+          song={songToEdit}
+        />
       )}
     </div>
   );

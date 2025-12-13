@@ -664,6 +664,8 @@ export const reactivarUsuario = async (req, res) => {
     usuario.puedeSubirContenido = true;
 
     // Agregar al historial de conducta
+    console.log("🔍 req.usuario en reactivar:", req.usuario);
+    console.log("🔍 req.usuario.id:", req.usuario?.id);
     usuario.historialConducta.push({
       fecha: new Date(),
       accion: "vida_restaurada",
@@ -671,7 +673,7 @@ export const reactivarUsuario = async (req, res) => {
       nombreContenido: usuario.nick,
       razon: "Reactivación por administrador",
       vidasRestantes: usuario.vidas,
-      moderador: req.usuario._id,
+      moderador: req.usuario.id,
     });
 
     await usuario.save();
@@ -1052,9 +1054,11 @@ export const eliminarAlbum = async (req, res) => {
     const tituloAlbum = album.titulo;
     const artistasIds = album.artistas.map((a) => a._id);
 
-    // Eliminar álbum y sus canciones
+    // Eliminar solo el álbum, NO las canciones (las canciones son independientes)
     await Album.findByIdAndDelete(id);
-    await Cancion.deleteMany({ album: id });
+
+    // Quitar la referencia del álbum en las canciones que lo tenían asignado
+    await Cancion.updateMany({ album: id }, { $unset: { album: "" } });
 
     // Eliminar de biblioteca de usuarios
     await Usuario.updateMany({ misAlbumes: id }, { $pull: { misAlbumes: id } });
@@ -1077,7 +1081,7 @@ export const eliminarAlbum = async (req, res) => {
 
     res.status(200).json({
       status: "success",
-      message: "Álbum y sus canciones eliminados exitosamente",
+      message: "Álbum eliminado exitosamente (canciones preservadas)",
       razon,
     });
   } catch (error) {
@@ -1290,6 +1294,49 @@ export const obtenerActividadReciente = async (req, res) => {
     res.status(500).json({
       status: "error",
       message: "Error al obtener actividad reciente",
+    });
+  }
+};
+
+/**
+ * Cambiar prioridad de un reporte
+ */
+export const cambiarPrioridad = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { prioridad } = req.body;
+
+    // Validar que la prioridad sea válida
+    const prioridadesValidas = ["baja", "media", "alta", "urgente"];
+    if (!prioridadesValidas.includes(prioridad)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Prioridad inválida. Debe ser: baja, media, alta o urgente",
+      });
+    }
+
+    const reporte = await Reporte.findById(id);
+    if (!reporte) {
+      return res.status(404).json({
+        status: "error",
+        message: "Reporte no encontrado",
+      });
+    }
+
+    // Actualizar la prioridad
+    reporte.prioridad = prioridad;
+    await reporte.save();
+
+    res.status(200).json({
+      status: "success",
+      message: `Prioridad cambiada a ${prioridad}`,
+      reporte,
+    });
+  } catch (error) {
+    console.error("Error al cambiar prioridad:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Error al actualizar prioridad del reporte",
     });
   }
 };

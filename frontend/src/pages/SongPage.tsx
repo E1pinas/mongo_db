@@ -1,0 +1,336 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { musicService } from "../services/music.service";
+import { usePlayer, useAuth } from "../contexts";
+import type { Cancion } from "../types";
+import { X, Play, Pause, Music, LogIn, UserPlus } from "lucide-react";
+import { formatDuration } from "../utils/formatHelpers";
+
+export default function SongPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [cancion, setCancion] = useState<Cancion | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const { playQueue, currentSong, isPlaying, togglePlay } = usePlayer();
+
+  useEffect(() => {
+    loadCancion();
+  }, [id]);
+
+  const loadCancion = async () => {
+    if (!id) return;
+
+    try {
+      setLoading(true);
+      setError("");
+      // Usar endpoint público de canción compartida
+      const response = await musicService.getSongPublic(id);
+      setCancion(response.cancion);
+      setMensaje(response.mensaje || "");
+    } catch (err: any) {
+      console.error("Error cargando canción:", err);
+      setError(err.message || "Error al cargar la canción");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePlayCancion = () => {
+    if (!cancion) return;
+
+    if (currentSong?._id === cancion._id) {
+      togglePlay();
+    } else {
+      playQueue([cancion], 0);
+    }
+  };
+
+  const handleClose = () => {
+    // Si cierra sin estar logueado, sacar de la página
+    if (!user) {
+      window.location.href = "/login";
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const handleLogin = () => {
+    navigate("/login");
+  };
+
+  const handleRegister = () => {
+    navigate("/register");
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-neutral-900 rounded-2xl p-8 max-w-md w-full mx-4">
+          <div className="flex flex-col items-center">
+            <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-neutral-400">Cargando canción...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !cancion) {
+    return (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-neutral-900 rounded-2xl p-8 max-w-md w-full mx-4 border border-red-500/30">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
+              <X size={32} className="text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">
+              {error?.includes("espera")
+                ? "Por favor espera"
+                : "Canción no encontrada"}
+            </h2>
+            <p className="text-neutral-400 mb-6">
+              {error || "No se pudo cargar la canción"}
+            </p>
+            <button
+              onClick={handleClose}
+              className="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-full font-semibold transition-colors"
+            >
+              {error?.includes("espera") ? "Entendido" : "Volver"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isCurrentSong = currentSong?._id === cancion._id;
+
+  return (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6">
+      <div className="bg-gradient-to-br from-neutral-900 via-neutral-900 to-neutral-800 rounded-2xl max-w-lg w-full border border-neutral-700 shadow-2xl overflow-hidden max-h-[95vh] overflow-y-auto">
+        {/* Header */}
+        <div className="relative">
+          <button
+            onClick={handleClose}
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-800 hover:bg-red-500 transition-colors border border-neutral-600 hover:border-red-400"
+          >
+            <X size={20} className="sm:hidden text-white" strokeWidth={2.5} />
+            <X
+              size={22}
+              className="hidden sm:block text-white"
+              strokeWidth={2.5}
+            />
+          </button>
+        </div>
+
+        {/* Contenido */}
+        <div className="p-5 sm:p-8">
+          <div className="flex flex-col items-center text-center mb-4 sm:mb-6">
+            {/* Portada */}
+            <div className="relative mb-4 sm:mb-6">
+              <div className="w-36 h-36 sm:w-48 sm:h-48 rounded-2xl overflow-hidden shadow-2xl">
+                {cancion.portadaUrl ? (
+                  <img
+                    src={cancion.portadaUrl}
+                    alt={cancion.titulo}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-neutral-700 to-neutral-800 flex items-center justify-center">
+                    <Music size={48} className="sm:hidden text-neutral-500" />
+                    <Music
+                      size={64}
+                      className="hidden sm:block text-neutral-500"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Info */}
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-white px-2">
+              {cancion.titulo}
+            </h1>
+            <p className="text-base sm:text-lg text-neutral-300 mb-1 font-medium px-2">
+              {Array.isArray(cancion.artistas)
+                ? cancion.artistas
+                    .map((a: any) =>
+                      typeof a === "string"
+                        ? a
+                        : a.nombreArtistico || a.nick || a.nombre
+                    )
+                    .join(", ")
+                : "Artista desconocido"}
+            </p>
+            <p className="text-xs sm:text-sm text-neutral-500">
+              {formatDuration(cancion.duracionSegundos)}
+            </p>
+
+            {/* Géneros */}
+            {cancion.generos && cancion.generos.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center mt-3 sm:mt-4 px-2">
+                {cancion.generos.map((genero) => (
+                  <span
+                    key={genero}
+                    className="px-2.5 sm:px-3 py-1 bg-neutral-800/70 rounded-full text-xs font-medium text-neutral-300"
+                  >
+                    {genero}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Badges */}
+            <div className="flex gap-2 mt-3 sm:mt-4">
+              {cancion.esPrivada && (
+                <span className="px-2.5 sm:px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-xs font-medium text-purple-400">
+                  Privada
+                </span>
+              )}
+              {cancion.esExplicita && (
+                <span className="px-2.5 sm:px-3 py-1 bg-red-500/20 border border-red-500/30 rounded-full text-xs font-medium text-red-400">
+                  Explícita
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Botones de acción */}
+          <div className="space-y-2.5 sm:space-y-3">
+            {/* Botón reproducir */}
+            <button
+              onClick={handlePlayCancion}
+              className="w-full flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 rounded-2xl font-bold text-sm sm:text-base transition-all shadow-xl hover:shadow-orange-500/30 hover:scale-[1.02] transform active:scale-[0.98]"
+            >
+              {isCurrentSong && isPlaying ? (
+                <>
+                  <Pause size={20} className="sm:hidden" fill="currentColor" />
+                  <Pause
+                    size={22}
+                    className="hidden sm:block"
+                    fill="currentColor"
+                  />
+                  <span>Pausar</span>
+                </>
+              ) : (
+                <>
+                  <Play size={20} className="sm:hidden" fill="currentColor" />
+                  <Play
+                    size={22}
+                    className="hidden sm:block"
+                    fill="currentColor"
+                  />
+                  <span>Reproducir Ahora</span>
+                </>
+              )}
+            </button>
+
+            {/* Separador visual para usuarios no logueados */}
+            {!user && (
+              <>
+                <div className="relative py-3 sm:py-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t-2 border-gradient-to-r from-transparent via-neutral-600 to-transparent"></div>
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-neutral-900 px-3 sm:px-4 py-1 text-xs sm:text-sm font-bold text-neutral-300 border border-neutral-700 rounded-full">
+                      Accede a todo
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botones de login/registro con diseño único */}
+                <div className="space-y-2.5 sm:space-y-3">
+                  <button
+                    onClick={handleRegister}
+                    className="w-full group relative px-5 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl font-bold text-sm sm:text-base transition-all shadow-xl hover:shadow-blue-500/40 overflow-hidden active:scale-[0.98]"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="relative flex items-center justify-center gap-2">
+                      <UserPlus size={18} className="sm:hidden" />
+                      <UserPlus size={20} className="hidden sm:block" />
+                      <span>Crear Cuenta Nueva</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handleLogin}
+                    className="w-full flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 bg-transparent border-2 border-neutral-600 hover:border-white hover:bg-white/5 rounded-2xl font-bold text-sm sm:text-base transition-all active:scale-[0.98]"
+                  >
+                    <LogIn size={16} className="sm:hidden" />
+                    <LogIn size={18} className="hidden sm:block" />
+                    <span>Iniciar Sesión</span>
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Botón cerrar (solo si está logueado) */}
+            {user && (
+              <button
+                onClick={handleClose}
+                className="w-full px-5 sm:px-6 py-3 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-2xl font-semibold text-sm sm:text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Cerrar
+              </button>
+            )}
+          </div>
+
+          {/* Mensaje informativo mejorado */}
+          <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-neutral-800/50 border-2 border-neutral-700 rounded-2xl backdrop-blur-md">
+            <div className="flex items-start gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                <Music size={18} className="sm:hidden text-white" />
+                <Music size={20} className="hidden sm:block text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs sm:text-sm font-bold text-white mb-1">
+                  Canción Compartida
+                </p>
+                <p className="text-xs text-neutral-400">
+                  {mensaje || "Un usuario compartió esta música contigo"}
+                </p>
+              </div>
+            </div>
+            {!user && (
+              <div className="space-y-2 sm:space-y-2.5 pt-3 sm:pt-4 border-t border-neutral-700">
+                <p className="text-xs font-bold text-neutral-300 uppercase tracking-wide">
+                  Beneficios de Miembro
+                </p>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-start gap-2 sm:gap-2.5">
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-orange-500"></div>
+                    </div>
+                    <p className="text-xs text-neutral-300">
+                      Interactúa con artistas y comunidad
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2 sm:gap-2.5">
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500"></div>
+                    </div>
+                    <p className="text-xs text-neutral-300">
+                      Organiza tu música en playlists personalizadas
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2 sm:gap-2.5">
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-purple-500"></div>
+                    </div>
+                    <p className="text-xs text-neutral-300">
+                      Descubre nuevos artistas y tendencias
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

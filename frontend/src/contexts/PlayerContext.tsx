@@ -580,6 +580,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Si ya se está reproduciendo la misma canción, pausar/reanudar en lugar de reiniciar
+    if (currentSongRef.current?._id === song._id && audioRef.current.src) {
+      if (isPlayingRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
     console.log("▶️ playSong llamado:", song.titulo, "URL:", song.audioUrl);
 
     console.log("👤 Usuario actual completo:", JSON.stringify(user, null, 2));

@@ -155,6 +155,7 @@ export const quitarCancionPlaylist = async (req, res) => {
 export const obtenerPlaylistPorId = async (req, res) => {
   try {
     const { id } = req.params;
+    const usuarioActualId = req.usuario?.id; // Usuario autenticado (puede ser undefined)
 
     const playlist = await Playlist.findById(id)
       .populate("creador", "nick nombre nombreArtistico avatarUrl verificado")
@@ -173,11 +174,24 @@ export const obtenerPlaylistPorId = async (req, res) => {
       return sendNotFound(res, "Playlist");
     }
 
+    // Verificar si el usuario actual es el creador de la playlist
+    const esCreador =
+      playlist.creador && playlist.creador._id.toString() === usuarioActualId;
+
+    // Si la playlist es privada (esPublica === false) y el usuario NO es el creador, denegar acceso
+    if (!playlist.esPublica && !esCreador) {
+      return res.status(403).json({
+        ok: false,
+        mensaje: "Esta playlist es privada",
+        esPrivada: true,
+      });
+    }
+
     // Verificar si el usuario es menor de edad
     let esMenorDeEdad = false;
-    if (req.userId) {
+    if (usuarioActualId) {
       const { Usuario } = await import("../models/usuarioModels.js");
-      const usuario = await Usuario.findById(req.userId).select(
+      const usuario = await Usuario.findById(usuarioActualId).select(
         "fechaNacimiento"
       );
       if (usuario && usuario.fechaNacimiento) {
@@ -192,8 +206,15 @@ export const obtenerPlaylistPorId = async (req, res) => {
         if (!cancion || cancion.estaEliminada) return false;
         // Filtrar canciones ocultas por moderación
         if (cancion.oculta) return false;
-        // Si la playlist es pública, filtrar canciones privadas
-        if (playlist.esPublica && cancion.esPrivada) return false;
+
+        // Si la canción es privada, solo mostrarla si el usuario es uno de los artistas
+        if (cancion.esPrivada) {
+          const esArtistaDeCancion = cancion.artistas?.some(
+            (artista) => artista._id?.toString() === usuarioActualId
+          );
+          if (!esArtistaDeCancion) return false; // Ocultar canción privada
+        }
+
         // Si el usuario es menor de edad, filtrar canciones explícitas
         if (esMenorDeEdad && cancion.esExplicita === true) return false;
         return true;

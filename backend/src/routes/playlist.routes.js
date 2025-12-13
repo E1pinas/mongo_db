@@ -1,6 +1,7 @@
 // src/routes/playlist.routes.js
 import express from "express";
 import { authUsuario } from "../middlewares/authUsuario.js";
+import { authOptional } from "../middlewares/authOptional.js";
 import {
   crearPlaylist,
   obtenerPlaylistPorId,
@@ -26,7 +27,7 @@ router.post("/", authUsuario, crearPlaylist);
 router.get("/publicas", obtenerPlaylistsPublicas);
 router.get("/buscar", buscarPlaylists);
 router.get("/buscar-canciones", authUsuario, buscarCancionesParaPlaylist);
-router.get("/:id", obtenerPlaylistPorId);
+router.get("/:id", authOptional, obtenerPlaylistPorId);
 router.patch("/:id", authUsuario, actualizarPlaylist);
 router.delete("/:id", authUsuario, eliminarPlaylist);
 router.post("/:id/canciones", authUsuario, agregarCancionPlaylist);

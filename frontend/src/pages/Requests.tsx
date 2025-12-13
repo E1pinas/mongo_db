@@ -4,7 +4,8 @@ import {
   friendshipService,
   type SolicitudAmistad,
 } from "../services/friendship.service";
-import { UserPlus, UserCheck, UserX, Users, Clock, X } from "lucide-react";
+import { bloqueoService } from "../services/bloqueo.service";
+import { UserPlus, UserCheck, UserX, Users, Clock, X, Ban } from "lucide-react";
 import type { Usuario } from "../types";
 import ConnectionStatus from "../components/common/ConnectionStatus";
 
@@ -16,9 +17,9 @@ import ConnectionStatus from "../components/common/ConnectionStatus";
 
 export default function Requests() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"recibidas" | "amigos">(
-    "recibidas"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "recibidas" | "amigos" | "bloqueados"
+  >("recibidas");
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -26,11 +27,14 @@ export default function Requests() {
     SolicitudAmistad[]
   >([]);
   const [amigos, setAmigos] = useState<Usuario[]>([]);
+  const [bloqueados, setBloqueados] = useState<any[]>([]);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [friendToRemove, setFriendToRemove] = useState<{
     id: string;
     nick: string;
   } | null>(null);
+  const [showUnblockModal, setShowUnblockModal] = useState(false);
+  const [selectedBlocked, setSelectedBlocked] = useState<any>(null);
 
   // Cargar contadores al inicio
   useEffect(() => {
@@ -45,13 +49,15 @@ export default function Requests() {
   const loadAllCounts = async () => {
     try {
       // Cargar todas las listas en paralelo para tener los contadores
-      const [solicitudes, amigosData] = await Promise.all([
+      const [solicitudes, amigosData, bloqueadosData] = await Promise.all([
         friendshipService.getPendingRequests(),
         friendshipService.getFriends(),
+        bloqueoService.obtenerBloqueados(),
       ]);
 
       setSolicitudesRecibidas(solicitudes);
       setAmigos(amigosData);
+      setBloqueados(bloqueadosData.bloqueados || []);
     } catch (error) {
       console.error("Error loading counts:", error);
     }
@@ -67,6 +73,9 @@ export default function Requests() {
       } else if (activeTab === "amigos") {
         const data = await friendshipService.getFriends();
         setAmigos(data);
+      } else if (activeTab === "bloqueados") {
+        const data = await bloqueoService.obtenerBloqueados();
+        setBloqueados(data.bloqueados || []);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -156,6 +165,29 @@ export default function Requests() {
     setShowRemoveModal(true);
   };
 
+  const handleUnblock = (bloqueado: any) => {
+    setSelectedBlocked(bloqueado);
+    setShowUnblockModal(true);
+  };
+
+  const confirmUnblock = async () => {
+    if (!selectedBlocked) return;
+    const usuario = selectedBlocked.usuario;
+
+    try {
+      setActionLoading(usuario._id);
+      await bloqueoService.desbloquearUsuario(usuario._id);
+      setBloqueados(bloqueados.filter((b) => b.usuario._id !== usuario._id));
+      setShowUnblockModal(false);
+      setSelectedBlocked(null);
+    } catch (error: any) {
+      console.error("Error unblocking user:", error);
+      alert(error.message || "Error al desbloquear usuario");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const formatTimeAgo = (date: string) => {
     const now = new Date();
     const then = new Date(date);
@@ -233,6 +265,30 @@ export default function Requests() {
                     }`}
                   >
                     {amigos.length}
+                  </span>
+                )}
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("bloqueados")}
+              className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all duration-300 ${
+                activeTab === "bloqueados"
+                  ? "bg-linear-to-r from-red-500 to-orange-600 text-white shadow-lg shadow-red-500/30"
+                  : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Ban size={20} />
+                <span>Bloqueados</span>
+                {bloqueados.length > 0 && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                      activeTab === "bloqueados"
+                        ? "bg-white/20"
+                        : "bg-red-500/20 text-red-400"
+                    }`}
+                  >
+                    {bloqueados.length}
                   </span>
                 )}
               </div>
@@ -424,7 +480,164 @@ export default function Requests() {
                 )}
               </div>
             )}
+
+            {/* Tab: Bloqueados */}
+            {activeTab === "bloqueados" && (
+              <div className="space-y-4">
+                {bloqueados.length === 0 ? (
+                  <div className="text-center py-20">
+                    <div className="w-20 h-20 bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Ban size={32} className="text-neutral-400" />
+                    </div>
+                    <p className="text-xl font-semibold mb-2">
+                      No hay usuarios bloqueados
+                    </p>
+                    <p className="text-neutral-400">
+                      Cuando bloquees a alguien, aparecerá aquí
+                    </p>
+                  </div>
+                ) : (
+                  bloqueados.map((bloqueado, index) => {
+                    const usuario = bloqueado.usuario;
+                    return (
+                      <div
+                        key={usuario._id}
+                        style={{ animationDelay: `${index * 50}ms` }}
+                        className="bg-linear-to-r from-neutral-900/80 to-neutral-800/60 backdrop-blur-sm border border-neutral-700/50 p-5 rounded-2xl hover:border-red-500/50 hover:shadow-lg hover:shadow-red-500/10 transition-all duration-300 animate-fade-in"
+                      >
+                        <div className="flex items-center gap-4">
+                          {/* Avatar */}
+                          <div className="w-14 h-14 rounded-full overflow-hidden bg-neutral-800 shrink-0 opacity-60">
+                            {usuario.avatarUrl ? (
+                              <img
+                                src={usuario.avatarUrl}
+                                alt={usuario.nick}
+                                className="w-full h-full object-cover grayscale"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-red-500 to-orange-600">
+                                <span className="text-lg font-bold text-white">
+                                  {usuario.nick.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold truncate text-neutral-300">
+                              {usuario.nombreArtistico || usuario.nick}
+                            </p>
+                            <p className="text-sm text-neutral-400 truncate">
+                              @{usuario.nick}
+                            </p>
+                            {bloqueado.razon && (
+                              <p className="text-sm text-orange-400 mt-1 line-clamp-2">
+                                Razón: {bloqueado.razon}
+                              </p>
+                            )}
+                            {bloqueado.fechaBloqueo && (
+                              <p className="text-xs text-neutral-500 mt-1">
+                                Bloqueado el{" "}
+                                {new Date(
+                                  bloqueado.fechaBloqueo
+                                ).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Botón desbloquear */}
+                          <button
+                            onClick={() => handleUnblock(bloqueado)}
+                            disabled={actionLoading === usuario._id}
+                            className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 flex items-center gap-2"
+                          >
+                            {actionLoading === usuario._id ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                Desbloqueando...
+                              </>
+                            ) : (
+                              <>
+                                <UserX size={16} />
+                                Desbloquear
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </>
+        )}
+
+        {/* Modal de confirmación para desbloquear */}
+        {showUnblockModal && selectedBlocked && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold">Desbloquear usuario</h3>
+                <button
+                  onClick={() => {
+                    setShowUnblockModal(false);
+                    setSelectedBlocked(null);
+                  }}
+                  className="p-2 hover:bg-neutral-800 rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <p className="text-neutral-400 mb-4">
+                ¿Estás seguro de que deseas desbloquear a{" "}
+                <span className="text-white font-semibold">
+                  @{selectedBlocked.usuario.nick}
+                </span>
+                ?
+              </p>
+
+              {selectedBlocked.razon && (
+                <div className="bg-neutral-800/50 border border-orange-500/30 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-neutral-400 mb-2">
+                    Lo bloqueaste por:
+                  </p>
+                  <p className="text-orange-400 font-medium">
+                    {selectedBlocked.razon}
+                  </p>
+                </div>
+              )}
+
+              <p className="text-sm text-neutral-500 mb-6">
+                Una vez desbloqueado, podrá volver a ver tu perfil y enviarte
+                solicitudes de amistad.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowUnblockModal(false);
+                    setSelectedBlocked(null);
+                  }}
+                  disabled={actionLoading !== null}
+                  className="flex-1 px-4 py-3 bg-neutral-800 hover:bg-neutral-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmUnblock}
+                  disabled={actionLoading !== null}
+                  className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                >
+                  {actionLoading === selectedBlocked.usuario._id
+                    ? "Desbloqueando..."
+                    : "Desbloquear"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Modal de confirmación para eliminar amigo */}

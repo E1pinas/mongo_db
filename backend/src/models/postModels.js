@@ -61,6 +61,31 @@ const postSchema = new Schema(
           maxlength: 300,
           trim: true,
         },
+        likes: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: "Usuario",
+          },
+        ],
+        respuestas: [
+          {
+            usuario: {
+              type: Schema.Types.ObjectId,
+              ref: "Usuario",
+              required: true,
+            },
+            contenido: {
+              type: String,
+              required: true,
+              maxlength: 300,
+              trim: true,
+            },
+            createdAt: {
+              type: Date,
+              default: Date.now,
+            },
+          },
+        ],
         createdAt: {
           type: Date,
           default: Date.now,

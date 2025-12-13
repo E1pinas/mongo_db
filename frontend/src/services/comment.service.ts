@@ -52,6 +52,15 @@ class CommentService {
     return response.data;
   }
 
+  // Alias para obtener comentarios de canción
+  async obtenerComentariosCancion(
+    cancionId: string,
+    pagina = 1,
+    limite = 20
+  ): Promise<ComentariosResponse> {
+    return this.getCancionComments(cancionId, pagina, limite);
+  }
+
   // Crear comentario en una canción
   async createCancionComment(
     cancionId: string,

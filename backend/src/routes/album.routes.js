@@ -1,6 +1,7 @@
 // src/routes/album.routes.js
 import express from "express";
 import { authUsuario } from "../middlewares/authUsuario.js";
+import { authOptional } from "../middlewares/authOptional.js";
 import { createContentLimiter } from "../middlewares/rateLimiter.js";
 import {
   crearAlbum,
@@ -19,7 +20,7 @@ const router = express.Router();
 router.post("/", authUsuario, createContentLimiter, crearAlbum);
 router.get("/publicos", listarAlbumesPublicos);
 router.get("/buscar", buscarAlbumes);
-router.get("/:id", obtenerAlbumPorId);
+router.get("/:id", authOptional, obtenerAlbumPorId);
 router.patch("/:idAlbum", authUsuario, actualizarAlbum);
 router.delete("/:id", authUsuario, eliminarAlbum);
 router.post(

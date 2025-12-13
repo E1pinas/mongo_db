@@ -5,6 +5,7 @@ import {
   obtenerEstadisticasReportes,
   cambiarEstadoReporte,
   resolverReporte,
+  cambiarPrioridad,
 
   // Gestión de usuarios
   obtenerUsuarios,
@@ -37,6 +38,7 @@ const router = express.Router();
 router.get("/reportes", authAdmin, obtenerReportes);
 router.get("/reportes/estadisticas", authAdmin, obtenerEstadisticasReportes);
 router.put("/reportes/:id/estado", authAdmin, cambiarEstadoReporte);
+router.put("/reportes/:id/prioridad", authAdmin, cambiarPrioridad);
 router.post("/reportes/:id/resolver", authAdmin, resolverReporte);
 
 // ========== USUARIOS ==========

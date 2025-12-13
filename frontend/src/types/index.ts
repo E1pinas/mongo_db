@@ -103,10 +103,12 @@ export interface Playlist {
 export interface Comentario {
   _id: string;
   autor: string | Usuario;
-  contenido: string;
-  perfilDestino: string | Usuario;
+  contenido?: string; // Para comentarios de posts
+  texto?: string; // Para comentarios de canciones
+  perfilDestino?: string | Usuario;
+  cancionDestino?: string | Cancion;
   likes: string[];
-  respuestas: Comentario[];
+  respuestas?: Comentario[];
   createdAt: string;
   updatedAt: string;
 }
@@ -141,6 +143,15 @@ export interface PostComentario {
   _id?: string;
   usuario: string | Usuario;
   contenido: string;
+  likes?: string[];
+  respuestas?: PostRespuesta[];
+  createdAt: string;
+}
+
+export interface PostRespuesta {
+  _id?: string;
+  usuario: string | Usuario;
+  contenido: string;
   createdAt: string;
 }
 
@@ -168,6 +179,8 @@ export interface Notificacion {
       | "usuario"
       | "post";
     id: string;
+    comentarioId?: string; // ID del comentario específico (para notificaciones de comentario_post)
+    respuestaId?: string; // ID de la respuesta específica (para notificaciones de respuesta_comentario)
   };
   createdAt: string;
 }
@@ -296,6 +309,23 @@ export interface PlayerState {
   queue: Cancion[];
   isPlaying: boolean;
   currentTime: number;
+  duration: number;
+  volume: number;
+  repeat: "off" | "one" | "all";
+  shuffle: boolean;
+}
+
+export interface AuthState {
+  user: Usuario | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+export interface NotificationState {
+  notifications: Notificacion[];
+  unreadCount: number;
+}
+;
   duration: number;
   volume: number;
   repeat: "off" | "one" | "all";

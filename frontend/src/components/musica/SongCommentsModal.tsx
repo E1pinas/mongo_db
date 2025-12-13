@@ -511,20 +511,12 @@ export default function SongCommentsModal({
     }
   };
 
-  const copiarURL = () => {
-    const url = `${window.location.origin}/song/${song._id}`;
-    navigator.clipboard.writeText(url);
-    alert("URL copiada al portapapeles");
-  };
-
-  const getTotalLikes = () => {
+  const contarTotalLikes = () => {
     const contarLikes = (comentario: Comentario): number => {
-      let total = comentario.likes.length;
-      if (comentario.respuestas) {
-        comentario.respuestas.forEach((resp) => {
-          total += contarLikes(resp);
-        });
-      }
+      let total = comentario.likes?.length || 0;
+      comentario.respuestas?.forEach((resp) => {
+        total += resp.likes?.length || 0;
+      });
       return total;
     };
     return comentarios.reduce((total, c) => total + contarLikes(c), 0);
@@ -541,6 +533,18 @@ export default function SongCommentsModal({
       return total;
     };
     return comentarios.reduce((total, c) => total + contar(c), 0);
+  };
+
+  const copiarURL = () => {
+    const url = `${window.location.origin}/cancion/${song._id}`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        alert("URL copiada al portapapeles");
+      })
+      .catch((err) => {
+        console.error("Error al copiar URL:", err);
+      });
   };
 
   return (

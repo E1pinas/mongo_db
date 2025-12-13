@@ -28,6 +28,10 @@ export default function AlbumDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { playQueue, currentSong, isPlaying } = usePlayer();
+  const [albumError, setAlbumError] = useState<{
+    type: "not_found" | "private" | "unavailable";
+    message: string;
+  } | null>(null);
   const { user } = useAuth();
   const [album, setAlbum] = useState<Album | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,8 +97,29 @@ export default function AlbumDetail() {
           imagenUrl: data.portadaUrl,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading album:", error);
+      // Si el álbum es privado o fue eliminado
+      if (
+        error.response?.status === 403 ||
+        error.response?.data?.esPrivado ||
+        error.message.includes("privado")
+      ) {
+        setAlbumError({
+          type: "private",
+          message: "Este álbum es privado. Solo los artistas pueden verlo.",
+        });
+      } else if (error.response?.status === 404) {
+        setAlbumError({
+          type: "not_found",
+          message: "Este álbum no existe o fue eliminado.",
+        });
+      } else {
+        setAlbumError({
+          type: "unavailable",
+          message: "No se pudo cargar este álbum. Intenta nuevamente.",
+        });
+      }
       setAlbum(null);
     } finally {
       setIsLoading(false);
@@ -324,13 +349,66 @@ export default function AlbumDetail() {
     return <LoadingSpinner />;
   }
 
-  if (!album) {
+  if (!album || albumError) {
+    const errorConfig = albumError
+      ? {
+          private: {
+            icon: "🔒",
+            title: "Álbum Privado",
+            color: "yellow",
+            gradient: "from-yellow-900/10 to-orange-900/10",
+          },
+          unavailable: {
+            icon: "🚫",
+            title: "Álbum No Disponible",
+            color: "orange",
+            gradient: "from-orange-900/10 to-red-900/10",
+          },
+          not_found: {
+            icon: "❌",
+            title: "Álbum No Encontrado",
+            color: "red",
+            gradient: "from-red-900/10 to-pink-900/10",
+          },
+        }[albumError.type]
+      : {
+          icon: "❌",
+          title: "Álbum No Encontrado",
+          color: "red",
+          gradient: "from-red-900/10 to-pink-900/10",
+        };
+
     return (
-      <EmptyState
-        icon={Music}
-        title="Álbum no encontrado"
-        description="Este álbum no existe o fue eliminado."
-      />
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div
+            className={`bg-gradient-to-br ${errorConfig.gradient} bg-neutral-900/80 backdrop-blur-sm rounded-2xl p-8 border border-neutral-800 shadow-2xl`}
+          >
+            <div className="text-center space-y-6">
+              <div className="text-6xl opacity-80">{errorConfig.icon}</div>
+
+              <div className="space-y-2">
+                <h2
+                  className={`text-2xl font-bold text-${errorConfig.color}-500`}
+                >
+                  {errorConfig.title}
+                </h2>
+                <p className="text-gray-400">
+                  {albumError?.message ||
+                    "Este álbum no existe o fue eliminado."}
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate("/albumes")}
+                className="w-full px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-lg transition-all duration-200 border border-neutral-700"
+              >
+                Volver a Álbumes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 

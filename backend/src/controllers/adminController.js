@@ -274,9 +274,9 @@ export const obtenerHistorialConducta = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const usuario = await Usuario.findById(id)
-      .select("nick nombreArtistico vidas historialConducta role")
-      .populate("historialConducta.moderador", "nick nombreArtistico");
+    const usuario = await Usuario.findById(id).select(
+      "nick nombreArtistico vidas historialConducta role"
+    );
 
     if (!usuario) {
       return res.status(404).json({
@@ -285,9 +285,21 @@ export const obtenerHistorialConducta = async (req, res) => {
       });
     }
 
+    // Poblar manualmente el moderador de cada registro del historial
+    await Usuario.populate(usuario, {
+      path: "historialConducta.moderador",
+      select: "nick nombreArtistico",
+    });
+
     // Ordenar historial por fecha descendente (más reciente primero)
     const historialOrdenado = [...usuario.historialConducta].sort(
       (a, b) => new Date(b.fecha) - new Date(a.fecha)
+    );
+
+    // Debug: verificar que moderador esté poblado
+    console.log(
+      "Historial con moderador:",
+      JSON.stringify(historialOrdenado[0], null, 2)
     );
 
     res.status(200).json({
@@ -571,6 +583,8 @@ export const suspenderUsuario = async (req, res) => {
     }
 
     // Agregar al historial de conducta
+    console.log("🔍 req.usuario en suspender:", req.usuario);
+    console.log("🔍 req.usuario.id:", req.usuario?.id);
     usuario.historialConducta.push({
       fecha: new Date(),
       accion: "suspension",
@@ -578,7 +592,7 @@ export const suspenderUsuario = async (req, res) => {
       nombreContenido: usuario.nick,
       razon: dias > 0 ? `${razon} (${dias} días)` : `${razon} (permanente)`,
       vidasRestantes: usuario.vidas,
-      moderador: req.usuario._id,
+      moderador: req.usuario.id,
     });
 
     await usuario.save();

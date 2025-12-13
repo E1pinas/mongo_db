@@ -258,7 +258,7 @@ export const obtenerSeguidos = async (req, res) => {
 
     return res.status(200).json({
       ok: true,
-      seguidos: seguidosValidos,
+      siguiendo: seguidosValidos, // Cambiado de 'seguidos' a 'siguiendo' para consistencia con frontend
       paginacion: {
         total: seguidosValidos.length,
         pagina: Number(pagina),

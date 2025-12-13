@@ -60,7 +60,7 @@ export const musicService = {
     }
   },
 
-  // Obtener canción por ID
+  // Obtener canción por ID (requiere autenticación)
   async getSongById(id: string): Promise<Cancion> {
     try {
       const response = await api.get<{
@@ -73,6 +73,26 @@ export const musicService = {
         };
       }>(`/canciones/${id}`);
       return response.data.cancion;
+    } catch (error) {
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
+    }
+  },
+
+  // Obtener canción compartida públicamente (sin autenticación)
+  async getSongPublic(
+    id: string
+  ): Promise<{ cancion: Cancion; mensaje?: string }> {
+    try {
+      const response = await api.get<{
+        ok: boolean;
+        cancion: Cancion;
+        mensaje?: string;
+      }>(`/canciones/compartir/${id}`);
+      return {
+        cancion: response.data.cancion,
+        mensaje: response.data.mensaje,
+      };
     } catch (error) {
       const errorData = handleApiError(error);
       throw new Error(errorData.message);

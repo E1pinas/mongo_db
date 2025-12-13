@@ -214,6 +214,106 @@ export const obtenerCancion = async (req, res) => {
   }
 };
 
+// 📌 Obtener canción compartida públicamente (sin autenticación)
+// Solo permite acceso a canciones públicas (esPrivada = false)
+export const obtenerCancionPublica = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const ipUsuario = req.ip;
+
+    // Cache para cooldown por canción específica
+    if (!global.cancionCooldownCache) {
+      global.cancionCooldownCache = new Map();
+    }
+
+    // Verificar cooldown: 1 minuto por canción desde la misma IP (solo en producción)
+    const claveCache = `${ipUsuario}-${id}`;
+    const ahora = Date.now();
+
+    // Cooldown desactivado en desarrollo
+    if (process.env.NODE_ENV === "production") {
+      const tiempoCooldown = 60000; // 1 minuto en producción
+
+      if (global.cancionCooldownCache.has(claveCache)) {
+        const ultimoAcceso = global.cancionCooldownCache.get(claveCache);
+        const tiempoTranscurrido = ahora - ultimoAcceso;
+
+        if (tiempoTranscurrido < tiempoCooldown) {
+          const segundosRestantes = Math.ceil(
+            (tiempoCooldown - tiempoTranscurrido) / 1000
+          );
+          return sendError(
+            res,
+            `Por favor espera ${segundosRestantes} segundos antes de recargar esta canción`,
+            429
+          );
+        }
+      }
+    }
+
+    // Buscar canción
+    const cancion = await Cancion.findById(id)
+      .populate("artistas", "nick nombre nombreArtistico avatarUrl")
+      .populate("album", "titulo portadaUrl");
+
+    if (!cancion) {
+      return sendNotFound(res, "Canción");
+    }
+
+    // 🔒 SEGURIDAD: Solo permitir canciones públicas
+    if (cancion.esPrivada) {
+      return sendError(
+        res,
+        "Esta canción es privada y no puede compartirse. Inicia sesión para verla.",
+        403
+      );
+    }
+
+    // Registrar acceso para cooldown
+    global.cancionCooldownCache.set(claveCache, ahora);
+
+    // Limpiar cache antiguo (más de 5 minutos)
+    for (const [clave, tiempo] of global.cancionCooldownCache.entries()) {
+      if (ahora - tiempo > 5 * 60 * 1000) {
+        global.cancionCooldownCache.delete(clave);
+      }
+    }
+
+    // Logging para monitoreo de seguridad
+    console.log(
+      `[COMPARTIR PÚBLICO] Canción: ${
+        cancion.titulo
+      } | IP: ${ipUsuario} | User-Agent: ${req.get("user-agent")}`
+    );
+
+    // Retornar datos básicos (sin info sensible)
+    return sendSuccess(res, {
+      cancion: {
+        _id: cancion._id,
+        titulo: cancion.titulo,
+        artistas: cancion.artistas,
+        album: cancion.album,
+        portadaUrl: cancion.portadaUrl,
+        audioUrl: cancion.audioUrl,
+        duracionSegundos: cancion.duracionSegundos,
+        generos: cancion.generos,
+        esExplicita: cancion.esExplicita,
+        reproducciones: cancion.reproducciones,
+        createdAt: cancion.createdAt,
+      },
+      mensaje:
+        "Esta canción fue compartida contigo. Regístrate para comentar, dar like y descubrir más música.",
+    });
+  } catch (error) {
+    console.error("Error en obtenerCancionPublica:", error);
+    return sendServerError(
+      res,
+      error,
+      "Error al obtener la canción compartida"
+    );
+  }
+};
+
 // 📌 Actualizar canción (solo si soy artista)
 export const actualizarCancion = async (req, res) => {
   try {
@@ -292,15 +392,16 @@ export const actualizarCancion = async (req, res) => {
   }
 };
 
-// 📌 Eliminar canción (borrado lógico, solo artista)
-// Al eliminar la canción, se quita automáticamente de todas las playlists y álbumes
+// 📌 Eliminar canción (borrado físico completo)
+// Al eliminar la canción, se eliminan TODOS los datos relacionados: comentarios, likes, reproducciones, notificaciones
 export const eliminarCancion = async (req, res) => {
   try {
-    const cancion = await Cancion.findOneAndUpdate(
-      { _id: req.params.id, artistas: req.userId, estaEliminada: false },
-      { $set: { estaEliminada: true } },
-      { new: true }
-    );
+    // Buscar la canción primero
+    const cancion = await Cancion.findOne({
+      _id: req.params.id,
+      artistas: req.userId,
+      estaEliminada: false,
+    });
 
     if (!cancion) {
       return sendNotFound(res, "Canción o no tienes permisos");
@@ -309,21 +410,50 @@ export const eliminarCancion = async (req, res) => {
     // Importar modelos necesarios
     const { Playlist } = await import("../models/playlistModels.js");
     const { Album } = await import("../models/albumModels.js");
+    const { Comentario } = await import("../models/comentarioModels.js");
+    const { Reproduccion } = await import("../models/reproduccionModels.js");
+    const { Notificacion } = await import("../models/notificacionModels.js");
     const { eliminarArchivoR2 } = await import("../services/r2Service.js");
 
-    // Eliminar la canción de todas las playlists
+    console.log(`🗑️ Eliminando canción completa: ${cancion.titulo}`);
+
+    // 1. Eliminar todos los comentarios de esta canción
+    const comentariosEliminados = await Comentario.deleteMany({
+      cancionDestino: cancion._id,
+    });
+    console.log(
+      `🗑️ Comentarios eliminados: ${comentariosEliminados.deletedCount}`
+    );
+
+    // 2. Eliminar todas las reproducciones de esta canción
+    const reproduccionesEliminadas = await Reproduccion.deleteMany({
+      cancion: cancion._id,
+    });
+    console.log(
+      `🗑️ Reproducciones eliminadas: ${reproduccionesEliminadas.deletedCount}`
+    );
+
+    // 3. Eliminar todas las notificaciones relacionadas con esta canción
+    const notificacionesEliminadas = await Notificacion.deleteMany({
+      "recurso.id": cancion._id,
+    });
+    console.log(
+      `🗑️ Notificaciones eliminadas: ${notificacionesEliminadas.deletedCount}`
+    );
+
+    // 4. Eliminar la canción de todas las playlists
     await Playlist.updateMany(
       { canciones: cancion._id },
       { $pull: { canciones: cancion._id } }
     );
 
-    // Eliminar la canción de todos los álbumes
+    // 5. Eliminar la canción de todos los álbumes
     await Album.updateMany(
       { canciones: cancion._id },
       { $pull: { canciones: cancion._id } }
     );
 
-    // Borrar archivos en R2 (ejecutar y esperar para asegurar eliminación)
+    // 6. Borrar archivos en R2
     try {
       if (cancion.audioUrl) {
         console.log(`🗑️ Eliminando audio de R2: ${cancion.audioUrl}`);
@@ -334,14 +464,17 @@ export const eliminarCancion = async (req, res) => {
         await eliminarArchivoR2(cancion.portadaUrl);
       }
     } catch (r2Error) {
-      // Si falla la eliminación en R2, registrar pero no fallar la operación
       console.error("⚠️ Error eliminando archivos de R2:", r2Error);
     }
+
+    // 7. Eliminar la canción de la base de datos
+    await Cancion.findByIdAndDelete(cancion._id);
+    console.log(`✅ Canción eliminada completamente de la base de datos`);
 
     return sendSuccess(
       res,
       null,
-      "Canción eliminada correctamente de toda la plataforma"
+      "Canción eliminada completamente de toda la plataforma"
     );
   } catch (error) {
     console.error("Error en eliminarCancion:", error);

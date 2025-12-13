@@ -104,6 +104,38 @@ router.get(
 );
 
 /**
+ * @route   POST /api/posts/:postId/comentarios/:comentarioId/responder
+ * @desc    Responder a un comentario
+ * @access  Privado
+ */
+router.post(
+  "/:postId/comentarios/:comentarioId/responder",
+  authUsuario,
+  [
+    body("contenido")
+      .trim()
+      .notEmpty()
+      .withMessage("El contenido es requerido")
+      .isLength({ max: 300 })
+      .withMessage("El contenido no puede exceder 300 caracteres"),
+  ],
+  handleValidationErrors,
+  sanitizeInput,
+  postController.responderComentario
+);
+
+/**
+ * @route   POST /api/posts/:postId/comentarios/:comentarioId/like
+ * @desc    Dar/quitar like a un comentario
+ * @access  Privado
+ */
+router.post(
+  "/:postId/comentarios/:comentarioId/like",
+  authUsuario,
+  postController.toggleLikeComentario
+);
+
+/**
  * @route   POST /api/posts/:postId/repost
  * @desc    Hacer repost de un post
  * @access  Privado

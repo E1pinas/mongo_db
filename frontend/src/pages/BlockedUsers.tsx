@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { friendshipService } from "../services/friendship.service";
+import { bloqueoService } from "../services/bloqueo.service";
 import { Ban, UserX, ArrowLeft } from "lucide-react";
 import type { Usuario } from "../types";
 
@@ -9,7 +9,7 @@ import type { Usuario } from "../types";
  */
 export default function BlockedUsers() {
   const navigate = useNavigate();
-  const [blockedUsers, setBlockedUsers] = useState<Usuario[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
 
@@ -20,8 +20,8 @@ export default function BlockedUsers() {
   const loadBlockedUsers = async () => {
     try {
       setLoading(true);
-      const users = await friendshipService.getBlockedUsers();
-      setBlockedUsers(users);
+      const response = await bloqueoService.obtenerBloqueados();
+      setBlockedUsers(response.bloqueados || []);
     } catch (error) {
       console.error("Error loading blocked users:", error);
     } finally {
@@ -29,7 +29,8 @@ export default function BlockedUsers() {
     }
   };
 
-  const handleUnblock = async (usuario: Usuario) => {
+  const handleUnblock = async (bloqueado: any) => {
+    const usuario = bloqueado.usuario;
     if (
       !confirm(
         `¿Desbloquear a @${usuario.nick}? Podrá volver a ver tu perfil y enviarte solicitudes.`
@@ -40,10 +41,12 @@ export default function BlockedUsers() {
 
     try {
       setUnblockingId(usuario._id);
-      await friendshipService.unblockUser(usuario._id);
+      await bloqueoService.desbloquearUsuario(usuario._id);
 
       // Eliminar de la lista local
-      setBlockedUsers(blockedUsers.filter((u) => u._id !== usuario._id));
+      setBlockedUsers(
+        blockedUsers.filter((b) => b.usuario._id !== usuario._id)
+      );
     } catch (error: any) {
       console.error("Error unblocking user:", error);
       alert(error.message || "Error al desbloquear usuario");
@@ -104,60 +107,71 @@ export default function BlockedUsers() {
           </div>
         ) : (
           <div className="space-y-3">
-            {blockedUsers.map((usuario) => (
-              <div
-                key={usuario._id}
-                className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-neutral-700 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  {/* Avatar */}
-                  <div className="w-14 h-14 rounded-full overflow-hidden bg-neutral-800 shrink-0">
-                    {usuario.avatarUrl ? (
-                      <img
-                        src={usuario.avatarUrl}
-                        alt={usuario.nick}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-500 to-purple-600">
-                        <span className="text-xl font-bold text-white">
-                          {usuario.nick.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+            {blockedUsers.map((bloqueado) => {
+              const usuario = bloqueado.usuario;
+              return (
+                <div
+                  key={usuario._id}
+                  className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 hover:border-neutral-700 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <div className="w-14 h-14 rounded-full overflow-hidden bg-neutral-800 shrink-0">
+                      {usuario.avatarUrl ? (
+                        <img
+                          src={usuario.avatarUrl}
+                          alt={usuario.nick}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-500 to-purple-600">
+                          <span className="text-xl font-bold text-white">
+                            {usuario.nick.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold truncate">
-                      {usuario.nombreArtistico || usuario.nick}
-                    </h3>
-                    <p className="text-sm text-neutral-400 truncate">
-                      @{usuario.nick}
-                    </p>
-                  </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold truncate">
+                        {usuario.nombreArtistico || usuario.nick}
+                      </h3>
+                      <p className="text-sm text-neutral-400 truncate">
+                        @{usuario.nick}
+                      </p>
+                      {bloqueado.fechaBloqueo && (
+                        <p className="text-xs text-neutral-500 mt-1">
+                          Bloqueado el{" "}
+                          {new Date(
+                            bloqueado.fechaBloqueo
+                          ).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
 
-                  {/* Botón desbloquear */}
-                  <button
-                    onClick={() => handleUnblock(usuario)}
-                    disabled={unblockingId === usuario._id}
-                    className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {unblockingId === usuario._id ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Desbloqueando...
-                      </>
-                    ) : (
-                      <>
-                        <UserX size={16} />
-                        Desbloquear
-                      </>
-                    )}
-                  </button>
+                    {/* Botón desbloquear */}
+                    <button
+                      onClick={() => handleUnblock(bloqueado)}
+                      disabled={unblockingId === usuario._id}
+                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {unblockingId === usuario._id ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Desbloqueando...
+                        </>
+                      ) : (
+                        <>
+                          <UserX size={16} />
+                          Desbloquear
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -170,7 +184,12 @@ export default function BlockedUsers() {
             </h3>
             <ul className="text-sm text-neutral-400 space-y-1">
               <li>• Los usuarios bloqueados no pueden ver tu perfil</li>
-              <li>• No pueden enviarte solicitudes de amistad</li>
+              <li>• No pueden encontrarte en búsquedas</li>
+              <li>• No pueden enviarte solicitudes de amistad ni seguirte</li>
+              <li>
+                • Se eliminarán las relaciones existentes (amistades,
+                seguimiento)
+              </li>
               <li>• Puedes desbloquearlos en cualquier momento desde aquí</li>
             </ul>
           </div>

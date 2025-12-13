@@ -265,6 +265,7 @@ export const obtenerPerfilCompleto = async (req, res) => {
       .select("-password")
       .populate({
         path: "misCanciones",
+        match: { estaEliminada: false },
         select:
           "titulo audioUrl portadaUrl duracionSegundos artistas generos reproduccionesTotales likes esPrivada esExplicita oculta razonOculta",
         populate: {
@@ -420,7 +421,7 @@ export const obtenerPerfilCompleto = async (req, res) => {
 export const obtenerPerfilPorNick = async (req, res) => {
   try {
     const { nick } = req.params;
-    const usuarioActualId = req.userId; // Puede ser undefined si no está autenticado
+    const usuarioActualId = req.usuario?.id; // Puede ser undefined si no está autenticado
 
     console.log("🔍 Buscando perfil por nick:", nick);
     console.log("👤 Usuario actual ID:", usuarioActualId);
@@ -433,6 +434,7 @@ export const obtenerPerfilPorNick = async (req, res) => {
       .select("-password")
       .populate({
         path: "misCanciones",
+        match: { estaEliminada: false },
         select:
           "titulo audioUrl portadaUrl duracionSegundos artistas generos reproduccionesTotales likes esPrivada esExplicita",
         populate: {
@@ -494,6 +496,11 @@ export const obtenerPerfilPorNick = async (req, res) => {
     const esPropietario =
       usuarioActualId && usuarioActualId === usuario._id.toString();
 
+    console.log("🔑 Debug esPropietario:");
+    console.log("   - usuarioActualId:", usuarioActualId);
+    console.log("   - usuario._id:", usuario._id.toString());
+    console.log("   - esPropietario:", esPropietario);
+
     // Calcular si el usuario actual es menor de edad
     let esMenorDeEdad = false;
     if (usuarioActualId) {
@@ -516,8 +523,19 @@ export const obtenerPerfilPorNick = async (req, res) => {
 
     // Si NO es el propietario, filtrar canciones privadas
     if (!esPropietario && usuario.misCanciones) {
+      const cancionesAntesFiltro = usuario.misCanciones.length;
       usuario.misCanciones = usuario.misCanciones.filter(
         (cancion) => !cancion.esPrivada
+      );
+      console.log(
+        `🔒 Filtro de privacidad: ${cancionesAntesFiltro} → ${usuario.misCanciones.length} canciones`
+      );
+    } else if (esPropietario) {
+      const cancionesPrivadas = usuario.misCanciones.filter(
+        (c) => c.esPrivada
+      ).length;
+      console.log(
+        `✅ Es propietario - Mostrando TODAS las canciones (${usuario.misCanciones.length} total, ${cancionesPrivadas} privadas)`
       );
     }
 
@@ -536,12 +554,20 @@ export const obtenerPerfilPorNick = async (req, res) => {
       usuario.misAlbumes = usuario.misAlbumes.filter(
         (album) => !album.esPrivado
       );
-      // También filtrar canciones privadas dentro de álbumes públicos
+      // Filtrar canciones privadas dentro de álbumes públicos
       usuario.misAlbumes.forEach((album) => {
         if (album.canciones) {
-          album.canciones = album.canciones.filter(
-            (cancion) => cancion && !cancion.esPrivada
-          );
+          album.canciones = album.canciones.filter((cancion) => {
+            if (!cancion) return false;
+            // Si la canción es privada, solo mostrarla si el usuario actual es artista
+            if (cancion.esPrivada) {
+              const esArtistaDeCancion = cancion.artistas?.some(
+                (artista) => artista._id?.toString() === req.usuario?.id
+              );
+              return esArtistaDeCancion;
+            }
+            return true;
+          });
         }
       });
     }

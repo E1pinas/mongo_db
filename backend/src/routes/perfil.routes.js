@@ -4,6 +4,7 @@ import { authUsuario } from "../middlewares/authUsuario.js";
 import { authOptional } from "../middlewares/authOptional.js";
 import { uploadLimiter } from "../middlewares/rateLimiter.js";
 import { uploadImagen, handleMulterError } from "../middlewares/upload.js";
+import { checkBloqueo } from "../middlewares/checkBloqueo.js";
 import {
   subirAvatar,
   subirBanner,
@@ -43,9 +44,14 @@ router.delete("/banner", authUsuario, eliminarBanner);
 
 // Obtener perfil por nick (debe ir ANTES de /:id para que no lo capture como ID)
 // Usa authOptional para detectar si el usuario está bloqueado
-router.get("/nick/:nick", authOptional, obtenerPerfilPorNick);
+router.get(
+  "/nick/:nick",
+  authOptional,
+  checkBloqueo("params", "nick"),
+  obtenerPerfilPorNick
+);
 
 // Obtener perfil completo (público)
-router.get("/:id", obtenerPerfilCompleto);
+router.get("/:id", checkBloqueo("params", "id"), obtenerPerfilCompleto);
 
 export default router;

@@ -31,9 +31,21 @@ export const obtenerCancionesGuardadas = async (req, res) => {
       return sendNotFound(res, "Usuario");
     }
 
-    // Filtrar canciones ocultas por moderación
+    // Filtrar canciones ocultas por moderación y canciones privadas
     let canciones = usuario.biblioteca.cancionesGuardadas || [];
-    canciones = canciones.filter((cancion) => cancion && !cancion.oculta);
+    canciones = canciones.filter((cancion) => {
+      if (!cancion || cancion.oculta) return false;
+
+      // Si la canción es privada, solo mostrarla si el usuario es uno de los artistas
+      if (cancion.esPrivada) {
+        const esArtistaDeCancion = cancion.artistas?.some(
+          (artista) => artista._id?.toString() === usuarioId
+        );
+        if (!esArtistaDeCancion) return false; // Ocultar canción privada
+      }
+
+      return true;
+    });
 
     return sendSuccess(res, {
       canciones: canciones,

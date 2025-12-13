@@ -7,6 +7,7 @@ import {
   Edit2,
   Trash2,
   X as XIcon,
+  Share2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Cancion } from "../../types";
@@ -54,6 +55,7 @@ export default function SongRow({
   const [showRemoveLikeModal, setShowRemoveLikeModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showOwnSongModal, setShowOwnSongModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
 
   // Verificar si el usuario es propietario de la canción
   const isOwnSong = cancion.artistas?.some((artista) =>
@@ -141,6 +143,21 @@ export default function SongRow({
       setIsLiked(true);
       setShowRemoveLikeModal(false);
     }
+  };
+
+  const handleShareSong = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/cancion/${cancion._id}`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setShowCopyModal(true);
+        setTimeout(() => setShowCopyModal(false), 2000);
+      })
+      .catch((err) => {
+        console.error("Error al copiar URL:", err);
+        alert("Error al copiar la URL");
+      });
   };
 
   const getArtistNames = () => {
@@ -276,6 +293,14 @@ export default function SongRow({
           )}
 
           <button
+            onClick={handleShareSong}
+            className="p-2 hover:bg-neutral-700 rounded-full transition-colors text-neutral-400 hover:text-blue-400"
+            title="Compartir canción"
+          >
+            <Share2 size={16} />
+          </button>
+
+          <button
             onClick={handleToggleLike}
             className={`p-2 hover:bg-neutral-700 rounded-full transition-colors ${
               isLiked ? "text-orange-500" : "text-neutral-400 hover:text-white"
@@ -377,6 +402,16 @@ export default function SongRow({
         contenidoId={cancion._id}
         nombreContenido={cancion.titulo}
       />
+
+      {/* Modal de URL copiada */}
+      {showCopyModal && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Share2 size={20} />
+            <span className="font-semibold">¡URL copiada al portapapeles!</span>
+          </div>
+        </div>
+      )}
     </>
   );
 }

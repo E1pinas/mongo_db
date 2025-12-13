@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import PostCard from "./PostCard";
+import PostComment from "./PostComment";
 import type { Post } from "../../types";
 import { postService } from "../../services/post.service";
 
@@ -8,21 +9,34 @@ interface PostModalProps {
   postId: string;
   isOpen: boolean;
   onClose: () => void;
+  highlightCommentId?: string; // ID del comentario a destacar
+  autoOpenComments?: boolean; // Abrir automáticamente la sección de comentarios
 }
 
-export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
+export default function PostModal({
+  postId,
+  isOpen,
+  onClose,
+  highlightCommentId,
+  autoOpenComments = false,
+}: PostModalProps) {
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(autoOpenComments);
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [showAllComments, setShowAllComments] = useState(!highlightCommentId); // Si hay comentario específico, no mostrar todos
 
   useEffect(() => {
     if (isOpen && postId) {
       loadPost();
+      // Auto-abrir comentarios si se especifica
+      if (autoOpenComments) {
+        setShowComments(true);
+      }
     }
-  }, [isOpen, postId]);
+  }, [isOpen, postId, autoOpenComments]);
 
   const loadPost = async () => {
     try {
@@ -197,6 +211,29 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
     setShowComments(true);
   };
 
+  const handleLikeComment = async (comentarioId: string) => {
+    if (!post) return;
+    try {
+      await postService.toggleLikeComentario(post._id, comentarioId);
+      loadPost(); // Recargar para actualizar likes
+    } catch (error) {
+      console.error("Error al dar like al comentario:", error);
+    }
+  };
+
+  const handleReplyComment = async (
+    comentarioId: string,
+    contenido: string
+  ) => {
+    if (!post) return;
+    try {
+      await postService.responderComentario(post._id, comentarioId, contenido);
+      loadPost(); // Recargar para actualizar respuestas
+    } catch (error) {
+      console.error("Error al responder comentario:", error);
+    }
+  };
+
   const handleSubmitComment = async () => {
     if (!newComment.trim() || !post) return;
 
@@ -298,11 +335,59 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
               {showComments && (
                 <div className="mt-6 border-t border-neutral-800 pt-6">
                   <h3 className="text-lg font-semibold mb-4">
-                    Escribe aqui tu comentario
+                    Comentarios ({post.comentarios?.length || 0})
                   </h3>
+
+                  {/* Mostrar comentarios existentes */}
+                  {post.comentarios && post.comentarios.length > 0 && (
+                    <>
+                      <div className="mb-6 space-y-4">
+                        {post.comentarios
+                          .filter((comentario) => {
+                            // Si hay comentario destacado y no se muestran todos, solo mostrar ese
+                            if (highlightCommentId && !showAllComments) {
+                              return comentario._id === highlightCommentId;
+                            }
+                            // Sino, mostrar todos
+                            return true;
+                          })
+                          .map((comentario) => {
+                            const isHighlighted =
+                              highlightCommentId &&
+                              comentario._id === highlightCommentId;
+                            return (
+                              <PostComment
+                                key={comentario._id}
+                                comentario={comentario}
+                                postId={post._id}
+                                isHighlighted={isHighlighted}
+                                onLike={handleLikeComment}
+                                onReply={handleReplyComment}
+                              />
+                            );
+                          })}
+                      </div>
+
+                      {/* Botón para ver todos los comentarios si solo se muestra uno específico */}
+                      {highlightCommentId &&
+                        !showAllComments &&
+                        post.comentarios.length > 1 && (
+                          <button
+                            onClick={() => setShowAllComments(true)}
+                            className="w-full mb-6 px-4 py-3 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700 rounded-xl transition-all text-sm font-semibold text-neutral-300 hover:text-white"
+                          >
+                            Ver todos los comentarios (
+                            {post.comentarios.length - 1} más)
+                          </button>
+                        )}
+                    </>
+                  )}
 
                   {/* Input para nuevo comentario */}
                   <div className="mb-6">
+                    <h4 className="text-sm font-semibold mb-2 text-neutral-400">
+                      Escribe tu comentario
+                    </h4>
                     <textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
@@ -321,8 +406,6 @@ export default function PostModal({ postId, isOpen, onClose }: PostModalProps) {
                       </button>
                     </div>
                   </div>
-
-                  {/* Aquí se mostrarían los comentarios existentes */}
                 </div>
               )}
             </>

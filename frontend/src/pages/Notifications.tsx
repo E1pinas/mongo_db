@@ -5,6 +5,8 @@ import type { Notificacion, NotificacionTipo } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import PostModal from "../components/social/PostModal";
+import CommentModal from "../components/social/CommentModal";
+import SongCommentModal from "../components/musica/SongCommentModal";
 import { usePlayer } from "../contexts/PlayerContext";
 import { musicService } from "../services/music.service";
 import { albumService } from "../services/album.service";
@@ -34,6 +36,16 @@ export default function Notifications() {
 
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [highlightCommentId, setHighlightCommentId] = useState<
+    string | undefined
+  >(undefined);
+  const [autoOpenComments, setAutoOpenComments] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(
+    null
+  );
+  const [showSongCommentModal, setShowSongCommentModal] = useState(false);
+  const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
 
   // Recargar notificaciones cuando se monta el componente
   useEffect(() => {
@@ -86,42 +98,50 @@ export default function Notifications() {
       switch (notif.recurso.tipo) {
         case "song":
         case "cancion":
-          // Cargar la canción y reproducirla inmediatamente
-          try {
-            console.log(
-              "🎵 Intentando cargar canción con ID:",
-              notif.recurso.id
-            );
-            const cancion = await musicService.getSongById(notif.recurso.id);
-            console.log("✅ Canción cargada:", cancion);
-            console.log("🔍 Es single?:", cancion.esSingle);
+          // Si es comentario en canción con comentarioId, abrir SongCommentModal
+          if (notif.recurso.comentarioId) {
+            setSelectedSongId(notif.recurso.id);
+            setSelectedCommentId(notif.recurso.comentarioId);
+            setShowSongCommentModal(true);
+            return; // Evitar navegación adicional
+          } else {
+            // Cargar la canción y reproducirla inmediatamente
+            try {
+              console.log(
+                "🎵 Intentando cargar canción con ID:",
+                notif.recurso.id
+              );
+              const cancion = await musicService.getSongById(notif.recurso.id);
+              console.log("✅ Canción cargada:", cancion);
+              console.log("🔍 Es single?:", cancion.esSingle);
 
-            // Si es single, usar contexto de single
-            if (cancion.esSingle) {
-              const contexto = {
-                type: "album" as const,
-                id: "single",
-                name: `Single: ${cancion.titulo}`,
-              };
-              console.log("📁 Reproduciendo con contexto:", contexto);
-              playQueue([cancion], 0, contexto);
-            } else {
-              // Si tiene álbum, reproducir solo esta canción sin contexto especial
-              console.log("📁 Reproduciendo sin contexto (tiene álbum)");
-              playQueue([cancion], 0);
+              // Si es single, usar contexto de single
+              if (cancion.esSingle) {
+                const contexto = {
+                  type: "album" as const,
+                  id: "single",
+                  name: `Single: ${cancion.titulo}`,
+                };
+                console.log("📁 Reproduciendo con contexto:", contexto);
+                playQueue([cancion], 0, contexto);
+              } else {
+                // Si tiene álbum, reproducir solo esta canción sin contexto especial
+                console.log("📁 Reproduciendo sin contexto (tiene álbum)");
+                playQueue([cancion], 0);
+              }
+            } catch (error: any) {
+              console.error("❌ Error al cargar la canción:", error);
+              console.error("❌ ID de la canción:", notif.recurso.id);
+
+              // Mostrar mensaje al usuario
+              alert(
+                error.response?.status === 404
+                  ? "Esta canción ya no está disponible o fue eliminada"
+                  : "No se pudo cargar la canción. Intenta más tarde."
+              );
             }
-          } catch (error: any) {
-            console.error("❌ Error al cargar la canción:", error);
-            console.error("❌ ID de la canción:", notif.recurso.id);
-
-            // Mostrar mensaje al usuario
-            alert(
-              error.response?.status === 404
-                ? "Esta canción ya no está disponible o fue eliminada"
-                : "No se pudo cargar la canción. Intenta más tarde."
-            );
           }
-          break;
+          return; // Evitar navegación adicional
         case "album":
           // Cargar el álbum y agregar todas sus canciones a la cola
           try {
@@ -142,7 +162,7 @@ export default function Notifications() {
                 : "No se pudo cargar el álbum. Intenta más tarde."
             );
           }
-          break;
+          return; // Evitar navegación adicional
         case "playlist":
           // Cargar la playlist y agregar todas sus canciones a la cola
           try {
@@ -165,25 +185,33 @@ export default function Notifications() {
                 : "No se pudo cargar la playlist. Intenta más tarde."
             );
           }
-          break;
+          return; // Evitar navegación adicional
         case "usuario":
           navigate(`/perfil/${notif.recurso.id}`);
-          break;
+          return;
         case "post":
-          // Abrir modal del post en lugar de navegar al perfil
+          // Abrir PostModal con comentarios
           setSelectedPostId(notif.recurso.id);
+
+          if (notif.tipo === "like_post" || notif.tipo === "repost") {
+            setAutoOpenComments(true);
+          } else {
+            setAutoOpenComments(false);
+          }
+          setHighlightCommentId(undefined);
           setShowPostModal(true);
-          break;
+          return;
+        case "comment":
         case "comentario":
           // Navegar al perfil donde está el comentario
           if (typeof notif.usuarioOrigen === "object" && notif.usuarioOrigen) {
-            navigate(`/perfil/${notif.usuarioOrigen._id}`);
+            navigate(`/perfil/${notif.usuarioOrigen.nick}`);
           }
-          break;
+          return;
       }
     } else if (notif.usuarioOrigen && typeof notif.usuarioOrigen === "object") {
       // Si no hay recurso específico, ir al perfil del usuario origen
-      navigate(`/perfil/${notif.usuarioOrigen._id}`);
+      navigate(`/perfil/${notif.usuarioOrigen.nick}`);
     }
   };
 
@@ -522,6 +550,38 @@ export default function Notifications() {
             onClose={() => {
               setShowPostModal(false);
               setSelectedPostId(null);
+              setHighlightCommentId(undefined);
+              setAutoOpenComments(false);
+            }}
+            highlightCommentId={highlightCommentId}
+            autoOpenComments={autoOpenComments}
+          />
+        )}
+
+        {/* Modal de Comentario Específico */}
+        {selectedPostId && selectedCommentId && (
+          <CommentModal
+            postId={selectedPostId}
+            comentarioId={selectedCommentId}
+            isOpen={showCommentModal}
+            onClose={() => {
+              setShowCommentModal(false);
+              setSelectedPostId(null);
+              setSelectedCommentId(null);
+            }}
+          />
+        )}
+
+        {/* Modal de Comentario en Canción */}
+        {selectedSongId && selectedCommentId && (
+          <SongCommentModal
+            songId={selectedSongId}
+            comentarioId={selectedCommentId}
+            isOpen={showSongCommentModal}
+            onClose={() => {
+              setShowSongCommentModal(false);
+              setSelectedSongId(null);
+              setSelectedCommentId(null);
             }}
           />
         )}

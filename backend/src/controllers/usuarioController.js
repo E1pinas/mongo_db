@@ -552,21 +552,21 @@ export const buscarUsuarios = async (req, res) => {
     // Si el usuario está autenticado, obtener lista de bloqueados
     let usuariosBloqueadosIds = [];
     if (usuarioActualId) {
-      const { Amistad } = await import("../models/amistadModels.js");
+      const Bloqueo = (await import("../models/bloqueoModels.js")).default;
 
-      // Obtener usuarios bloqueados por el usuario actual o que bloquearon al usuario actual
-      const bloqueados = await Amistad.find({
+      // Obtener usuarios bloqueados (en ambas direcciones)
+      const bloqueos = await Bloqueo.find({
         $or: [
-          { solicitante: usuarioActualId, estado: "bloqueada" }, // Usuarios que YO bloqueé
-          { receptor: usuarioActualId, estado: "bloqueada" }, // Usuarios que ME bloquearon
+          { bloqueador: usuarioActualId }, // Usuarios que YO bloqueé
+          { bloqueado: usuarioActualId }, // Usuarios que ME bloquearon
         ],
-      }).select("solicitante receptor");
+      }).select("bloqueador bloqueado");
 
       // Extraer IDs de usuarios bloqueados
-      usuariosBloqueadosIds = bloqueados.map((bloqueo) =>
-        bloqueo.solicitante.toString() === usuarioActualId
-          ? bloqueo.receptor.toString()
-          : bloqueo.solicitante.toString()
+      usuariosBloqueadosIds = bloqueos.map((bloqueo) =>
+        bloqueo.bloqueador.toString() === usuarioActualId
+          ? bloqueo.bloqueado.toString()
+          : bloqueo.bloqueador.toString()
       );
     }
 

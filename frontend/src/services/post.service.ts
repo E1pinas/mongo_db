@@ -109,6 +109,33 @@ export const postService = {
   },
 
   /**
+   * Responder a un comentario
+   */
+  async responderComentario(
+    postId: string,
+    comentarioId: string,
+    contenido: string
+  ) {
+    const response = await api.post<{
+      success: boolean;
+      data: any;
+      message: string;
+    }>(`/posts/${postId}/comentarios/${comentarioId}/responder`, { contenido });
+    return response.data;
+  },
+
+  /**
+   * Dar/quitar like a un comentario
+   */
+  async toggleLikeComentario(postId: string, comentarioId: string) {
+    const response = await api.post<{
+      success: boolean;
+      data: { liked: boolean; totalLikes: number };
+    }>(`/posts/${postId}/comentarios/${comentarioId}/like`);
+    return response.data;
+  },
+
+  /**
    * Hacer repost
    */
   async crearRepost(postId: string, comentario?: string) {

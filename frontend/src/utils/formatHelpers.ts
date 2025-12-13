@@ -1,8 +1,4 @@
-/**
- * Formatea segundos a formato MM:SS
- * @param seconds - Duración en segundos
- * @returns String formateado como "MM:SS"
- */
+
 export const formatDuration = (seconds: number | undefined): string => {
   if (!seconds || seconds < 0) return "0:00";
   const mins = Math.floor(seconds / 60);
@@ -10,11 +6,7 @@ export const formatDuration = (seconds: number | undefined): string => {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
-/**
- * Formatea números grandes con separadores
- * @param num - Número a formatear
- * @returns String formateado (ej: 1,234 o 1.2M)
- */
+
 export const formatNumber = (num: number): string => {
   if (num >= 1_000_000) {
     return `${(num / 1_000_000).toFixed(1)}M`;
@@ -25,11 +17,7 @@ export const formatNumber = (num: number): string => {
   return num.toLocaleString();
 };
 
-/**
- * Formatea fecha relativa (ej: "hace 2 horas")
- * @param date - Fecha a formatear
- * @returns String con tiempo relativo
- */
+
 export const formatRelativeTime = (date: string | Date): string => {
   const now = new Date();
   const then = new Date(date);
