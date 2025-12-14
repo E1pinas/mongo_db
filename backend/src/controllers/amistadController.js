@@ -61,9 +61,64 @@ export const enviarSolicitudAmistad = async (req, res) => {
       }
 
       if (solicitudExistente.estado === "pendiente") {
+        // Si el otro usuario ya te envió una solicitud, aceptarla automáticamente
+        if (solicitudExistente.receptor.toString() === solicitanteId) {
+          solicitudExistente.estado = "aceptada";
+          solicitudExistente.fechaAceptacion = new Date();
+          await solicitudExistente.save();
+
+          // Crear notificación de amistad aceptada
+          const solicitante = await Usuario.findById(solicitanteId);
+          await Notificacion.create({
+            usuarioDestino: solicitudExistente.solicitante,
+            usuarioOrigen: solicitanteId,
+            tipo: "amistad_aceptada",
+            mensaje: `${solicitante.nick} aceptó tu solicitud de amistad`,
+            recurso: {
+              tipo: "user",
+              id: solicitanteId,
+            },
+          });
+
+          return res.status(200).json({
+            ok: true,
+            message: "Ahora son amigos",
+            solicitud: solicitudExistente,
+          });
+        }
+
+        // Si tú ya enviaste una solicitud, no permitir enviar otra
         return res.status(400).json({
           ok: false,
           message: "Ya existe una solicitud pendiente",
+        });
+      }
+
+      if (solicitudExistente.estado === "rechazada") {
+        // Si fue rechazada, actualizar la solicitud existente
+        solicitudExistente.estado = "pendiente";
+        solicitudExistente.solicitante = solicitanteId;
+        solicitudExistente.receptor = usuarioId;
+        solicitudExistente.createdAt = new Date();
+        await solicitudExistente.save();
+
+        // Crear notificación para el receptor
+        const solicitante = await Usuario.findById(solicitanteId);
+        await Notificacion.create({
+          usuarioDestino: usuarioId,
+          usuarioOrigen: solicitanteId,
+          tipo: "solicitud_amistad",
+          mensaje: `${solicitante.nick} te ha enviado una solicitud de amistad`,
+          recurso: {
+            tipo: "user",
+            id: solicitanteId,
+          },
+        });
+
+        return res.status(201).json({
+          ok: true,
+          message: "Solicitud de amistad enviada",
+          solicitud: solicitudExistente,
         });
       }
     }
@@ -611,6 +666,10 @@ export const obtenerEstadoRelacion = async (req, res) => {
     const usuarioActualId = req.userId;
     const { usuarioId } = req.params;
 
+    console.log("🔍 Verificando estado de relación:");
+    console.log("  Usuario actual (quien visita):", usuarioActualId);
+    console.log("  Usuario perfil (visitado):", usuarioId);
+
     // Obtener información del usuario objetivo
     const usuarioObjetivo = await Usuario.findById(usuarioId).select(
       "privacy.recibirSolicitudesAmistad"
@@ -631,6 +690,13 @@ export const obtenerEstadoRelacion = async (req, res) => {
       ],
     });
 
+    console.log("  Relación encontrada:", relacion ? "Sí" : "No");
+    if (relacion) {
+      console.log("  Estado de relación:", relacion.estado);
+      console.log("  Solicitante:", relacion.solicitante.toString());
+      console.log("  Receptor:", relacion.receptor.toString());
+    }
+
     let estado = "ninguno";
     let solicitudId = undefined;
 
@@ -641,14 +707,24 @@ export const obtenerEstadoRelacion = async (req, res) => {
         // Determinar si es enviada o recibida
         if (relacion.solicitante.toString() === usuarioActualId) {
           estado = "pendiente_enviada";
+          console.log("  ✅ Es pendiente_enviada (tú enviaste)");
         } else {
           estado = "pendiente_recibida";
+          console.log("  ✅ Es pendiente_recibida (te enviaron)");
         }
         solicitudId = relacion._id;
+      } else if (relacion.estado === "rechazada") {
+        // Si la solicitud fue rechazada, permitir enviar una nueva
+        estado = "ninguno";
+        console.log(
+          "  ⚠️ Solicitud fue rechazada, permitiendo nueva solicitud"
+        );
       } else if (relacion.estado === "bloqueada") {
         estado = "bloqueado";
       }
     }
+
+    console.log("  📤 Devolviendo estado:", estado);
 
     return res.status(200).json({
       ok: true,

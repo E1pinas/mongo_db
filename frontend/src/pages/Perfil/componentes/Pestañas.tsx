@@ -59,23 +59,28 @@ export const Pestañas: React.FC<PropsPestañas> = ({
   ];
 
   return (
-    <div className="border-b border-neutral-800">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex gap-1 overflow-x-auto">
+    <div className="bg-neutral-950 border-b border-neutral-800">
+      <div className="max-w-7xl mx-auto px-8">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {pestañas.map((pestaña) => (
             <button
               key={pestaña.id}
               onClick={() => alCambiarPestaña(pestaña.id)}
-              className={`flex items-center gap-2 px-6 py-4 font-semibold transition-all whitespace-nowrap relative ${
+              className={`flex items-center gap-2 px-5 py-3.5 font-medium transition-all whitespace-nowrap relative ${
                 pestañaActiva === pestaña.id
-                  ? "text-white border-b-2 border-green-500"
-                  : "text-neutral-400 hover:text-white"
+                  ? "text-white border-b-2 border-orange-500"
+                  : "text-neutral-400 hover:text-neutral-200"
               }`}
             >
-              {pestaña.icono}
               {pestaña.nombre}
               {pestaña.badge !== undefined && pestaña.badge > 0 && (
-                <span className="ml-1 px-2 py-0.5 bg-neutral-800 rounded-full text-xs">
+                <span
+                  className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    pestañaActiva === pestaña.id
+                      ? "bg-orange-500/20 text-orange-400"
+                      : "bg-neutral-800 text-neutral-400"
+                  }`}
+                >
                   {pestaña.badge}
                 </span>
               )}

@@ -38,18 +38,16 @@ export const ListaUsuarios: React.FC<PropsListaUsuarios> = ({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {usuarios.map((usuario) => {
         const usuarioExtendido = usuario as any;
-        const urlAvatar = usuarioExtendido.avatar
-          ? `http://localhost:3900/uploads/avatars/${usuarioExtendido.avatar}`
-          : undefined;
+        const urlAvatar = usuarioExtendido.avatarUrl || undefined;
 
         return (
           <div
             key={usuario._id}
-            onClick={() => navigate(`/profile/${usuario.nick}`)}
+            onClick={() => navigate(`/perfil/${usuario.nick}`)}
             className="bg-neutral-900 rounded-lg p-4 hover:bg-neutral-800 transition-colors cursor-pointer border border-neutral-800"
           >
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-600 to-green-400 p-0.5 flex-shrink-0">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-400 p-0.5 flex-shrink-0">
                 <div className="w-full h-full rounded-full bg-neutral-900 overflow-hidden">
                   {urlAvatar ? (
                     <img

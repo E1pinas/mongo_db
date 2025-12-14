@@ -113,10 +113,10 @@ export const useEstadoRelacion = (
   };
 
   const cancelarSolicitud = async () => {
-    if (!solicitudId) return;
+    if (!usuarioPerfilId) return;
     try {
       setCargandoAccion(true);
-      await servicioPerfil.cancelarSolicitudEnviada(solicitudId);
+      await servicioPerfil.cancelarSolicitudEnviada(usuarioPerfilId);
       await verificarRelaciones();
     } catch (error) {
       console.error("Error al cancelar solicitud:", error);

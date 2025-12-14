@@ -1,12 +1,4 @@
-import {
-  UserPlus,
-  UserCheck,
-  UserX,
-  Ban,
-  Flag,
-  MoreHorizontal,
-} from "lucide-react";
-import { useState } from "react";
+import { UserPlus, UserCheck, UserX, Ban, Flag } from "lucide-react";
 import type { EstadoRelacion } from "../tipos";
 
 interface PropsBotonesAccion {
@@ -40,8 +32,6 @@ export const BotonesAccion: React.FC<PropsBotonesAccion> = ({
   alReportar,
   alBloquear,
 }) => {
-  const [mostrarMenu, setMostrarMenu] = useState(false);
-
   const renderizarBotonPrincipal = () => {
     if (estadoRelacion === "bloqueado") {
       return (
@@ -60,10 +50,10 @@ export const BotonesAccion: React.FC<PropsBotonesAccion> = ({
         <button
           onClick={alEliminarAmigo}
           disabled={cargandoAccion}
-          className="px-6 py-2.5 bg-green-900/30 border border-green-700 hover:bg-red-900/30 hover:border-red-700 rounded-lg font-semibold transition-colors"
+          className="px-5 py-2 bg-green-900/30 border border-green-700 hover:bg-red-900/30 hover:border-red-700 rounded-lg backdrop-blur-sm font-medium transition-colors flex items-center gap-2"
         >
-          <UserCheck className="w-4 h-4 inline mr-2" />
-          Amigos
+          <UserCheck className="w-4 h-4" />
+          <span>Amigos</span>
         </button>
       );
     }
@@ -74,15 +64,15 @@ export const BotonesAccion: React.FC<PropsBotonesAccion> = ({
           <button
             onClick={alAceptarSolicitud}
             disabled={cargandoAccion}
-            className="px-6 py-2.5 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
+            className="px-5 py-2 bg-green-600/80 hover:bg-green-700/80 rounded-lg backdrop-blur-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            <UserCheck className="w-4 h-4 inline mr-2" />
-            Aceptar Solicitud
+            <UserCheck className="w-4 h-4" />
+            <span>Aceptar Solicitud</span>
           </button>
           <button
             onClick={alRechazarSolicitud}
             disabled={cargandoAccion}
-            className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-neutral-800/80 hover:bg-neutral-700/80 rounded-lg backdrop-blur-sm transition-colors disabled:opacity-50"
           >
             <UserX className="w-4 h-4" />
           </button>
@@ -95,10 +85,10 @@ export const BotonesAccion: React.FC<PropsBotonesAccion> = ({
         <button
           onClick={alCancelarSolicitud}
           disabled={cargandoAccion}
-          className="px-6 py-2.5 bg-yellow-900/30 border border-yellow-700 hover:bg-red-900/30 hover:border-red-700 rounded-lg font-semibold transition-colors disabled:opacity-50"
+          className="px-5 py-2 bg-yellow-900/30 border border-yellow-700 hover:bg-red-900/30 hover:border-red-700 rounded-lg backdrop-blur-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
         >
-          <UserX className="w-4 h-4 inline mr-2" />
-          Solicitud Enviada
+          <UserX className="w-4 h-4" />
+          <span>Cancelar Solicitud</span>
         </button>
       );
     }
@@ -108,79 +98,60 @@ export const BotonesAccion: React.FC<PropsBotonesAccion> = ({
       <button
         onClick={aceptaSolicitudes ? alEnviarSolicitud : undefined}
         disabled={cargandoAccion || !aceptaSolicitudes}
-        className={`px-6 py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-50 ${
+        className={`px-5 py-2 rounded-lg backdrop-blur-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2 ${
           aceptaSolicitudes
-            ? "bg-green-600 hover:bg-green-700"
-            : "bg-neutral-700 cursor-not-allowed"
+            ? "bg-green-600/80 hover:bg-green-700/80"
+            : "bg-neutral-700/80 cursor-not-allowed"
         }`}
       >
-        <UserPlus className="w-4 h-4 inline mr-2" />
-        {aceptaSolicitudes ? "Agregar Amigo" : "No Acepta Solicitudes"}
+        <UserPlus className="w-4 h-4" />
+        <span>
+          {aceptaSolicitudes ? "Agregar Amigo" : "No Acepta Solicitudes"}
+        </span>
       </button>
     );
   };
 
   return (
-    <div className="flex items-center gap-3">
-      {/* Botón de seguir/dejar de seguir */}
+    <div className="flex items-center gap-2 flex-wrap">
+      {/* 1. Botón principal de amistad/solicitud */}
+      {renderizarBotonPrincipal()}
+
+      {/* 2. Botón de seguir/dejar de seguir */}
       {estadoRelacion !== "bloqueado" && (
         <button
           onClick={estaSiguiendo ? alDejarDeSeguir : alSeguir}
           disabled={cargandoAccion}
-          className={`px-6 py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-50 ${
+          className={`px-5 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 backdrop-blur-sm ${
             estaSiguiendo
-              ? "bg-neutral-800 hover:bg-neutral-700 border border-neutral-600"
-              : "bg-blue-600 hover:bg-blue-700"
+              ? "bg-neutral-700/80 hover:bg-neutral-600/80"
+              : "bg-blue-600/80 hover:bg-blue-700/80"
           }`}
         >
           {estaSiguiendo ? "Siguiendo" : "Seguir"}
         </button>
       )}
 
-      {/* Botón principal de amistad */}
-      {renderizarBotonPrincipal()}
-
-      {/* Menú de opciones */}
+      {/* 3. Botón Reportar Usuario */}
       {estadoRelacion !== "bloqueado" && (
-        <div className="relative">
-          <button
-            onClick={() => setMostrarMenu(!mostrarMenu)}
-            className="p-2.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
-          >
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
+        <button
+          onClick={alReportar}
+          className="px-5 py-2 bg-neutral-700/80 hover:bg-neutral-600/80 backdrop-blur-sm rounded-lg font-medium transition-colors flex items-center gap-2"
+        >
+          <Flag className="w-4 h-4 text-yellow-500" />
+          <span>Reportar Usuario</span>
+        </button>
+      )}
 
-          {mostrarMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setMostrarMenu(false)}
-              />
-              <div className="absolute right-0 top-full mt-2 w-48 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-20 overflow-hidden">
-                <button
-                  onClick={() => {
-                    alReportar();
-                    setMostrarMenu(false);
-                  }}
-                  className="w-full px-4 py-3 text-left hover:bg-neutral-800 transition-colors flex items-center gap-3"
-                >
-                  <Flag className="w-4 h-4 text-yellow-500" />
-                  <span>Reportar Usuario</span>
-                </button>
-                <button
-                  onClick={() => {
-                    alBloquear();
-                    setMostrarMenu(false);
-                  }}
-                  className="w-full px-4 py-3 text-left hover:bg-neutral-800 transition-colors flex items-center gap-3 text-red-400"
-                >
-                  <Ban className="w-4 h-4" />
-                  <span>Bloquear Usuario</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+      {/* 4. Botón Bloquear Usuario */}
+      {estadoRelacion !== "bloqueado" && (
+        <button
+          onClick={alBloquear}
+          className="px-5 py-2 bg-red-600/80 hover:bg-red-700/80 backdrop-blur-sm rounded-lg font-medium transition-colors flex items-center gap-2"
+        >
+          <Ban className="w-4 h-4" />
+          <span>Bloquear Usuario</span>
+        </button>
       )}
     </div>
   );

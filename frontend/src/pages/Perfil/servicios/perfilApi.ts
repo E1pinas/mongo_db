@@ -21,7 +21,6 @@ export const servicioPerfil = {
       recentService.addRecentItem({
         type: "profile" as any,
         id: usuarioId,
-        data: {},
       });
     } catch (error) {
       console.error("Error al agregar a recientes:", error);
@@ -102,45 +101,18 @@ export const servicioPerfil = {
   },
 
   // Obtener canciones del usuario
-  obtenerCanciones: async (usuarioId: string): Promise<Cancion[]> => {
-    const token = localStorage.getItem("token");
-    const respuesta = await fetch(
-      `http://localhost:3900/api/canciones/usuario/${usuarioId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    if (!respuesta.ok) throw new Error("Error al obtener canciones");
-    const datos = await respuesta.json();
-    return datos.canciones || datos;
+  obtenerCanciones: async (_usuarioId: string): Promise<Cancion[]> => {
+    return await musicService.getMySongs();
   },
 
   // Obtener álbumes del usuario
-  obtenerAlbumes: async (usuarioId: string): Promise<Album[]> => {
-    const token = localStorage.getItem("token");
-    const respuesta = await fetch(
-      `http://localhost:3900/api/albumes/usuario/${usuarioId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    if (!respuesta.ok) throw new Error("Error al obtener álbumes");
-    const datos = await respuesta.json();
-    return datos.albumes || datos;
+  obtenerAlbumes: async (_usuarioId: string): Promise<Album[]> => {
+    return await musicService.getMyAlbums();
   },
 
   // Obtener playlists del usuario
-  obtenerPlaylists: async (usuarioId: string): Promise<Playlist[]> => {
-    const token = localStorage.getItem("token");
-    const respuesta = await fetch(
-      `http://localhost:3900/api/playlists/usuario/${usuarioId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    if (!respuesta.ok) throw new Error("Error al obtener playlists");
-    const datos = await respuesta.json();
-    return datos.playlists || datos;
+  obtenerPlaylists: async (_usuarioId: string): Promise<Playlist[]> => {
+    return await musicService.getMyPlaylists();
   },
 
   // Obtener seguidores
@@ -167,6 +139,27 @@ export const servicioPerfil = {
     if (!respuesta.ok) {
       const datos = await respuesta.json();
       throw new Error(datos.message || "Error al eliminar canción");
+    }
+  },
+
+  // Bloquear usuario
+  bloquearUsuario: async (usuarioId: string, razon?: string): Promise<void> => {
+    const token = localStorage.getItem("token");
+    const respuesta = await fetch(
+      `http://localhost:3900/api/bloqueos/${usuarioId}/bloquear`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ razon }),
+      }
+    );
+
+    if (!respuesta.ok) {
+      const datos = await respuesta.json();
+      throw new Error(datos.message || "Error al bloquear usuario");
     }
   },
 };

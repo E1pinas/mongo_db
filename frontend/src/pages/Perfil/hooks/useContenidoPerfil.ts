@@ -73,5 +73,7 @@ export const useContenidoPerfil = (usuarioPerfilId: string | undefined) => {
     cargandoContenido,
     cargarContenido,
     setCanciones,
+    setAlbumes,
+    setPlaylists,
   };
 };
