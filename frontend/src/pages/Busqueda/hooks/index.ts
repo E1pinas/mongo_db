@@ -1,0 +1,1 @@
+export { useBusqueda } from "./useBusqueda";

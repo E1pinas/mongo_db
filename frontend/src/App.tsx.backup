@@ -4,27 +4,27 @@ import { usePresence } from "./hooks/usePresence";
 import ShellLayout from "./layouts/ShellLayout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import PublicRoute from "./components/common/PublicRoute";
-import Home from "./pages/Inicio";
-import { Albumes } from "./pages/Albumes";
-import AlbumDetail from "./pages/DetalleAlbum";
-import CreateAlbum from "./pages/CrearAlbum";
-import Listas from "./pages/Listas";
-import PlaylistDetail from "./pages/DetallePlaylist";
-import LikedSongs from "./pages/CancionesFavoritas";
-import LikedAlbums from "./pages/AlbumesGuardados";
-import LikedPlaylists from "./pages/PlaylistsGuardadas";
-import LikedArtists from "./pages/ArtistasGuardados";
-import Profile from "./pages/Perfil";
-import Notificaciones from "./pages/Notificaciones";
-import { Solicitudes } from "./pages/Solicitudes";
-import Settings from "./pages/Configuracion";
-import BlockedUsers from "./pages/UsuariosBloqueados";
-import SubirCancion from "./pages/SubirCancion";
-import MySongs from "./pages/MisCanciones";
-import Search from "./pages/Busqueda";
+import Home from "./pages/Home";
+import Albums from "./pages/Albums";
+import AlbumDetail from "./pages/AlbumDetail";
+import CreateAlbum from "./pages/CreateAlbum";
+import Playlists from "./pages/Playlists";
+import PlaylistDetail from "./pages/PlaylistDetail";
+import LikedSongs from "./pages/LikedSongs";
+import LikedAlbums from "./pages/LikedAlbums";
+import LikedPlaylists from "./pages/LikedPlaylists";
+import LikedArtists from "./pages/LikedArtists";
+import Profile from "./pages/Profile";
+import Notifications from "./pages/Notifications";
+import Requests from "./pages/Requests";
+import Settings from "./pages/Settings";
+import BlockedUsers from "./pages/BlockedUsers";
+import UploadSong from "./pages/UploadSong";
+import MySongs from "./pages/MySongs";
+import Search from "./pages/Search";
 import Auth from "./pages/auth/Auth";
 import AdminPanel from "./pages/AdminPanel";
-import SongPage from "./pages/DetalleCancion";
+import SongPage from "./pages/SongPage";
 
 /**
  * App.tsx - Punto de entrada principal
@@ -73,7 +73,7 @@ const router = createBrowserRouter([
           },
           {
             path: "albumes",
-            element: <Albumes />,
+            element: <Albums />,
           },
           {
             path: "album/:id",
@@ -85,7 +85,7 @@ const router = createBrowserRouter([
           },
           {
             path: "playlists",
-            element: <Listas />,
+            element: <Playlists />,
           },
           {
             path: "playlist/:id",
@@ -109,7 +109,7 @@ const router = createBrowserRouter([
           },
           {
             path: "subir",
-            element: <SubirCancion />,
+            element: <UploadSong />,
           },
           {
             path: "mis-canciones",
@@ -125,11 +125,11 @@ const router = createBrowserRouter([
           },
           {
             path: "notificaciones",
-            element: <Notificaciones />,
+            element: <Notifications />,
           },
           {
             path: "solicitudes",
-            element: <Solicitudes />,
+            element: <Requests />,
           },
           {
             path: "configuracion",

@@ -1,0 +1,1 @@
+export { servicioAdmin } from "./adminApi";

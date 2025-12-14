@@ -1,0 +1,1 @@
+export { useArtistasGuardados } from "./useArtistasGuardados";

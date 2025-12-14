@@ -89,32 +89,32 @@ interface Reporte {
 
 const AdminPanel = () => {
   const { user } = useAuth();
-  const [pestañaActiva, setPestañaActiva] = useState<
+  const [activeTab, setActiveTab] = useState<
     "dashboard" | "reportes" | "usuarios" | "contenido" | "administradores"
   >("dashboard");
-  const [estadisticas, setEstadisticas] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [reportes, setReportes] = useState<Reporte[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [filtroReportes, setFiltroReportes] = useState<string>("pendiente");
 
   // Estados para Toast
   const [toastMessage, setToastMessage] = useState<string>("");
   const [toastType, setToastType] = useState<ToastType>("info");
-  const [mostrarToast, setMostrarToast] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
-  const mostrarNotificacionToast = (message: string, type: ToastType) => {
+  const showToastNotification = (message: string, type: ToastType) => {
     setToastMessage(message);
     setToastType(type);
-    setMostrarToast(true);
+    setShowToast(true);
   };
 
   // Estados para modal de ocultar canción
-  const [mostrarModalOcultar, setMostrarModalOcultar] = useState(false);
+  const [showOcultarModal, setShowOcultarModal] = useState(false);
   const [cancionAOcultar, setCancionAOcultar] = useState<any>(null);
   const [razonOcultar, setRazonOcultar] = useState("");
 
   // Estados para modal de quitar ocultamiento
-  const [mostrarModalQuitar, setMostrarModalQuitar] = useState(false);
+  const [showQuitarModal, setShowQuitarModal] = useState(false);
   const [cancionAMostrar, setCancionAMostrar] = useState<any>(null);
 
   // Verificar que sea admin o super_admin
@@ -123,23 +123,23 @@ const AdminPanel = () => {
   }
 
   useEffect(() => {
-    cargarDatosDashboard();
-  }, [pestañaActiva, filtroReportes]);
+    loadDashboardData();
+  }, [activeTab, filtroReportes]);
 
-  const cargarDatosDashboard = async () => {
+  const loadDashboardData = async () => {
     try {
-      setCargando(true);
+      setLoading(true);
       const token = localStorage.getItem("token");
 
       // Cargar estadísticas
-      const estadisticasRes = await fetch(
+      const statsRes = await fetch(
         "http://localhost:3900/api/moderacion/estadisticas",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      const estadisticasData = await estadisticasRes.json();
-      setEstadisticas(estadisticasData.estadisticas);
+      const statsData = await statsRes.json();
+      setStats(statsData.estadisticas);
 
       // Cargar reportes con filtro
       const estadoParam =
@@ -156,13 +156,13 @@ const AdminPanel = () => {
       console.log("📦 Datos completos:", reportesData);
       setReportes(reportesData.reportes || []);
     } catch (error) {
-      console.error("Error cargando dashboard:", error);
+      console.error("Error loading dashboard:", error);
     } finally {
-      setCargando(false);
+      setLoading(false);
     }
   };
 
-  const manejarResolverReporte = async (
+  const handleResolverReporte = async (
     reporteId: string,
     accion: string,
     razon: string
@@ -184,7 +184,7 @@ const AdminPanel = () => {
       const data = await response.json();
 
       if (response.ok) {
-        cargarDatosDashboard(); // Recargar datos
+        loadDashboardData(); // Recargar datos
 
         // Mensajes específicos según la acción
         let mensaje = "Reporte resuelto correctamente";
@@ -196,20 +196,20 @@ const AdminPanel = () => {
           mensaje = "Advertencia enviada al usuario";
         }
 
-        mostrarNotificacionToast(mensaje, "success");
+        showToastNotification(mensaje, "success");
       } else {
-        mostrarNotificacionToast(
+        showToastNotification(
           data.message || "Error al resolver reporte",
           "error"
         );
       }
     } catch (error) {
       console.error("Error resolviendo reporte:", error);
-      mostrarNotificacionToast("Error al resolver reporte", "error");
+      showToastNotification("Error al resolver reporte", "error");
     }
   };
 
-  const manejarCambiarEstado = async (reporteId: string, estado: string) => {
+  const handleCambiarEstado = async (reporteId: string, estado: string) => {
     try {
       const token = localStorage.getItem("token");
       await fetch(
@@ -223,11 +223,11 @@ const AdminPanel = () => {
           body: JSON.stringify({ estado }),
         }
       );
-      cargarDatosDashboard(); // Recargar datos
-      mostrarNotificacionToast(`Reporte marcado como ${estado}`, "success");
+      loadDashboardData(); // Recargar datos
+      showToastNotification(`Reporte marcado como ${estado}`, "success");
     } catch (error) {
       console.error("Error cambiando estado:", error);
-      mostrarNotificacionToast("Error al cambiar estado del reporte", "error");
+      showToastNotification("Error al cambiar estado del reporte", "error");
     }
   };
 
@@ -235,12 +235,12 @@ const AdminPanel = () => {
   const abrirModalOcultar = (cancion: any) => {
     setCancionAOcultar(cancion);
     setRazonOcultar("");
-    setMostrarModalOcultar(true);
+    setShowOcultarModal(true);
   };
 
   const ocultarCancion = async () => {
     if (!razonOcultar.trim()) {
-      mostrarNotificacionToast(
+      showToastNotification(
         "Debes proporcionar una razón para ocultar la canción",
         "warning"
       );
@@ -248,7 +248,7 @@ const AdminPanel = () => {
     }
 
     if (!cancionAOcultar || !cancionAOcultar._id) {
-      mostrarNotificacionToast(
+      showToastNotification(
         "Error: No se pudo identificar la canción",
         "error"
       );
@@ -272,21 +272,21 @@ const AdminPanel = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setMostrarModalOcultar(false);
+        setShowOcultarModal(false);
         setCancionAOcultar(null);
         setRazonOcultar("");
-        mostrarNotificacionToast("Canción ocultada exitosamente", "success");
+        showToastNotification("Canción ocultada exitosamente", "success");
         // Recargar datos para reflejar los cambios
         window.location.reload();
       } else {
-        mostrarNotificacionToast(
+        showToastNotification(
           data.message || "Error al ocultar canción",
           "error"
         );
       }
     } catch (error: any) {
       console.error("Error ocultando canción:", error);
-      mostrarNotificacionToast(
+      showToastNotification(
         `Error al ocultar canción: ${error.message || "Error desconocido"}`,
         "error"
       );
@@ -295,12 +295,12 @@ const AdminPanel = () => {
 
   const abrirModalQuitar = (cancion: any) => {
     setCancionAMostrar(cancion);
-    setMostrarModalQuitar(true);
+    setShowQuitarModal(true);
   };
 
   const quitarOcultamiento = async () => {
     if (!cancionAMostrar || !cancionAMostrar._id) {
-      mostrarNotificacionToast(
+      showToastNotification(
         "Error: No se pudo identificar la canción",
         "error"
       );
@@ -318,28 +318,25 @@ const AdminPanel = () => {
       );
 
       if (response.ok) {
-        setMostrarModalQuitar(false);
+        setShowQuitarModal(false);
         setCancionAMostrar(null);
-        mostrarNotificacionToast(
-          "Ocultamiento quitado exitosamente",
-          "success"
-        );
+        showToastNotification("Ocultamiento quitado exitosamente", "success");
         // Recargar datos para reflejar los cambios
         window.location.reload();
       } else {
         const data = await response.json();
-        mostrarNotificacionToast(
+        showToastNotification(
           data.message || "Error al quitar ocultamiento",
           "error"
         );
       }
     } catch (error) {
       console.error("Error quitando ocultamiento:", error);
-      mostrarNotificacionToast("Error al quitar ocultamiento", "error");
+      showToastNotification("Error al quitar ocultamiento", "error");
     }
   };
 
-  if (cargando) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
         <div className="text-center">
@@ -379,9 +376,9 @@ const AdminPanel = () => {
           {/* Tabs */}
           <div className="flex gap-3 mt-6">
             <button
-              onClick={() => setPestañaActiva("dashboard")}
+              onClick={() => setActiveTab("dashboard")}
               className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
-                pestañaActiva === "dashboard"
+                activeTab === "dashboard"
                   ? "bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg shadow-green-500/30"
                   : "bg-neutral-800/50 text-neutral-300 hover:bg-neutral-700/50 border border-neutral-700"
               }`}
@@ -390,25 +387,25 @@ const AdminPanel = () => {
               Todo
             </button>
             <button
-              onClick={() => setPestañaActiva("reportes")}
+              onClick={() => setActiveTab("reportes")}
               className={`px-5 py-2.5 rounded-xl font-semibold transition-all relative ${
-                pestañaActiva === "reportes"
+                activeTab === "reportes"
                   ? "bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg shadow-orange-500/30"
                   : "bg-neutral-800/50 text-neutral-300 hover:bg-neutral-700/50 border border-neutral-700"
               }`}
             >
               <AlertTriangle className="w-4 h-4 inline mr-2" />
               Reportes
-              {estadisticas && estadisticas.reportes.pendientes > 0 && (
+              {stats && stats.reportes.pendientes > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg shadow-red-500/50">
-                  {estadisticas.reportes.pendientes}
+                  {stats.reportes.pendientes}
                 </span>
               )}
             </button>
             <button
-              onClick={() => setPestañaActiva("usuarios")}
+              onClick={() => setActiveTab("usuarios")}
               className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
-                pestañaActiva === "usuarios"
+                activeTab === "usuarios"
                   ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30"
                   : "bg-neutral-800/50 text-neutral-300 hover:bg-neutral-700/50 border border-neutral-700"
               }`}
@@ -417,9 +414,9 @@ const AdminPanel = () => {
               Usuarios
             </button>
             <button
-              onClick={() => setPestañaActiva("contenido")}
+              onClick={() => setActiveTab("contenido")}
               className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
-                pestañaActiva === "contenido"
+                activeTab === "contenido"
                   ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30"
                   : "bg-neutral-800/50 text-neutral-300 hover:bg-neutral-700/50 border border-neutral-700"
               }`}
@@ -430,9 +427,9 @@ const AdminPanel = () => {
             {/* Tab de Administradores (solo super_admin) */}
             {user?.role === "super_admin" && (
               <button
-                onClick={() => setPestañaActiva("administradores")}
+                onClick={() => setActiveTab("administradores")}
                 className={`px-5 py-2.5 rounded-xl font-semibold transition-all ${
-                  pestañaActiva === "administradores"
+                  activeTab === "administradores"
                     ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/30"
                     : "bg-neutral-800/50 text-neutral-300 hover:bg-neutral-700/50 border border-neutral-700"
                 }`}
@@ -448,37 +445,38 @@ const AdminPanel = () => {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="backdrop-blur-sm">
-          {pestañaActiva === "dashboard" && estadisticas && (
+          {activeTab === "dashboard" && stats && (
             <DashboardView
-              estadisticas={estadisticas}
+              stats={stats}
               reportes={reportes}
-              mostrarNotificacionToast={mostrarNotificacionToast}
+              showToastNotification={showToastNotification}
             />
           )}
-          {pestañaActiva === "reportes" && (
+          {activeTab === "reportes" && (
             <ReportesView
               reportes={reportes}
-              onResolve={manejarResolverReporte}
-              onCambiarEstado={manejarCambiarEstado}
+              onResolve={handleResolverReporte}
+              onCambiarEstado={handleCambiarEstado}
               filtroEstado={filtroReportes}
               setFiltroEstado={setFiltroReportes}
-              mostrarNotificacionToast={mostrarNotificacionToast}
+              showToastNotification={showToastNotification}
             />
           )}
-          {pestañaActiva === "usuarios" && <UsuariosView />}
-          {pestañaActiva === "contenido" && (
+          {activeTab === "usuarios" && <UsuariosView />}
+          {activeTab === "contenido" && (
             <ContenidoView
               abrirModalOcultar={abrirModalOcultar}
               abrirModalQuitar={abrirModalQuitar}
             />
           )}
-          {pestañaActiva === "administradores" &&
-            user?.role === "super_admin" && <AdministradoresView />}
+          {activeTab === "administradores" && user?.role === "super_admin" && (
+            <AdministradoresView />
+          )}
         </div>
       </div>
 
       {/* Modal para ocultar canción */}
-      {mostrarModalOcultar && cancionAOcultar && (
+      {showOcultarModal && cancionAOcultar && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-neutral-900 rounded-2xl p-6 max-w-sm w-full border-2 border-yellow-600/50 shadow-2xl shadow-yellow-600/20">
             <div className="flex items-center gap-4 mb-5">
@@ -530,7 +528,7 @@ const AdminPanel = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  setMostrarModalOcultar(false);
+                  setShowOcultarModal(false);
                   setCancionAOcultar(null);
                   setRazonOcultar("");
                 }}
@@ -551,7 +549,7 @@ const AdminPanel = () => {
       )}
 
       {/* Modal para quitar ocultamiento */}
-      {mostrarModalQuitar && cancionAMostrar && (
+      {showQuitarModal && cancionAMostrar && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-neutral-900 rounded-2xl p-6 max-w-sm w-full border-2 border-green-600/50 shadow-2xl shadow-green-600/20">
             <div className="flex items-center gap-3 mb-4">
@@ -601,7 +599,7 @@ const AdminPanel = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  setMostrarModalQuitar(false);
+                  setShowQuitarModal(false);
                   setCancionAMostrar(null);
                 }}
                 className="flex-1 bg-neutral-700 hover:bg-neutral-600 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
@@ -620,11 +618,11 @@ const AdminPanel = () => {
       )}
 
       {/* Toast Notifications */}
-      {mostrarToast && (
+      {showToast && (
         <Toast
           message={toastMessage}
           type={toastType}
-          onClose={() => setMostrarToast(false)}
+          onClose={() => setShowToast(false)}
         />
       )}
     </div>
@@ -634,7 +632,7 @@ const AdminPanel = () => {
 // Administradores View
 const AdministradoresView = () => {
   const [administradores, setAdministradores] = useState<any[]>([]);
-  const [cargando, setCargando] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [showCrearModal, setShowCrearModal] = useState(false);
   const [adminAEliminar, setAdminAEliminar] = useState<any>(null);
   const [nuevoAdmin, setNuevoAdmin] = useState({
@@ -649,12 +647,12 @@ const AdministradoresView = () => {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<ToastType>("info");
-  const [mostrarToast, setMostrarToast] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
-  const mostrarNotificacionToast = (message: string, type: ToastType) => {
+  const showToastNotification = (message: string, type: ToastType) => {
     setToastMessage(message);
     setToastType(type);
-    setMostrarToast(true);
+    setShowToast(true);
   };
 
   useEffect(() => {
@@ -663,7 +661,7 @@ const AdministradoresView = () => {
 
   const cargarAdministradores = async () => {
     try {
-      setCargando(true);
+      setLoading(true);
       const token = localStorage.getItem("token");
       const res = await fetch("http://localhost:3900/api/admin", {
         headers: { Authorization: `Bearer ${token}` },
@@ -675,9 +673,9 @@ const AdministradoresView = () => {
       }
     } catch (error) {
       console.error("Error cargando administradores:", error);
-      mostrarNotificacionToast("Error al cargar administradores", "error");
+      showToastNotification("Error al cargar administradores", "error");
     } finally {
-      setCargando(false);
+      setLoading(false);
     }
   };
 
@@ -691,7 +689,7 @@ const AdministradoresView = () => {
       !nuevoAdmin.pais ||
       !nuevoAdmin.fechaNacimiento
     ) {
-      mostrarNotificacionToast("Todos los campos son obligatorios", "warning");
+      showToastNotification("Todos los campos son obligatorios", "warning");
       return;
     }
 
@@ -709,10 +707,7 @@ const AdministradoresView = () => {
       const data = await res.json();
 
       if (data.status === "success") {
-        mostrarNotificacionToast(
-          "Administrador creado correctamente",
-          "success"
-        );
+        showToastNotification("Administrador creado correctamente", "success");
         setShowCrearModal(false);
         setNuevoAdmin({
           nombre: "",
@@ -725,14 +720,14 @@ const AdministradoresView = () => {
         });
         cargarAdministradores();
       } else {
-        mostrarNotificacionToast(
+        showToastNotification(
           data.message || "Error al crear administrador",
           "error"
         );
       }
     } catch (error) {
       console.error("Error creando administrador:", error);
-      mostrarNotificacionToast("Error al crear administrador", "error");
+      showToastNotification("Error al crear administrador", "error");
     }
   };
 
@@ -752,21 +747,21 @@ const AdministradoresView = () => {
       const data = await res.json();
 
       if (data.status === "success") {
-        mostrarNotificacionToast(
+        showToastNotification(
           "Administrador eliminado correctamente",
           "success"
         );
         setAdminAEliminar(null);
         cargarAdministradores();
       } else {
-        mostrarNotificacionToast(
+        showToastNotification(
           data.message || "Error al eliminar administrador",
           "error"
         );
       }
     } catch (error) {
       console.error("Error eliminando administrador:", error);
-      mostrarNotificacionToast("Error al eliminar administrador", "error");
+      showToastNotification("Error al eliminar administrador", "error");
     }
   };
 
@@ -786,7 +781,7 @@ const AdministradoresView = () => {
           </button>
         </div>
 
-        {cargando ? (
+        {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"></div>
             <p className="text-neutral-400 mt-4">Cargando administradores...</p>
@@ -1040,11 +1035,11 @@ const AdministradoresView = () => {
       )}
 
       {/* Toast */}
-      {mostrarToast && (
+      {showToast && (
         <Toast
           message={toastMessage}
           type={toastType}
-          onClose={() => setMostrarToast(false)}
+          onClose={() => setShowToast(false)}
         />
       )}
     </div>
@@ -1053,13 +1048,13 @@ const AdministradoresView = () => {
 
 // Dashboard View
 const DashboardView = ({
-  estadisticas,
+  stats,
   reportes,
-  mostrarNotificacionToast,
+  showToastNotification,
 }: {
-  estadisticas: Stats;
+  stats: Stats;
   reportes: Reporte[];
-  mostrarNotificacionToast?: (message: string, type: ToastType) => void;
+  showToastNotification?: (message: string, type: ToastType) => void;
 }) => (
   <div className="space-y-6">
     {/* Stats Cards */}
@@ -1067,38 +1062,38 @@ const DashboardView = ({
       <StatCard
         icon={<Users className="w-6 h-6" />}
         title="Total Usuarios"
-        value={estadisticas.usuarios.total}
-        subtitle={`${estadisticas.usuarios.activos} activos`}
+        value={stats.usuarios.total}
+        subtitle={`${stats.usuarios.activos} activos`}
         color="blue"
       />
       <StatCard
         icon={<Music className="w-6 h-6" />}
         title="Canciones"
-        value={estadisticas.contenido.canciones}
+        value={stats.contenido.canciones}
         color="green"
       />
       <StatCard
         icon={<Disc className="w-6 h-6" />}
         title="Álbumes"
-        value={estadisticas.contenido.albumes}
+        value={stats.contenido.albumes}
         color="purple"
       />
       <StatCard
         icon={<AlertTriangle className="w-6 h-6" />}
         title="Reportes Pendientes"
-        value={estadisticas.reportes.pendientes}
-        subtitle={`${estadisticas.reportes.total} total`}
+        value={stats.reportes.pendientes}
+        subtitle={`${stats.reportes.total} total`}
         color="red"
       />
     </div>
 
     {/* Usuarios Suspendidos */}
-    {estadisticas.usuarios.suspendidos > 0 && (
+    {stats.usuarios.suspendidos > 0 && (
       <div className="bg-yellow-900/10 border border-yellow-700/50 rounded-2xl p-5 backdrop-blur-sm">
         <div className="flex items-center gap-3 text-yellow-400">
           <Clock className="w-6 h-6" />
           <span className="font-semibold text-lg">
-            {estadisticas.usuarios.suspendidos} usuarios suspendidos actualmente
+            {stats.usuarios.suspendidos} usuarios suspendidos actualmente
           </span>
         </div>
       </div>
@@ -1122,7 +1117,7 @@ const DashboardView = ({
               key={reporte._id}
               reporte={reporte}
               compact
-              mostrarNotificacionToast={mostrarNotificacionToast}
+              showToastNotification={showToastNotification}
             />
           ))}
         </div>
@@ -1140,7 +1135,7 @@ const DashboardView = ({
         <p>
           📈{" "}
           <span className="font-bold text-white">
-            {estadisticas.usuarios.nuevosUltimos30Dias}
+            {stats.usuarios.nuevosUltimos30Dias}
           </span>{" "}
           nuevos usuarios en los últimos 30 días
         </p>
@@ -1156,14 +1151,14 @@ const ReportesView = ({
   onCambiarEstado,
   filtroEstado,
   setFiltroEstado,
-  mostrarNotificacionToast,
+  showToastNotification,
 }: {
   reportes: Reporte[];
   onResolve: (id: string, accion: string, razon: string) => void;
   onCambiarEstado: (id: string, estado: string) => void;
   filtroEstado: string;
   setFiltroEstado: (estado: string) => void;
-  mostrarNotificacionToast?: (message: string, type: ToastType) => void;
+  showToastNotification?: (message: string, type: ToastType) => void;
 }) => {
   return (
     <div className="space-y-4">
@@ -1224,7 +1219,7 @@ const ReportesView = ({
               reporte={reporte}
               onResolve={onResolve}
               onCambiarEstado={onCambiarEstado}
-              mostrarNotificacionToast={mostrarNotificacionToast}
+              showToastNotification={showToastNotification}
             />
           ))
         )}
@@ -1238,10 +1233,10 @@ const UsuariosView = () => {
   const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [busqueda, setBusqueda] = useState("");
-  const [cargando, setCargando] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [historialConducta, setHistorialConducta] = useState<any[]>([]);
-  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState<
     "todos" | "activo" | "suspendido"
   >("todos");
@@ -1254,19 +1249,19 @@ const UsuariosView = () => {
   // Estados para Toast
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<ToastType>("info");
-  const [mostrarToast, setMostrarToast] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
-  const mostrarNotificacionToast = (message: string, type: ToastType) => {
+  const showToastNotification = (message: string, type: ToastType) => {
     setToastMessage(message);
     setToastType(type);
-    setMostrarToast(true);
+    setShowToast(true);
   };
 
   const buscarUsuarios = async () => {
     if (!busqueda.trim()) {
       // Si no hay búsqueda, cargar todos los usuarios según filtro
       try {
-        setCargando(true);
+        setLoading(true);
         const token = localStorage.getItem("token");
         const estadoParam =
           filtroEstado !== "todos" ? `&estado=${filtroEstado}` : "";
@@ -1290,13 +1285,13 @@ const UsuariosView = () => {
       } catch (error) {
         console.error("Error cargando usuarios:", error);
       } finally {
-        setCargando(false);
+        setLoading(false);
       }
       return;
     }
 
     try {
-      setCargando(true);
+      setLoading(true);
       const token = localStorage.getItem("token");
 
       // Usar endpoint de moderación para búsqueda completa con todos los campos
@@ -1322,9 +1317,9 @@ const UsuariosView = () => {
       setUsuarios(usuariosFiltrados);
     } catch (error) {
       console.error("Error buscando usuarios:", error);
-      mostrarNotificacionToast("Error al buscar usuarios", "error");
+      showToastNotification("Error al buscar usuarios", "error");
     } finally {
-      setCargando(false);
+      setLoading(false);
     }
   };
 
@@ -1349,18 +1344,18 @@ const UsuariosView = () => {
 
       const data = await response.json();
       if (!response.ok) {
-        mostrarNotificacionToast(
+        showToastNotification(
           data.message || "Error al suspender usuario",
           "error"
         );
       } else {
-        mostrarNotificacionToast("Usuario suspendido correctamente", "success");
+        showToastNotification("Usuario suspendido correctamente", "success");
       }
 
       buscarUsuarios();
     } catch (error) {
       console.error("Error suspendiendo usuario:", error);
-      mostrarNotificacionToast("Error al suspender usuario", "error");
+      showToastNotification("Error al suspender usuario", "error");
     } finally {
       // Siempre cerrar el modal, haya éxito o error
       setSelectedUser(null);
@@ -1397,18 +1392,18 @@ const UsuariosView = () => {
         setUsuarioAEliminar(null);
 
         if (data.eliminado) {
-          mostrarNotificacionToast(
+          showToastNotification(
             `Usuario eliminado permanentemente.\n\n📊 Contenido eliminado:\n• Canciones: ${data.eliminado.canciones}\n• Álbumes: ${data.eliminado.albumes}\n• Playlists: ${data.eliminado.playlists}\n• Archivos R2: ${data.eliminado.archivosR2}`,
             "success"
           );
         } else {
-          mostrarNotificacionToast(
+          showToastNotification(
             "Administrador eliminado correctamente",
             "success"
           );
         }
       } else {
-        mostrarNotificacionToast(
+        showToastNotification(
           data.message || "Error al eliminar usuario",
           "error"
         );
@@ -1418,7 +1413,7 @@ const UsuariosView = () => {
       setSelectedUser(null);
     } catch (error) {
       console.error("Error eliminando usuario:", error);
-      mostrarNotificacionToast("Error al eliminar usuario", "error");
+      showToastNotification("Error al eliminar usuario", "error");
     }
   };
 
@@ -1434,16 +1429,16 @@ const UsuariosView = () => {
       );
       buscarUsuarios();
       setSelectedUser(null);
-      mostrarNotificacionToast("Usuario reactivado correctamente", "success");
+      showToastNotification("Usuario reactivado correctamente", "success");
     } catch (error) {
       console.error("Error reactivando usuario:", error);
-      mostrarNotificacionToast("Error al reactivar usuario", "error");
+      showToastNotification("Error al reactivar usuario", "error");
     }
   };
 
   const cargarHistorialConducta = async (usuarioId: string) => {
     try {
-      setCargandoHistorial(true);
+      setLoadingHistorial(true);
       const token = localStorage.getItem("token");
       const res = await fetch(
         `http://localhost:3900/api/admin/usuarios/${usuarioId}/conducta`,
@@ -1457,18 +1452,15 @@ const UsuariosView = () => {
         console.log("Historial recibido:", data.historialConducta[0]);
         setHistorialConducta(data.historialConducta || []);
       } else {
-        mostrarNotificacionToast("Error al cargar historial", "error");
+        showToastNotification("Error al cargar historial", "error");
         setHistorialConducta([]);
       }
     } catch (error) {
       console.error("Error cargando historial:", error);
-      mostrarNotificacionToast(
-        "Error al cargar historial de conducta",
-        "error"
-      );
+      showToastNotification("Error al cargar historial de conducta", "error");
       setHistorialConducta([]);
     } finally {
-      setCargandoHistorial(false);
+      setLoadingHistorial(false);
     }
   };
 
@@ -1544,10 +1536,10 @@ const UsuariosView = () => {
           />
           <button
             onClick={buscarUsuarios}
-            disabled={cargando}
+            disabled={loading}
             className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg disabled:opacity-50"
           >
-            {cargando ? "Buscando..." : "Buscar"}
+            {loading ? "Buscando..." : "Buscar"}
           </button>
         </div>
 
@@ -1687,7 +1679,7 @@ const UsuariosView = () => {
           </div>
         )}
 
-        {usuarios.length === 0 && busqueda && !cargando && (
+        {usuarios.length === 0 && busqueda && !loading && (
           <p className="text-gray-400 text-center py-4">
             No se encontraron usuarios
           </p>
@@ -1815,7 +1807,7 @@ const UsuariosView = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto pr-1">
-              {cargandoHistorial ? (
+              {loadingHistorial ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="text-gray-400">Cargando historial...</div>
                 </div>
@@ -2038,11 +2030,11 @@ const UsuariosView = () => {
       )}
 
       {/* Toast */}
-      {mostrarToast && (
+      {showToast && (
         <Toast
           message={toastMessage}
           type={toastType}
-          onClose={() => setMostrarToast(false)}
+          onClose={() => setShowToast(false)}
         />
       )}
     </div>
@@ -2062,7 +2054,7 @@ const ContenidoView = ({
   >("canciones");
   const [contenido, setContenido] = useState<any[]>([]);
   const [busqueda, setBusqueda] = useState("");
-  const [cargando, setCargando] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Estados para el reproductor
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
@@ -2078,19 +2070,19 @@ const ContenidoView = ({
   // Estados para Toast
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<ToastType>("info");
-  const [mostrarToast, setMostrarToast] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
-  const mostrarNotificacionToast = (message: string, type: ToastType) => {
+  const showToastNotification = (message: string, type: ToastType) => {
     setToastMessage(message);
     setToastType(type);
-    setMostrarToast(true);
+    setShowToast(true);
   };
 
   const buscarContenido = async () => {
     if (!busqueda.trim()) return;
 
     try {
-      setCargando(true);
+      setLoading(true);
       const token = localStorage.getItem("token");
 
       let endpoint = "";
@@ -2124,9 +2116,9 @@ const ContenidoView = ({
       }
     } catch (error) {
       console.error("Error buscando contenido:", error);
-      mostrarNotificacionToast("Error al buscar contenido", "error");
+      showToastNotification("Error al buscar contenido", "error");
     } finally {
-      setCargando(false);
+      setLoading(false);
     }
   };
 
@@ -2138,7 +2130,7 @@ const ContenidoView = ({
 
   const eliminarContenido = async () => {
     if (!razonEliminacion.trim()) {
-      mostrarNotificacionToast(
+      showToastNotification(
         "Debes proporcionar una razón para la eliminación",
         "warning"
       );
@@ -2171,7 +2163,7 @@ const ContenidoView = ({
         setShowEliminarModal(false);
         setContenidoAEliminar(null);
         setRazonEliminacion("");
-        mostrarNotificacionToast(
+        showToastNotification(
           `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} "${
             titulo || nombre
           }" eliminado correctamente`,
@@ -2180,14 +2172,14 @@ const ContenidoView = ({
         buscarContenido();
       } else {
         const data = await response.json();
-        mostrarNotificacionToast(
+        showToastNotification(
           data.message || "Error al eliminar contenido",
           "error"
         );
       }
     } catch (error) {
       console.error("Error eliminando contenido:", error);
-      mostrarNotificacionToast("Error al eliminar contenido", "error");
+      showToastNotification("Error al eliminar contenido", "error");
     }
   };
 
@@ -2259,10 +2251,10 @@ const ContenidoView = ({
           />
           <button
             onClick={buscarContenido}
-            disabled={cargando}
+            disabled={loading}
             className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 px-8 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-green-500/30 transition-all"
           >
-            {cargando ? "Buscando..." : "Buscar"}
+            {loading ? "Buscando..." : "Buscar"}
           </button>
         </div>
 
@@ -2415,7 +2407,7 @@ const ContenidoView = ({
           </div>
         )}
 
-        {contenido.length === 0 && busqueda && !cargando && (
+        {contenido.length === 0 && busqueda && !loading && (
           <p className="text-gray-400 text-center py-4">
             No se encontró contenido
           </p>
@@ -2507,11 +2499,11 @@ const ContenidoView = ({
       )}
 
       {/* Toast */}
-      {mostrarToast && (
+      {showToast && (
         <Toast
           message={toastMessage}
           type={toastType}
-          onClose={() => setMostrarToast(false)}
+          onClose={() => setShowToast(false)}
         />
       )}
     </div>
@@ -2570,13 +2562,13 @@ const ReporteCard = ({
   compact,
   onResolve,
   onCambiarEstado,
-  mostrarNotificacionToast,
+  showToastNotification,
 }: {
   reporte: Reporte;
   compact?: boolean;
   onResolve?: (id: string, accion: string, razon: string) => void;
   onCambiarEstado?: (id: string, estado: string) => void;
-  mostrarNotificacionToast?: (message: string, type: ToastType) => void;
+  showToastNotification?: (message: string, type: ToastType) => void;
 }) => {
   const [showActions, setShowActions] = useState(false);
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
@@ -2605,8 +2597,8 @@ const ReporteCard = ({
       );
 
       if (response.ok) {
-        if (mostrarNotificacionToast) {
-          mostrarNotificacionToast(
+        if (showToastNotification) {
+          showToastNotification(
             `Prioridad cambiada a ${nuevaPrioridad}`,
             "success"
           );
@@ -2614,14 +2606,14 @@ const ReporteCard = ({
         // Recargar la página para ver los cambios
         window.location.reload();
       } else {
-        if (mostrarNotificacionToast) {
-          mostrarNotificacionToast("Error al cambiar prioridad", "error");
+        if (showToastNotification) {
+          showToastNotification("Error al cambiar prioridad", "error");
         }
       }
     } catch (error) {
       console.error("Error cambiando prioridad:", error);
-      if (mostrarNotificacionToast) {
-        mostrarNotificacionToast("Error al cambiar prioridad", "error");
+      if (showToastNotification) {
+        showToastNotification("Error al cambiar prioridad", "error");
       }
     }
   };
