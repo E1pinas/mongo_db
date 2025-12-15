@@ -107,18 +107,21 @@ export const servicioPerfil = {
   },
 
   // Obtener canciones del usuario
-  obtenerCanciones: async (_usuarioId: string): Promise<Cancion[]> => {
-    return await musicService.getMySongs();
+  obtenerCanciones: async (usuarioId: string): Promise<Cancion[]> => {
+    // Las canciones ya vienen filtradas por privacidad en el perfil
+    return [];
   },
 
   // Obtener álbumes del usuario
-  obtenerAlbumes: async (_usuarioId: string): Promise<Album[]> => {
-    return await musicService.getMyAlbums();
+  obtenerAlbumes: async (usuarioId: string): Promise<Album[]> => {
+    // Los álbumes ya vienen filtrados por privacidad en el perfil
+    return [];
   },
 
   // Obtener playlists del usuario
-  obtenerPlaylists: async (_usuarioId: string): Promise<Playlist[]> => {
-    return await musicService.getMyPlaylists();
+  obtenerPlaylists: async (usuarioId: string): Promise<Playlist[]> => {
+    // Las playlists ya vienen filtradas por privacidad en el perfil
+    return [];
   },
 
   // Obtener seguidores

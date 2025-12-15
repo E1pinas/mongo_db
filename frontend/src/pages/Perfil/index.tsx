@@ -79,7 +79,7 @@ export default function Perfil() {
     setCanciones,
     setAlbumes,
     setPlaylists,
-  } = useContenidoPerfil(usuarioPerfil?._id);
+  } = useContenidoPerfil(usuarioPerfil?._id, usuarioPerfil);
 
   const { playQueue, currentSong, isPlaying, togglePlay } = usePlayer();
 
@@ -279,6 +279,7 @@ export default function Perfil() {
           usuario={usuarioPerfil}
           esPropioUsuario={esPropioUsuario}
           totalCanciones={canciones.length}
+          totalAlbumes={albumes.length}
           totalSeguidores={
             (usuarioPerfil as any).estadisticas?.totalSeguidores || 0
           }

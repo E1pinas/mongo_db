@@ -129,10 +129,11 @@ export const crearReporte = async (req, res) => {
     });
 
     if (reportesActivos > 0) {
-      const mensajeTipo = tipoContenido === "usuario" 
-        ? "Este usuario ya está reportado y está en revisión por un caso activo" 
-        : "Este contenido ya está reportado y está en revisión por un caso activo";
-      
+      const mensajeTipo =
+        tipoContenido === "usuario"
+          ? "Este usuario ya está reportado y está en revisión por un caso activo"
+          : "Este contenido ya está reportado y está en revisión por un caso activo";
+
       return sendError(res, mensajeTipo, 400);
     }
 

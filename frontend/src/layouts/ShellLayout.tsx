@@ -7,26 +7,7 @@ import PlayerBar from "../components/layout/PlayerBar";
 import WelcomeModal from "../components/common/WelcomeModal";
 import { useAuth } from "../contexts";
 
-/**
- * ShellLayout - Layout principal tipo Spotify
- *
- * ESTRUCTURA:
- * - Grid de altura completa (h-screen) con 3 filas: topbar, contenido, player
- * - Fila contenido usa grid de 3 columnas: sidebar-left, main, sidebar-right
- * - Las columnas cambian dinámicamente según el estado colapsado
- *
- * CLAVES DE TAILWIND:
- * - h-screen: Altura completa de viewport
- * - overflow-hidden: Previene scroll global
- * - grid grid-rows-[auto_1fr_auto]: Topbar y player auto, contenido flexible
- * - overflow-y-auto: Solo el main central tiene scroll
- * - sticky/fixed: Sidebars y barras permanecen fijos
- *
- * RESPONSIVE:
- * - Sidebar izquierdo: Oculto en móvil (absolute overlay), visible en desktop
- * - Sidebar derecho: Oculto hasta lg (1024px)
- * - Estado leftOpen/rightOpen controla colapso de sidebars
- */
+
 
 export default function ShellLayout() {
   // Estado para controlar colapso de sidebars

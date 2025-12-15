@@ -3,7 +3,10 @@ import { servicioPerfil } from "../servicios";
 import type { Cancion, Album, Playlist, Usuario } from "../../../types";
 import type { TipoPestaña } from "../tipos";
 
-export const useContenidoPerfil = (usuarioPerfilId: string | undefined) => {
+export const useContenidoPerfil = (
+  usuarioPerfilId: string | undefined,
+  usuarioPerfil: any = null
+) => {
   const [canciones, setCanciones] = useState<Cancion[]>([]);
   const [albumes, setAlbumes] = useState<Album[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -19,24 +22,24 @@ export const useContenidoPerfil = (usuarioPerfilId: string | undefined) => {
 
       switch (pestaña) {
         case "canciones":
-          const cancionesData = await servicioPerfil.obtenerCanciones(
-            usuarioPerfilId
-          );
-          setCanciones(cancionesData);
+          // Usar datos que ya vienen del perfil (ya filtrados por backend)
+          if (usuarioPerfil?.misCanciones) {
+            setCanciones(usuarioPerfil.misCanciones);
+          }
           break;
 
         case "albumes":
-          const albumesData = await servicioPerfil.obtenerAlbumes(
-            usuarioPerfilId
-          );
-          setAlbumes(albumesData);
+          // Usar datos que ya vienen del perfil (ya filtrados por backend)
+          if (usuarioPerfil?.misAlbumes) {
+            setAlbumes(usuarioPerfil.misAlbumes);
+          }
           break;
 
         case "playlists":
-          const playlistsData = await servicioPerfil.obtenerPlaylists(
-            usuarioPerfilId
-          );
-          setPlaylists(playlistsData);
+          // Usar datos que ya vienen del perfil (ya filtrados por backend)
+          if (usuarioPerfil?.playlistsCreadas) {
+            setPlaylists(usuarioPerfil.playlistsCreadas);
+          }
           break;
 
         case "seguidores":

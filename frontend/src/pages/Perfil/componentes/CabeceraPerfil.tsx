@@ -9,6 +9,7 @@ interface PropsCabeceraPerfil {
   usuario: Usuario;
   esPropioUsuario: boolean;
   totalCanciones: number;
+  totalAlbumes: number;
   totalSeguidores: number;
   totalSiguiendo: number;
   alClickConfiguracion?: () => void;
@@ -19,6 +20,7 @@ export const CabeceraPerfil: React.FC<PropsCabeceraPerfil> = ({
   usuario,
   esPropioUsuario,
   totalCanciones,
+  totalAlbumes,
   totalSeguidores,
   totalSiguiendo,
   alClickConfiguracion,
@@ -225,7 +227,7 @@ export const CabeceraPerfil: React.FC<PropsCabeceraPerfil> = ({
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-purple-500">
-                {usuarioExtendido.totalAlbumes || 0}
+                {formatNumber(totalAlbumes)}
               </div>
               <div className="text-sm text-neutral-400 mt-1">Álbumes</div>
             </div>

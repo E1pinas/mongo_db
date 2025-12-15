@@ -325,20 +325,3 @@ export interface NotificationState {
   notifications: Notificacion[];
   unreadCount: number;
 }
-;
-  duration: number;
-  volume: number;
-  repeat: "off" | "one" | "all";
-  shuffle: boolean;
-}
-
-export interface AuthState {
-  user: Usuario | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
-export interface NotificationState {
-  notifications: Notificacion[];
-  unreadCount: number;
-}

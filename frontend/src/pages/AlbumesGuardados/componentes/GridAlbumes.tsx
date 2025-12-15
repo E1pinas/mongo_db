@@ -28,17 +28,11 @@ export function GridAlbumes({ albumes }: GridAlbumesProps) {
           className="group cursor-pointer"
         >
           <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-neutral-900">
-            {album.portadaUrl ? (
-              <img
-                src={album.portadaUrl}
-                alt={album.titulo}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-orange-500 to-red-600">
-                <Disc size={48} className="text-white" />
-              </div>
-            )}
+            <img
+              src={album.portadaUrl || "/cover.jpg"}
+              alt={album.titulo}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            />
             <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-orange-500 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 flex items-center justify-center shadow-lg">
               <svg

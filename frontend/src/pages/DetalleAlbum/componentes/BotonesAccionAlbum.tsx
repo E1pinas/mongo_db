@@ -1,13 +1,6 @@
-import {
-  Play,
-  Heart,
-  Plus,
-  Lock,
-  Unlock,
-  Trash2,
-  MoreHorizontal,
-} from "lucide-react";
+import { Play, Heart, Plus, Lock, Unlock, Trash2, Edit } from "lucide-react";
 import type { Album } from "../../../types";
+import { useNavigate } from "react-router-dom";
 
 interface BotonesAccionAlbumProps {
   album: Album;
@@ -32,6 +25,7 @@ export const BotonesAccionAlbum = ({
   onCambiarPrivacidad,
   onEliminar,
 }: BotonesAccionAlbumProps) => {
+  const navigate = useNavigate();
   const canciones = album.canciones?.filter((c) => typeof c !== "string") || [];
 
   return (
@@ -62,6 +56,13 @@ export const BotonesAccionAlbum = ({
         {puedeEditar && (
           <>
             <button
+              onClick={() => navigate(`/crear-album?edit=${album._id}`)}
+              className="w-12 h-12 flex items-center justify-center hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full transition-all hover:scale-110"
+              title="Editar información del álbum"
+            >
+              <Edit size={20} />
+            </button>
+            <button
               onClick={onAgregarCanciones}
               className="w-12 h-12 flex items-center justify-center hover:bg-green-500/20 text-green-400 border border-green-500/30 rounded-full transition-all hover:scale-110"
               title="Agregar canciones"
@@ -85,10 +86,6 @@ export const BotonesAccionAlbum = ({
             </button>
           </>
         )}
-
-        <button className="w-12 h-12 flex items-center justify-center hover:bg-white/10 backdrop-blur-sm border border-white/10 rounded-full transition-all">
-          <MoreHorizontal size={22} className="text-neutral-400" />
-        </button>
       </div>
     </div>
   );
