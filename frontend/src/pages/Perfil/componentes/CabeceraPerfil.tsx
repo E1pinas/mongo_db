@@ -162,10 +162,12 @@ export const CabeceraPerfil: React.FC<PropsCabeceraPerfil> = ({
                         href={red.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`flex items-center gap-2 px-3 py-1.5 ${red.bgColor} ${red.hoverColor} rounded-lg text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl hover:scale-105`}
+                        className={`flex items-center justify-center gap-2 p-2.5 sm:px-4 sm:py-2 ${red.bgColor} ${red.hoverColor} rounded-lg text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95`}
                       >
-                        <IconComponent className="w-4 h-4" />
-                        <span>@{red.username}</span>
+                        <IconComponent className="w-5 h-5 flex-shrink-0" />
+                        <span className="hidden sm:inline">
+                          @{red.username}
+                        </span>
                       </a>
                     );
                   })}

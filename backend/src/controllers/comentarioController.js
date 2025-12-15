@@ -160,20 +160,7 @@ export const responderComentario = async (req, res) => {
 
     await respuesta.populate("autor", "nick nombreArtistico avatarUrl");
 
-    // Notificar al autor del comentario original (si no es el mismo que responde)
-    if (req.userId !== comentarioPadre.autor.toString()) {
-      const respondedor = await Usuario.findById(req.userId).select("nick");
-      await Notificacion.create({
-        usuarioDestino: comentarioPadre.autor,
-        usuarioOrigen: req.userId,
-        tipo: "respuesta_comentario",
-        mensaje: `${respondedor.nick} ha respondido a tu comentario`,
-        recurso: {
-          tipo: "comment",
-          id: respuesta._id,
-        },
-      });
-    }
+    // Notificación de respuesta deshabilitada
 
     return res.status(201).json({
       ok: true,
@@ -213,21 +200,7 @@ export const toggleLikeComentario = async (req, res) => {
       );
     } else {
       comentario.likes.push(req.userId);
-
-      // Notificar al autor del comentario (si no es el mismo que da like)
-      if (req.userId !== comentario.autor.toString()) {
-        const usuarioLike = await Usuario.findById(req.userId).select("nick");
-        await Notificacion.create({
-          usuarioDestino: comentario.autor,
-          usuarioOrigen: req.userId,
-          tipo: "like_comentario",
-          mensaje: `A ${usuarioLike.nick} le gusta tu comentario`,
-          recurso: {
-            tipo: "comment",
-            id: comentario._id,
-          },
-        });
-      }
+      // Notificación de like deshabilitada
     }
 
     await comentario.save();

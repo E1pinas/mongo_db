@@ -121,6 +121,21 @@ export const crearReporte = async (req, res) => {
       );
     }
 
+    // Verificar si este contenido ya tiene reportes activos de otros usuarios
+    const reportesActivos = await Reporte.countDocuments({
+      tipoContenido,
+      contenidoId,
+      estado: { $in: ["pendiente", "en_revision"] },
+    });
+
+    if (reportesActivos > 0) {
+      const mensajeTipo = tipoContenido === "usuario" 
+        ? "Este usuario ya está reportado y está en revisión por un caso activo" 
+        : "Este contenido ya está reportado y está en revisión por un caso activo";
+      
+      return sendError(res, mensajeTipo, 400);
+    }
+
     // Obtener SOLO administradores regulares (NO super_admin) para distribuir equitativamente
     // El super_admin solo supervisa y gestiona a los admins, no modera reportes directamente
     const admins = await Usuario.find({

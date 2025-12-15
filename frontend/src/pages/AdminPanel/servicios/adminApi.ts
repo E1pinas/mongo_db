@@ -27,9 +27,12 @@ export const servicioAdmin = {
 
   // Reportes
   obtenerReportes: async (estado: string) => {
-    const response = await fetch(`${API_URL}/admin/reportes?estado=${estado}`, {
-      headers: crearHeaders(),
-    });
+    const response = await fetch(
+      `${API_URL}/moderacion/reportes?estado=${estado}`,
+      {
+        headers: crearHeaders(),
+      }
+    );
     if (!response.ok) throw new Error("Error al cargar reportes");
     return response.json();
   },
@@ -40,9 +43,9 @@ export const servicioAdmin = {
     comentarioResolucion: string
   ) => {
     const response = await fetch(
-      `${API_URL}/admin/reportes/${reporteId}/resolver`,
+      `${API_URL}/moderacion/reportes/${reporteId}/resolver`,
       {
-        method: "PUT",
+        method: "POST",
         headers: crearHeaders(),
         body: JSON.stringify({ accion, comentarioResolucion }),
       }
@@ -53,7 +56,7 @@ export const servicioAdmin = {
 
   cambiarEstadoReporte: async (reporteId: string, estado: string) => {
     const response = await fetch(
-      `${API_URL}/admin/reportes/${reporteId}/estado`,
+      `${API_URL}/moderacion/reportes/${reporteId}/estado`,
       {
         method: "PUT",
         headers: crearHeaders(),
@@ -83,7 +86,7 @@ export const servicioAdmin = {
     filtroEstado: string,
     pais?: string
   ) => {
-    let url = `${API_URL}/admin/usuarios/buscar?q=${encodeURIComponent(
+    let url = `${API_URL}/moderacion/usuarios/buscar?q=${encodeURIComponent(
       termino
     )}&estado=${filtroEstado}`;
     if (pais) url += `&pais=${pais}`;
@@ -99,9 +102,9 @@ export const servicioAdmin = {
     duracionDias: number
   ) => {
     const response = await fetch(
-      `${API_URL}/admin/usuarios/${usuarioId}/suspender`,
+      `${API_URL}/moderacion/usuarios/${usuarioId}/suspender`,
       {
-        method: "PUT",
+        method: "POST",
         headers: crearHeaders(),
         body: JSON.stringify({ motivo, duracionDias }),
       }
@@ -112,19 +115,19 @@ export const servicioAdmin = {
 
   levantarSuspension: async (usuarioId: string) => {
     const response = await fetch(
-      `${API_URL}/admin/usuarios/${usuarioId}/levantar-suspension`,
+      `${API_URL}/moderacion/usuarios/${usuarioId}/reactivar`,
       {
-        method: "PUT",
+        method: "POST",
         headers: crearHeaders(),
       }
     );
-    if (!response.ok) throw new Error("Error al levantar suspensión");
+    if (!response.ok) throw new Error("Error al reactivar usuario");
     return response.json();
   },
 
   obtenerHistorialConducta: async (usuarioId: string) => {
     const response = await fetch(
-      `${API_URL}/admin/usuarios/${usuarioId}/historial-conducta`,
+      `${API_URL}/admin/usuarios/${usuarioId}/conducta`,
       { headers: crearHeaders() }
     );
     if (!response.ok) throw new Error("Error al cargar historial");
@@ -134,7 +137,7 @@ export const servicioAdmin = {
   // Contenido
   buscarContenido: async (termino: string, tipo: string) => {
     const response = await fetch(
-      `${API_URL}/admin/contenido/buscar?q=${encodeURIComponent(
+      `${API_URL}/moderacion/contenido/buscar?q=${encodeURIComponent(
         termino
       )}&tipo=${tipo}`,
       { headers: crearHeaders() }
@@ -188,7 +191,7 @@ export const servicioAdmin = {
 
   // Administradores
   obtenerAdministradores: async () => {
-    const response = await fetch(`${API_URL}/admin/administradores`, {
+    const response = await fetch(`${API_URL}/admin`, {
       headers: crearHeaders(),
     });
     if (!response.ok) throw new Error("Error al cargar administradores");
@@ -202,7 +205,7 @@ export const servicioAdmin = {
     password: string;
     nick: string;
   }) => {
-    const response = await fetch(`${API_URL}/admin/administradores`, {
+    const response = await fetch(`${API_URL}/admin`, {
       method: "POST",
       headers: crearHeaders(),
       body: JSON.stringify(datosAdmin),
@@ -215,13 +218,10 @@ export const servicioAdmin = {
   },
 
   eliminarAdministrador: async (adminId: string) => {
-    const response = await fetch(
-      `${API_URL}/admin/administradores/${adminId}`,
-      {
-        method: "DELETE",
-        headers: crearHeaders(),
-      }
-    );
+    const response = await fetch(`${API_URL}/admin/${adminId}`, {
+      method: "DELETE",
+      headers: crearHeaders(),
+    });
     if (!response.ok) throw new Error("Error al eliminar administrador");
     return response.json();
   },

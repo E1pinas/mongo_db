@@ -30,6 +30,7 @@ export const TarjetaReporte: React.FC<PropsTarjetaReporte> = ({
   const [reproductorAudio, setReproductorAudio] =
     useState<HTMLAudioElement | null>(null);
   const [estaReproduciendo, setEstaReproduciendo] = useState(false);
+  const [prioridadLocal, setPrioridadLocal] = useState(reporte.prioridad);
 
   const coloresPrioridad = {
     urgente: "bg-red-600",
@@ -40,6 +41,7 @@ export const TarjetaReporte: React.FC<PropsTarjetaReporte> = ({
 
   const cambiarPrioridad = async (nuevaPrioridad: string) => {
     try {
+      setPrioridadLocal(nuevaPrioridad);
       await servicioAdmin.cambiarPrioridadReporte(reporte._id, nuevaPrioridad);
       if (mostrarNotificacionToast) {
         mostrarNotificacionToast(
@@ -47,7 +49,6 @@ export const TarjetaReporte: React.FC<PropsTarjetaReporte> = ({
           "success"
         );
       }
-      window.location.reload();
     } catch (error) {
       console.error("Error cambiando prioridad:", error);
       if (mostrarNotificacionToast) {
@@ -142,11 +143,11 @@ export const TarjetaReporte: React.FC<PropsTarjetaReporte> = ({
             {/* Selector de prioridad */}
             {reporte.estado !== "resuelto" ? (
               <select
-                value={reporte.prioridad}
+                value={prioridadLocal}
                 onChange={(e) => cambiarPrioridad(e.target.value)}
                 className={`px-2 py-1 text-xs rounded font-medium cursor-pointer border-2 border-transparent hover:border-white/30 transition-all ${
                   coloresPrioridad[
-                    reporte.prioridad as keyof typeof coloresPrioridad
+                    prioridadLocal as keyof typeof coloresPrioridad
                   ]
                 }`}
               >
@@ -167,11 +168,11 @@ export const TarjetaReporte: React.FC<PropsTarjetaReporte> = ({
               <span
                 className={`px-2 py-1 text-xs rounded font-medium ${
                   coloresPrioridad[
-                    reporte.prioridad as keyof typeof coloresPrioridad
+                    prioridadLocal as keyof typeof coloresPrioridad
                   ]
                 }`}
               >
-                {reporte.prioridad.toUpperCase()}
+                {prioridadLocal.toUpperCase()}
               </span>
             )}
             <span
@@ -267,8 +268,14 @@ export const TarjetaReporte: React.FC<PropsTarjetaReporte> = ({
 
           {/* Información del reportador */}
           <p className="text-xs text-gray-500 mb-2">
-            Reportado por: @{reporte.reportador.nick || "Anónimo"} el{" "}
-            {new Date(reporte.fechaReporte).toLocaleString("es-ES")}
+            Reportado por: @
+            {reporte.reportador?.nick ||
+              reporte.reportadoPor?.nick ||
+              "Anónimo"}{" "}
+            el{" "}
+            {new Date(reporte.fechaReporte || reporte.createdAt).toLocaleString(
+              "es-ES"
+            )}
           </p>
 
           {/* Comentario de resolución (si existe) */}
@@ -327,32 +334,37 @@ export const TarjetaReporte: React.FC<PropsTarjetaReporte> = ({
                     alResolver(
                       reporte._id,
                       "advertencia",
-                      "Se envió advertencia"
+                      "Se envió advertencia por contenido reportado"
                     )
                   }
                   className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-sm transition-colors"
                 >
                   Enviar Advertencia
                 </button>
+
+                {/* Solo mostrar "Eliminar Contenido" cuando NO sea tipo usuario */}
+                {reporte.tipoContenido !== "usuario" && (
+                  <button
+                    onClick={() =>
+                      alResolver(
+                        reporte._id,
+                        "eliminar_contenido",
+                        "Contenido eliminado por violar las políticas de la comunidad"
+                      )
+                    }
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors"
+                  >
+                    Eliminar Contenido
+                  </button>
+                )}
+
                 <button
                   onClick={() =>
-                    alResolver(reporte._id, "ocultar", "Contenido ocultado")
-                  }
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-sm transition-colors"
-                >
-                  Ocultar Contenido
-                </button>
-                <button
-                  onClick={() =>
-                    alResolver(reporte._id, "eliminar", "Contenido eliminado")
-                  }
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors"
-                >
-                  Eliminar Contenido
-                </button>
-                <button
-                  onClick={() =>
-                    alResolver(reporte._id, "suspender", "Usuario suspendido")
+                    alResolver(
+                      reporte._id,
+                      "suspender_usuario",
+                      "Usuario suspendido por comportamiento inapropiado"
+                    )
                   }
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm transition-colors"
                 >
@@ -362,8 +374,8 @@ export const TarjetaReporte: React.FC<PropsTarjetaReporte> = ({
                   onClick={() =>
                     alResolver(
                       reporte._id,
-                      "rechazar",
-                      "Reporte sin fundamento"
+                      "ninguna",
+                      "Reporte sin fundamento - No se requiere acción"
                     )
                   }
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm transition-colors md:col-span-2"

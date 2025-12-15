@@ -118,11 +118,13 @@ function CommentGroup({
       {totalRespuestas > LIMITE_RESPUESTAS && !mostrarTodasRespuestas && (
         <button
           onClick={() => setMostrarTodasRespuestas(true)}
-          className="ml-14 text-sm text-neutral-400 hover:text-white transition-colors flex items-center gap-2"
+          className="ml-14 text-sm text-blue-400 hover:text-blue-300 transition-all flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-full border border-blue-500/20"
         >
-          <div className="h-px bg-neutral-700 w-8"></div>
-          Mostrar {respuestasOcultas} respuesta
-          {respuestasOcultas > 1 ? "s" : ""} más
+          <div className="h-px bg-blue-500/40 w-6"></div>
+          <span className="font-medium">
+            Ver {respuestasOcultas} respuesta{respuestasOcultas > 1 ? "s" : ""}{" "}
+            más
+          </span>
         </button>
       )}
 
@@ -130,10 +132,10 @@ function CommentGroup({
       {mostrarTodasRespuestas && totalRespuestas > LIMITE_RESPUESTAS && (
         <button
           onClick={() => setMostrarTodasRespuestas(false)}
-          className="ml-14 text-sm text-neutral-400 hover:text-white transition-colors flex items-center gap-2"
+          className="ml-14 text-sm text-purple-400 hover:text-purple-300 transition-all flex items-center gap-2 bg-purple-500/10 hover:bg-purple-500/20 px-3 py-1.5 rounded-full border border-purple-500/20"
         >
-          <div className="h-px bg-neutral-700 w-8"></div>
-          Mostrar menos respuestas
+          <div className="h-px bg-purple-500/40 w-6"></div>
+          <span className="font-medium">Mostrar menos</span>
         </button>
       )}
     </div>
@@ -189,13 +191,16 @@ function CommentItem({
         {/* Espacio invisible si es una respuesta */}
         {comentario.respondioA && <div className="w-10 shrink-0"></div>}
 
-        <img
-          src={comentario.autor.avatarUrl || "/avatar.png"}
-          alt={comentario.autor.nick}
-          className="w-10 h-10 rounded-full object-cover shrink-0"
-        />
+        <div className="relative">
+          <div className="absolute -inset-0.5 bg-gradient-to-br from-purple-500/50 to-blue-500/50 rounded-full blur-sm opacity-30"></div>
+          <img
+            src={comentario.autor.avatarUrl || "/avatar.png"}
+            alt={comentario.autor.nick}
+            className="relative w-10 h-10 rounded-full object-cover shrink-0 border-2 border-purple-500/20"
+          />
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="bg-neutral-800 rounded-lg p-3">
+          <div className="bg-gradient-to-br from-neutral-800/80 to-neutral-900/80 rounded-xl p-3 border border-neutral-700/50 backdrop-blur-sm hover:border-purple-500/30 transition-all">
             <div className="flex items-start justify-between gap-2 mb-1">
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -206,8 +211,8 @@ function CommentItem({
                     const artistaId = typeof a === "string" ? a : a._id;
                     return artistaId === comentario.autor._id;
                   }) && (
-                    <span className="text-xs bg-neutral-700 text-neutral-300 px-2 py-0.5 rounded">
-                      Artista
+                    <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2.5 py-0.5 rounded-full font-semibold shadow-lg">
+                      ♫ Artista
                     </span>
                   )}
                   {comentario.respondioA && (
@@ -224,20 +229,20 @@ function CommentItem({
                 <div className="relative">
                   <button
                     onClick={() => setMenuAbierto(!menuAbierto)}
-                    className="p-1 hover:bg-neutral-700 rounded"
+                    className="p-1.5 hover:bg-purple-500/20 rounded-lg transition-colors"
                   >
-                    <MoreVertical size={16} />
+                    <MoreVertical size={16} className="text-purple-400" />
                   </button>
                   {menuAbierto && (
-                    <div className="absolute right-0 mt-1 bg-neutral-700 rounded-lg shadow-lg py-1 z-10 min-w-[120px]">
+                    <div className="absolute right-0 mt-1 bg-neutral-800 border border-purple-500/20 rounded-xl shadow-xl py-1 z-10 min-w-[120px] backdrop-blur-sm">
                       <button
                         onClick={() => {
                           setEditandoId(true);
                           setMenuAbierto(false);
                         }}
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-neutral-600 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-blue-500/10 flex items-center gap-2 text-blue-300 transition-colors"
                       >
-                        <Edit size={14} />
+                        <Edit size={14} className="text-blue-400" />
                         Editar
                       </button>
                       <button
@@ -245,9 +250,9 @@ function CommentItem({
                           onEliminar(comentario._id);
                           setMenuAbierto(false);
                         }}
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-neutral-600 flex items-center gap-2 text-red-400"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-red-500/10 flex items-center gap-2 text-red-300 transition-colors"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={14} className="text-red-400" />
                         Eliminar
                       </button>
                     </div>
@@ -260,13 +265,13 @@ function CommentItem({
                 <textarea
                   value={textoEdicion}
                   onChange={(e) => setTextoEdicion(e.target.value)}
-                  className="w-full bg-neutral-700 rounded p-2 text-sm resize-none"
+                  className="w-full bg-neutral-900/50 border border-purple-500/20 rounded-xl p-3 text-sm resize-none focus:border-purple-500/40 focus:outline-none transition-colors"
                   rows={3}
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={handleEditar}
-                    className="px-3 py-1 bg-green-500 hover:bg-green-600 rounded text-sm"
+                    className="px-4 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-lg text-sm font-medium shadow-lg transition-all"
                   >
                     Guardar
                   </button>
@@ -275,28 +280,30 @@ function CommentItem({
                       setEditandoId(false);
                       setTextoEdicion(comentario.texto);
                     }}
-                    className="px-3 py-1 bg-neutral-700 hover:bg-neutral-600 rounded text-sm"
+                    className="px-4 py-1.5 bg-neutral-700/50 hover:bg-neutral-600/50 border border-neutral-600 rounded-lg text-sm transition-all"
                   >
                     Cancelar
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="text-sm">
+              <p className="text-sm text-neutral-100">
                 {comentario.texto}
                 {comentario.estaEditado && (
-                  <span className="text-xs text-neutral-500 ml-2">
-                    (editado)
+                  <span className="text-xs text-purple-400/60 ml-2 italic">
+                    • editado
                   </span>
                 )}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-4 mt-1 text-xs text-neutral-400">
+          <div className="flex items-center gap-3 mt-2 text-xs">
             <button
               onClick={() => onToggleLike(comentario._id)}
-              className={`flex items-center gap-1 hover:text-red-400 transition-colors ${
-                comentario.likes.includes(user?._id || "") ? "text-red-400" : ""
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all ${
+                comentario.likes.includes(user?._id || "")
+                  ? "bg-pink-500/20 text-pink-400 border border-pink-500/30"
+                  : "bg-neutral-700/30 text-neutral-400 hover:bg-pink-500/10 hover:text-pink-400 border border-neutral-600/30"
               }`}
             >
               <Heart
@@ -307,15 +314,17 @@ function CommentItem({
                     : "none"
                 }
               />
-              {comentario.likes.length}
+              <span className="font-medium">{comentario.likes.length}</span>
             </button>
             <button
               onClick={() => setRespuestaA(!respuestaA)}
-              className="hover:text-white transition-colors"
+              className="px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-full transition-all border border-blue-500/20 hover:border-blue-500/30 font-medium"
             >
               Responder
             </button>
-            <span>{formatTimeAgo(comentario.createdAt)}</span>
+            <span className="text-neutral-500 ml-auto">
+              {formatTimeAgo(comentario.createdAt)}
+            </span>
           </div>
 
           {/* Indicador de like del artista */}
@@ -329,20 +338,25 @@ function CommentItem({
               return null;
 
             return (
-              <div className="mt-1 flex items-center gap-1.5 text-xs text-neutral-400">
-                <img
-                  src={artistaQueDioLike.avatarUrl || "/avatar.png"}
-                  alt=""
-                  className="w-4 h-4 rounded-full object-cover"
-                />
-                <span>Le gustó al creador</span>
+              <div className="mt-2 flex items-center gap-2 text-xs bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-full px-3 py-1.5 w-fit">
+                <div className="relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full blur-sm"></div>
+                  <img
+                    src={artistaQueDioLike.avatarUrl || "/avatar.png"}
+                    alt=""
+                    className="relative w-4 h-4 rounded-full object-cover"
+                  />
+                </div>
+                <span className="text-purple-300 font-medium">
+                  ♥ Le gustó al creador
+                </span>
               </div>
             );
           })()}
 
           {/* Form responder */}
           {respuestaA && (
-            <div className="mt-2 flex gap-2">
+            <div className="mt-3 flex gap-2">
               <input
                 type="text"
                 value={textoRespuesta}
@@ -351,12 +365,12 @@ function CommentItem({
                 placeholder={`Responder a @${
                   comentario.autor.nombreArtistico || comentario.autor.nick
                 }...`}
-                className="flex-1 bg-neutral-800 rounded-full px-4 py-2 text-sm outline-none"
+                className="flex-1 bg-neutral-900/50 border border-blue-500/20 rounded-xl px-4 py-2 text-sm outline-none focus:border-blue-500/40 transition-colors placeholder:text-neutral-500"
               />
               <button
                 onClick={handleResponder}
                 disabled={!textoRespuesta.trim() || enviando}
-                className="p-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors"
+                className="p-2.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-lg disabled:shadow-none"
               >
                 <Send size={16} />
               </button>
@@ -386,11 +400,27 @@ export default function SongCommentsModal({
   const [tieneMas, setTieneMas] = useState(true);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [showSuspendedModal, setShowSuspendedModal] = useState(false);
+  const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+  const [mensajeError, setMensajeError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadComentarios();
   }, [song._id]);
+
+  useEffect(() => {
+    if (mensajeExito) {
+      const timer = setTimeout(() => setMensajeExito(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [mensajeExito]);
+
+  useEffect(() => {
+    if (mensajeError) {
+      const timer = setTimeout(() => setMensajeError(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [mensajeError]);
 
   const loadComentarios = async (paginaActual = 1, append = false) => {
     try {
@@ -468,9 +498,9 @@ export default function SongCommentsModal({
     try {
       setEnviando(true);
       await commentService.replyToComment(comentarioId, texto);
-      // Recargar comentarios para obtener la nueva respuesta
-      loadComentarios(1, false);
+      // Recargar comentarios desde el principio para ver la nueva respuesta
       setPagina(1);
+      await loadComentarios(1, false);
     } catch (error) {
       console.error("Error replying:", error);
     } finally {
@@ -481,8 +511,9 @@ export default function SongCommentsModal({
   const handleToggleLike = async (comentarioId: string) => {
     try {
       await commentService.toggleLike(comentarioId);
-      // Recargar comentarios para actualizar likes
-      loadComentarios(pagina, false);
+      // Recargar comentarios manteniendo la página actual
+      await loadComentarios(1, false);
+      setPagina(1);
     } catch (error) {
       console.error("Error toggling like:", error);
     }
@@ -550,37 +581,42 @@ export default function SongCommentsModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-gradient-to-br from-black/95 via-purple-950/20 to-black/95 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-neutral-900 rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col"
+        className="bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-950 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-purple-500/20 shadow-2xl shadow-purple-500/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-neutral-800">
+        <div className="p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-500/5 via-transparent to-blue-500/5">
           <div className="flex items-start gap-4 mb-4">
-            <img
-              src={song.portadaUrl || "/cover.jpg"}
-              alt={song.titulo}
-              className="w-32 h-32 rounded-lg object-cover shadow-lg"
-            />
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl blur opacity-30 group-hover:opacity-50 transition"></div>
+              <img
+                src={song.portadaUrl || "/cover.jpg"}
+                alt={song.titulo}
+                className="relative w-32 h-32 rounded-xl object-cover shadow-lg"
+              />
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="text-2xl font-bold">{song.titulo}</h3>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+                  {song.titulo}
+                </h3>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={copiarURL}
-                    className="p-2 hover:bg-neutral-800 rounded-full transition-colors"
+                    className="p-2 hover:bg-purple-500/20 rounded-xl transition-all hover:scale-110 border border-transparent hover:border-purple-500/30"
                     title="Copiar URL"
                   >
-                    <LinkIcon size={20} />
+                    <LinkIcon size={20} className="text-purple-400" />
                   </button>
                   <button
                     onClick={onClose}
-                    className="p-2 hover:bg-neutral-800 rounded-full transition-colors"
+                    className="p-2 hover:bg-red-500/20 rounded-xl transition-all hover:scale-110 border border-transparent hover:border-red-500/30"
                   >
-                    <X size={20} />
+                    <X size={20} className="text-red-400" />
                   </button>
                 </div>
               </div>
@@ -595,14 +631,18 @@ export default function SongCommentsModal({
                       .join(", ")
                   : "Artista desconocido"}
               </p>
-              <div className="flex items-center gap-4 text-sm text-neutral-400">
-                <span className="flex items-center gap-1">
-                  <MessageCircle size={16} />
-                  {contarTotalComentarios()} comentarios
+              <div className="flex items-center gap-4 text-sm">
+                <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 rounded-full border border-blue-500/20">
+                  <MessageCircle size={16} className="text-blue-400" />
+                  <span className="text-blue-300">
+                    {contarTotalComentarios()}
+                  </span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <Heart size={16} />
-                  {song.likes?.length || 0} me gusta
+                <span className="flex items-center gap-1.5 px-3 py-1 bg-pink-500/10 rounded-full border border-pink-500/20">
+                  <Heart size={16} className="text-pink-400" />
+                  <span className="text-pink-300">
+                    {song.likes?.length || 0}
+                  </span>
                 </span>
               </div>
             </div>
@@ -613,14 +653,21 @@ export default function SongCommentsModal({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-4 space-y-3"
+          className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-transparent via-purple-500/5 to-transparent"
         >
           {loading ? (
             <div className="text-center text-neutral-400 py-8">Cargando...</div>
           ) : comentarios.length === 0 ? (
-            <div className="text-center text-neutral-400 py-8">
-              <MessageCircle size={48} className="mx-auto mb-2 opacity-50" />
-              <p>Sé el primero en comentar</p>
+            <div className="text-center py-12">
+              <div className="inline-flex p-6 bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-2xl border border-purple-500/20 mb-4">
+                <MessageCircle size={48} className="text-purple-400" />
+              </div>
+              <p className="text-neutral-300 text-lg">
+                Sé el primero en comentar
+              </p>
+              <p className="text-neutral-500 text-sm mt-1">
+                Comparte tu opinión sobre esta canción
+              </p>
             </div>
           ) : (
             comentarios.map((comentario) => (
@@ -641,19 +688,22 @@ export default function SongCommentsModal({
           {/* Indicador de carga al hacer scroll */}
           {cargandoMas && (
             <div className="text-center py-4">
-              <div className="inline-block w-6 h-6 border-2 border-neutral-600 border-t-white rounded-full animate-spin"></div>
+              <div className="inline-block w-8 h-8 border-3 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
             </div>
           )}
         </div>
 
         {/* Input nuevo comentario */}
-        <div className="p-4 border-t border-neutral-800">
+        <div className="p-4 border-t border-purple-500/20 bg-gradient-to-r from-purple-500/5 via-transparent to-blue-500/5">
           <div className="flex gap-3">
-            <img
-              src={user?.avatarUrl || "/avatar.png"}
-              alt={user?.nick || "User"}
-              className="w-10 h-10 rounded-full object-cover shrink-0"
-            />
+            <div className="relative">
+              <div className="absolute -inset-0.5 bg-gradient-to-br from-purple-500/50 to-blue-500/50 rounded-full blur-sm opacity-40"></div>
+              <img
+                src={user?.avatarUrl || "/avatar.png"}
+                alt={user?.nick || "User"}
+                className="relative w-10 h-10 rounded-full object-cover shrink-0 border-2 border-purple-500/20"
+              />
+            </div>
             <div className="flex-1 flex gap-2">
               <input
                 type="text"
@@ -663,12 +713,12 @@ export default function SongCommentsModal({
                   e.key === "Enter" && handleEnviarComentario()
                 }
                 placeholder="Escribe un comentario..."
-                className="flex-1 bg-neutral-800 rounded-full px-4 py-2 outline-none"
+                className="flex-1 bg-neutral-900/50 border border-purple-500/20 rounded-xl px-5 py-2.5 outline-none focus:border-purple-500/40 transition-colors placeholder:text-neutral-500"
               />
               <button
                 onClick={handleEnviarComentario}
                 disabled={!nuevoComentario.trim() || enviando}
-                className="p-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors"
+                className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-neutral-700 disabled:to-neutral-700 rounded-xl transition-all shadow-lg"
               >
                 <Send size={20} />
               </button>
@@ -711,6 +761,20 @@ export default function SongCommentsModal({
               Entendido
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Toast de éxito */}
+      {mensajeExito && (
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
+          {mensajeExito}
+        </div>
+      )}
+
+      {/* Toast de error */}
+      {mensajeError && (
+        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
+          {mensajeError}
         </div>
       )}
     </div>

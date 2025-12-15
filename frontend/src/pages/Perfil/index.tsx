@@ -728,9 +728,11 @@ export default function Perfil() {
           <ReportModal
             isOpen={mostrarModalReporte}
             onClose={() => setMostrarModalReporte(false)}
-            contentType="usuario"
-            contentId={usuarioPerfil._id}
-            contentTitle={usuarioPerfil.nombreArtistico || usuarioPerfil.nick}
+            tipoContenido="usuario"
+            contenidoId={usuarioPerfil._id}
+            nombreContenido={
+              usuarioPerfil.nombreArtistico || usuarioPerfil.nick
+            }
           />
         )}
       </div>

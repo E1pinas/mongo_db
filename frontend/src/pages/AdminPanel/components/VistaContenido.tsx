@@ -257,18 +257,23 @@ export const VistaContenido: React.FC<PropsVistaContenido> = ({
                     <p className="font-semibold text-lg text-white">
                       {item.titulo || item.nombre}
                     </p>
-                    {item.artista && (
-                      <p className="text-green-400 text-base font-medium">
-                        {typeof item.artista === "string"
-                          ? item.artista
-                          : item.artista.nombreArtistico || item.artista.nick}
-                      </p>
-                    )}
-                    {item.creador && (
-                      <p className="text-gray-400 text-sm">
-                        Por: @{item.creador.nick}
-                      </p>
-                    )}
+
+                    {/* Artista/Creador */}
+                    {tipoContenido === "playlists"
+                      ? item.creador && (
+                          <p className="text-sm text-gray-400 mt-0.5">
+                            Por:{" "}
+                            {item.creador.nick || item.creador.nombreArtistico}
+                          </p>
+                        )
+                      : item.artistas &&
+                        item.artistas.length > 0 && (
+                          <p className="text-sm text-gray-400 mt-0.5">
+                            {item.artistas
+                              .map((a: any) => a.nombreArtistico || a.nick)
+                              .join(", ")}
+                          </p>
+                        )}
 
                     {/* Stats */}
                     <div className="flex gap-4 mt-1 text-xs text-gray-500">

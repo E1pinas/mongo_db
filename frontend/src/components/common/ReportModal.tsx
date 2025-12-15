@@ -60,7 +60,7 @@ export const ReportModal = ({
         setDescripcion("");
       }, 2000);
     } catch (err: any) {
-      setError(err.response?.data?.mensaje || "Error al enviar el reporte");
+      setError(err.response?.data?.message || err.response?.data?.mensaje || "Error al enviar el reporte");
     } finally {
       setLoading(false);
     }

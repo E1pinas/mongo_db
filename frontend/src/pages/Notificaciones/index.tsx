@@ -4,8 +4,10 @@ import { LoadingSpinner } from "../../components/common";
 import PostModal from "../../components/social/PostModal";
 import CommentModal from "../../components/social/CommentModal";
 import SongCommentModal from "../../components/musica/SongCommentModal";
+import SongCommentsModal from "../../components/musica/SongCommentsModal";
 import Toast from "../../components/Toast";
 import type { TipoFiltro } from "./tipos";
+import type { Cancion } from "../../types";
 import {
   useNotificacionesFiltradas,
   useGestionModales,
@@ -30,6 +32,8 @@ const Notificaciones = () => {
   } = useNotifications();
 
   const [filtro, setFiltro] = useState<TipoFiltro>("todas");
+  const [cancionParaComentarios, setCancionParaComentarios] =
+    useState<Cancion | null>(null);
 
   const {
     estadoModales,
@@ -56,6 +60,22 @@ const Notificaciones = () => {
   // Cargar notificaciones al montar
   useEffect(() => {
     fetchNotifications();
+  }, []);
+
+  // Escuchar evento para abrir modal de comentarios completo
+  useEffect(() => {
+    const handleAbrirComentarios = (event: any) => {
+      setCancionParaComentarios(event.detail);
+    };
+
+    window.addEventListener("abrirComentariosCancion", handleAbrirComentarios);
+
+    return () => {
+      window.removeEventListener(
+        "abrirComentariosCancion",
+        handleAbrirComentarios
+      );
+    };
   }, []);
 
   if (isLoading) {
@@ -124,8 +144,29 @@ const Notificaciones = () => {
               comentarioId={datosModales.comentarioIdSeleccionado}
               isOpen={estadoModales.mostrarSongCommentModal}
               onClose={cerrarModalCancionComentario}
+              onOpenComments={() => {
+                // Cerrar primero el modal de comentario individual
+                cerrarModalCancionComentario();
+                // Cargar la canción y abrir SongCommentsModal
+                import("../../services/music.service").then(
+                  ({ musicService }) => {
+                    musicService
+                      .getSongById(datosModales.cancionIdSeleccionada!)
+                      .then((cancion) => {
+                        setCancionParaComentarios(cancion);
+                      });
+                  }
+                );
+              }}
             />
           )}
+
+        {cancionParaComentarios && (
+          <SongCommentsModal
+            song={cancionParaComentarios}
+            onClose={() => setCancionParaComentarios(null)}
+          />
+        )}
 
         {/* Toast de error */}
         {mensajeError && (

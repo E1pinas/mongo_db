@@ -10,6 +10,7 @@ interface SongCommentModalProps {
   comentarioId: string;
   isOpen: boolean;
   onClose: () => void;
+  onOpenComments?: () => void; // Callback para abrir el modal de comentarios
 }
 
 export default function SongCommentModal({
@@ -17,6 +18,7 @@ export default function SongCommentModal({
   comentarioId,
   isOpen,
   onClose,
+  onOpenComments,
 }: SongCommentModalProps) {
   const { playSong } = usePlayer();
   const [song, setSong] = useState<Cancion | null>(null);
@@ -196,13 +198,30 @@ export default function SongCommentModal({
                 </div>
               </div>
 
-              {/* Botón para reproducir la canción */}
+              {/* Botón para abrir modal de comentarios */}
               <button
-                onClick={handlePlaySong}
+                onClick={() => {
+                  onClose(); // Cerrar este modal
+                  if (onOpenComments) {
+                    onOpenComments(); // Abrir modal de comentarios
+                  }
+                }}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-linear-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-xl transition-all font-semibold shadow-lg hover:shadow-orange-500/30"
               >
-                <Play className="w-4 h-4" fill="currentColor" />
-                Reproducir Canción
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Responder Comentario
               </button>
 
               {/* Botón cerrar secundario */}

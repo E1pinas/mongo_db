@@ -2,7 +2,7 @@ import { usePlayer } from "../../../contexts";
 import type { Cancion } from "../../../types";
 
 export const useReproduccionCancion = () => {
-  const { reproducirCola, currentSong, isPlaying, togglePlay } = usePlayer();
+  const { playQueue, currentSong, isPlaying, togglePlay } = usePlayer();
 
   const handlePlayCancion = (cancion: Cancion | null) => {
     if (!cancion) return;
@@ -10,7 +10,7 @@ export const useReproduccionCancion = () => {
     if (currentSong?._id === cancion._id) {
       togglePlay();
     } else {
-      reproducirCola([cancion], 0);
+      playQueue([cancion], 0);
     }
   };
 

@@ -1340,3 +1340,78 @@ export const cambiarPrioridad = async (req, res) => {
     });
   }
 };
+
+/**
+ * Buscar contenido (canciones, álbumes, playlists) para panel de administración
+ */
+export const buscarContenido = async (req, res) => {
+  try {
+    const { q, tipo } = req.query;
+
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({
+        status: "error",
+        message: "La búsqueda debe tener al menos 2 caracteres",
+      });
+    }
+
+    const regex = new RegExp(q.trim(), "i");
+    let resultado = {};
+
+    if (tipo === "canciones") {
+      const canciones = await Cancion.find({
+        titulo: regex,
+      })
+        .populate("artistas", "nick nombreArtistico avatarUrl")
+        .populate("album", "titulo portadaUrl")
+        .select(
+          "titulo artistas portadaUrl audioUrl duracionSegundos reproduccionesTotales likes oculta razonOculta esExplicita createdAt"
+        )
+        .sort({ createdAt: -1 })
+        .limit(50);
+
+      resultado.canciones = canciones;
+    } else if (tipo === "albumes") {
+      const albumes = await Album.find({
+        titulo: regex,
+      })
+        .populate("artistas", "nick nombreArtistico avatarUrl")
+        .select(
+          "titulo descripcion portadaUrl generos fechaLanzamiento canciones createdAt artistas"
+        )
+        .sort({ createdAt: -1 })
+        .limit(50);
+
+      resultado.albumes = albumes;
+    } else if (tipo === "playlists") {
+      const playlists = await Playlist.find({
+        titulo: regex,
+      })
+        .populate("creador", "nick nombreArtistico avatarUrl")
+        .select(
+          "titulo descripcion portadaUrl canciones esPublica createdAt creador"
+        )
+        .sort({ createdAt: -1 })
+        .limit(50);
+
+      resultado.playlists = playlists;
+    } else {
+      return res.status(400).json({
+        status: "error",
+        message:
+          "Tipo de contenido inválido. Debe ser: canciones, albumes o playlists",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      ...resultado,
+    });
+  } catch (error) {
+    console.error("Error al buscar contenido:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Error al buscar contenido",
+    });
+  }
+};

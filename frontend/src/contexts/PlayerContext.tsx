@@ -67,6 +67,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs para tener siempre los valores actuales en los event listeners
+  const currentSongRef = useRef<Cancion | null>(null);
+  const isPlayingRef = useRef<boolean>(false);
   const queueRef = useRef<Cancion[]>([]);
   const originalQueueRef = useRef<Cancion[]>([]);
   const currentIndexRef = useRef<number>(0);
@@ -79,6 +81,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   } | null>(null);
 
   // Mantener los refs sincronizados con el estado
+  useEffect(() => {
+    currentSongRef.current = currentSong;
+  }, [currentSong]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
   useEffect(() => {
     queueRef.current = queue;
   }, [queue]);

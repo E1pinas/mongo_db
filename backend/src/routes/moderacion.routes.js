@@ -15,6 +15,7 @@ import {
   reactivarUsuario,
 
   // Gestión de contenido
+  buscarContenido,
   ocultarCancion,
   mostrarCancion,
   eliminarCancion,
@@ -49,6 +50,7 @@ router.post("/usuarios/:id/banear", authAdmin, banearUsuarioEndpoint);
 router.post("/usuarios/:id/reactivar", authAdmin, reactivarUsuario);
 
 // ========== CONTENIDO ==========
+router.get("/contenido/buscar", authAdmin, buscarContenido);
 router.post("/canciones/:id/ocultar", authAdmin, ocultarCancion);
 router.post("/canciones/:id/mostrar", authAdmin, mostrarCancion);
 router.delete("/canciones/:id", authAdmin, eliminarCancion);

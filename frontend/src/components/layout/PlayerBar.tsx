@@ -194,6 +194,12 @@ export default function PlayerBar() {
       }
     }
   };
+
+  // Ocultar el PlayerBar si no hay canción
+  if (!currentSong) {
+    return null;
+  }
+
   return (
     <>
       <footer className="h-28 bg-linear-to-t from-neutral-900 via-black to-black border-t border-neutral-800/50 px-6 flex items-center gap-6 shrink-0 backdrop-blur-xl">

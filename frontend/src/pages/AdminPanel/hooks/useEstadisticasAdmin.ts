@@ -12,7 +12,7 @@ export const useEstadisticasAdmin = () => {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        "http://localhost:3900/api/admin/dashboard",
+        "http://localhost:3900/api/moderacion/estadisticas",
         {
           headers: { Authorization: `Bearer ${token}` },
         }

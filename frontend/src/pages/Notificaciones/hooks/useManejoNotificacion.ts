@@ -86,7 +86,20 @@ export const useManejoNotificacion = ({
   const manejarCancion = async (notif: Notificacion) => {
     if (!notif.recurso) return;
 
-    // Si es comentario en canción con comentarioId
+    // Si es respuesta a comentario (tiene comentarioId), abrir modal completo de comentarios
+    if (notif.recurso.comentarioId && notif.tipo === "respuesta_comentario") {
+      try {
+        const cancion = await musicService.getSongById(notif.recurso.id);
+        window.dispatchEvent(
+          new CustomEvent("abrirComentariosCancion", { detail: cancion })
+        );
+      } catch (error) {
+        console.error("Error al cargar canción:", error);
+      }
+      return;
+    }
+
+    // Si es comentario nuevo en canción, abrir modal individual
     if (notif.recurso.comentarioId) {
       abrirModalCancionComentario(notif.recurso.id, notif.recurso.comentarioId);
       return;

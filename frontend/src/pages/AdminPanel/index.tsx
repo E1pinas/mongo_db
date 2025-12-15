@@ -30,7 +30,11 @@ const AdminPanel: React.FC = () => {
     useState<any>(null);
   const [razonOcultar, setRazonOcultar] = useState("");
 
-  const { estadisticas, cargando: cargandoStats } = useEstadisticasAdmin();
+  const {
+    estadisticas,
+    cargando: cargandoStats,
+    recargar: recargarEstadisticas,
+  } = useEstadisticasAdmin();
   const { reportes, resolverReporte, cambiarEstado } =
     useReportes(filtroReportes);
   const {
@@ -230,7 +234,9 @@ const AdminPanel: React.FC = () => {
             />
           )}
 
-          {pestañaActiva === "usuarios" && <VistaUsuarios />}
+          {pestañaActiva === "usuarios" && (
+            <VistaUsuarios recargarEstadisticas={recargarEstadisticas} />
+          )}
 
           {pestañaActiva === "contenido" && (
             <VistaContenido
