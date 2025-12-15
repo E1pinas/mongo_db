@@ -1,6 +1,8 @@
-import { useState } from "react";
-import type { Cancion } from "../../../types";
+import { useState, useEffect } from "react";
+import type { Cancion, Usuario } from "../../../types";
 import { servicioListas } from "../servicios/listasApi";
+import { friendshipService } from "../../../services/friendship.service";
+import { musicService } from "../../../services/music.service";
 
 interface UseCrearPlaylistParams {
   onPlaylistCreada: () => Promise<void>;
@@ -19,6 +21,14 @@ interface UseCrearPlaylistResult {
   buscando: boolean;
   creando: boolean;
   error: string;
+  mensajeExito: string;
+  mensajeError: string;
+  amigos: Usuario[];
+  busquedaAmigo: string;
+  cargandoAmigos: boolean;
+  invitandoId: string | null;
+  invitados: string[];
+  amigosSeleccionados: string[];
   setNombre: (nombre: string) => void;
   setDescripcion: (descripcion: string) => void;
   setEsPublica: (publica: boolean) => void;
@@ -27,11 +37,14 @@ interface UseCrearPlaylistResult {
   setPortadaPreview: (preview: string) => void;
   setSearchQuery: (query: string) => void;
   setError: (error: string) => void;
+  setBusquedaAmigo: (busqueda: string) => void;
+  toggleAmigoSeleccionado: (amigoId: string) => void;
+  manejarInvitar: (amigoId: string, playlistId: string) => Promise<void>;
   manejarCambioPortada: (e: React.ChangeEvent<HTMLInputElement>) => void;
   toggleCancion: (cancionId: string) => void;
   buscarCanciones: () => Promise<void>;
   resetearFormulario: () => void;
-  crearPlaylist: (e: React.FormEvent) => Promise<void>;
+  crearPlaylist: (e: React.FormEvent) => Promise<string | null>;
 }
 
 export const useCrearPlaylist = ({
@@ -49,6 +62,37 @@ export const useCrearPlaylist = ({
   const [buscando, setBuscando] = useState(false);
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState("");
+
+  // Estado para amigos
+  const [amigos, setAmigos] = useState<Usuario[]>([]);
+  const [busquedaAmigo, setBusquedaAmigo] = useState("");
+  const [cargandoAmigos, setCargandoAmigos] = useState(false);
+  const [invitandoId, setInvitandoId] = useState<string | null>(null);
+  const [invitados, setInvitados] = useState<string[]>([]);
+  const [amigosSeleccionados, setAmigosSeleccionados] = useState<string[]>([]);
+  const [mensajeExito, setMensajeExito] = useState("");
+  const [mensajeError, setMensajeError] = useState("");
+
+  const limpiarExito = () => setMensajeExito("");
+  const limpiarError = () => setMensajeError("");
+
+  // Cargar amigos cuando se activa el modo colaborativo
+  useEffect(() => {
+    const cargarAmigos = async () => {
+      if (esColaborativa && amigos.length === 0) {
+        setCargandoAmigos(true);
+        try {
+          const listaAmigos = await friendshipService.getFriends();
+          setAmigos(listaAmigos);
+        } catch (error) {
+          console.error("Error al cargar amigos:", error);
+        } finally {
+          setCargandoAmigos(false);
+        }
+      }
+    };
+    cargarAmigos();
+  }, [esColaborativa, amigos.length]);
 
   const manejarCambioPortada = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,6 +138,27 @@ export const useCrearPlaylist = ({
     );
   };
 
+  const toggleAmigoSeleccionado = (amigoId: string) => {
+    setAmigosSeleccionados((prev) =>
+      prev.includes(amigoId)
+        ? prev.filter((id) => id !== amigoId)
+        : [...prev, amigoId]
+    );
+  };
+
+  const manejarInvitar = async (amigoId: string, playlistId: string) => {
+    setInvitandoId(amigoId);
+    try {
+      await musicService.inviteCollaborator(playlistId, amigoId);
+      setInvitados([...invitados, amigoId]);
+      setMensajeExito("Colaborador invitado correctamente");
+    } catch (error: any) {
+      setMensajeError(error.message || "Error al invitar colaborador");
+    } finally {
+      setInvitandoId(null);
+    }
+  };
+
   const resetearFormulario = () => {
     setNombre("");
     setDescripcion("");
@@ -107,11 +172,11 @@ export const useCrearPlaylist = ({
     setError("");
   };
 
-  const crearPlaylist = async (e: React.FormEvent) => {
+  const crearPlaylist = async (e: React.FormEvent): Promise<string | null> => {
     e.preventDefault();
     if (!nombre.trim()) {
       setError("El título de la playlist es obligatorio");
-      return;
+      return null;
     }
 
     try {
@@ -129,7 +194,7 @@ export const useCrearPlaylist = ({
             uploadError.message || "Error al subir la imagen de portada"
           );
           setCreando(false);
-          return;
+          return null;
         }
       }
 
@@ -150,12 +215,26 @@ export const useCrearPlaylist = ({
         );
       }
 
+      // 4. Invitar amigos seleccionados
+      if (amigosSeleccionados.length > 0 && nuevaPlaylist._id) {
+        for (const amigoId of amigosSeleccionados) {
+          try {
+            await musicService.inviteCollaborator(nuevaPlaylist._id, amigoId);
+          } catch (error) {
+            console.error(`Error invitando a ${amigoId}:`, error);
+          }
+        }
+      }
+
       // Recargar playlists
       await onPlaylistCreada();
       resetearFormulario();
+
+      return nuevaPlaylist._id;
     } catch (err: any) {
       console.error("Error creating playlist:", err);
       setError(err.message || "Error al crear playlist");
+      return null;
     } finally {
       setCreando(false);
     }
@@ -174,6 +253,12 @@ export const useCrearPlaylist = ({
     buscando,
     creando,
     error,
+    amigos,
+    busquedaAmigo,
+    cargandoAmigos,
+    invitandoId,
+    invitados,
+    amigosSeleccionados,
     setNombre,
     setDescripcion,
     setEsPublica,
@@ -182,10 +267,17 @@ export const useCrearPlaylist = ({
     setPortadaPreview,
     setSearchQuery,
     setError,
+    setBusquedaAmigo,
+    toggleAmigoSeleccionado,
+    manejarInvitar,
     manejarCambioPortada,
     toggleCancion,
     buscarCanciones,
     resetearFormulario,
     crearPlaylist,
+    mensajeExito,
+    mensajeError,
+    limpiarExito,
+    limpiarError,
   };
 };

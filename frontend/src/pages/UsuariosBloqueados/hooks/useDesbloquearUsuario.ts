@@ -6,30 +6,50 @@ export const useDesbloquearUsuario = (
   setBlockedUsers: (users: any[]) => void
 ) => {
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
+  const [mensajeError, setMensajeError] = useState("");
+  const [mostrarConfirm, setMostrarConfirm] = useState(false);
+  const [usuarioADesbloquear, setUsuarioADesbloquear] = useState<any>(null);
 
-  const manejarDesbloquear = async (bloqueado: any) => {
-    const usuario = bloqueado.usuario;
-    if (
-      !confirm(
-        `¿Desbloquear a @${usuario.nick}? Podrá volver a ver tu perfil y enviarte solicitudes.`
-      )
-    ) {
-      return;
-    }
+  const limpiarError = () => setMensajeError("");
 
+  const manejarDesbloquear = (bloqueado: any) => {
+    setUsuarioADesbloquear(bloqueado);
+    setMostrarConfirm(true);
+  };
+
+  const confirmarDesbloqueo = async () => {
+    if (!usuarioADesbloquear) return;
+
+    const usuario = usuarioADesbloquear.usuario;
     try {
       setUnblockingId(usuario._id);
       await bloqueoService.desbloquearUsuario(usuario._id);
       setBlockedUsers(
         blockedUsers.filter((b) => b.usuario._id !== usuario._id)
       );
+      setMostrarConfirm(false);
+      setUsuarioADesbloquear(null);
     } catch (error: any) {
       console.error("Error unblocking user:", error);
-      alert(error.message || "Error al desbloquear usuario");
+      setMensajeError(error.message || "Error al desbloquear usuario");
     } finally {
       setUnblockingId(null);
     }
   };
 
-  return { unblockingId, manejarDesbloquear };
+  const cancelarDesbloqueo = () => {
+    setMostrarConfirm(false);
+    setUsuarioADesbloquear(null);
+  };
+
+  return {
+    unblockingId,
+    manejarDesbloquear,
+    confirmarDesbloqueo,
+    cancelarDesbloqueo,
+    mostrarConfirm,
+    usuarioADesbloquear,
+    mensajeError,
+    limpiarError,
+  };
 };

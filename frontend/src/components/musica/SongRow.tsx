@@ -156,7 +156,7 @@ export default function SongRow({
       })
       .catch((err) => {
         console.error("Error al copiar URL:", err);
-        alert("Error al copiar la URL");
+        setMensajeError("Error al copiar la URL");
       });
   };
 

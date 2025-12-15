@@ -17,6 +17,7 @@ interface UseAccionesAlbumResult {
   cambiandoPrivacidad: boolean;
   mostrarConfirmarEliminar: boolean;
   mostrarConfirmarPrivacidad: boolean;
+  mensajeError: string;
 
   // Acciones
   setCancionAQuitar: (cancion: Cancion | null) => void;
@@ -26,6 +27,7 @@ interface UseAccionesAlbumResult {
   manejarQuitarCancion: () => Promise<void>;
   manejarEliminarAlbum: () => Promise<void>;
   manejarCambiarPrivacidad: () => Promise<void>;
+  limpiarError: () => void;
 
   // Permisos
   puedeEditar: () => boolean;
@@ -46,6 +48,7 @@ export const useAccionesAlbum = ({
     useState(false);
   const [mostrarConfirmarPrivacidad, setMostrarConfirmarPrivacidad] =
     useState(false);
+  const [mensajeError, setMensajeError] = useState("");
 
   const puedeEditar = (): boolean => {
     if (!user || !album) return false;
@@ -76,7 +79,7 @@ export const useAccionesAlbum = ({
       await recargarAlbum();
     } catch (error: any) {
       console.error("Error al quitar canción:", error);
-      alert(error.message || "Error al quitar la canción");
+      setMensajeError(error.message || "Error al quitar la canción");
     } finally {
       setEliminandoCancion(false);
     }
@@ -93,12 +96,14 @@ export const useAccionesAlbum = ({
       if (exito) {
         navigate("/albumes");
       } else {
-        alert("Error al eliminar el álbum");
+        setMensajeError("Error al eliminar el álbum");
         setBorrando(false);
       }
     } catch (error: any) {
       console.error("Error al eliminar álbum:", error);
-      alert(error.response?.data?.message || "Error al eliminar el álbum");
+      setMensajeError(
+        error.response?.data?.message || "Error al eliminar el álbum"
+      );
       setBorrando(false);
     }
   };
@@ -114,13 +119,17 @@ export const useAccionesAlbum = ({
       await recargarAlbum();
     } catch (error: any) {
       console.error("Error al cambiar privacidad:", error);
-      alert(
+      setMensajeError(
         error.response?.data?.message ||
           "Error al cambiar la privacidad del álbum"
       );
     } finally {
       setCambiandoPrivacidad(false);
     }
+  };
+
+  const limpiarError = () => {
+    setMensajeError("");
   };
 
   return {
@@ -131,6 +140,7 @@ export const useAccionesAlbum = ({
     cambiandoPrivacidad,
     mostrarConfirmarEliminar,
     mostrarConfirmarPrivacidad,
+    mensajeError,
 
     // Acciones
     setCancionAQuitar,
@@ -140,6 +150,7 @@ export const useAccionesAlbum = ({
     manejarQuitarCancion,
     manejarEliminarAlbum,
     manejarCambiarPrivacidad,
+    limpiarError,
 
     // Permisos
     puedeEditar,

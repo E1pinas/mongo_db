@@ -16,6 +16,7 @@ interface UseBuscarCancionesResult {
   agregandoCancionId: string | null;
   idsCancionesSeleccionadas: Set<string>;
   agregandoMultiple: boolean;
+  mensajeError: string;
 
   // Acciones
   setConsulta: (consulta: string) => void;
@@ -24,6 +25,7 @@ interface UseBuscarCancionesResult {
   toggleSeleccionCancion: (cancionId: string) => void;
   agregarCancionesSeleccionadas: () => Promise<void>;
   limpiarResultados: () => void;
+  limpiarError: () => void;
 }
 
 export const useBuscarCanciones = ({
@@ -41,6 +43,7 @@ export const useBuscarCanciones = ({
     Set<string>
   >(new Set());
   const [agregandoMultiple, setAgregandoMultiple] = useState(false);
+  const [mensajeError, setMensajeError] = useState("");
 
   const buscarCanciones = async () => {
     if (!consulta.trim()) return;
@@ -60,7 +63,7 @@ export const useBuscarCanciones = ({
       setResultados(cancionesDisponibles);
     } catch (error) {
       console.error("Error al buscar canciones:", error);
-      alert("Error al buscar canciones");
+      setMensajeError("Error al buscar canciones");
     } finally {
       setBuscando(false);
     }
@@ -75,7 +78,7 @@ export const useBuscarCanciones = ({
       setResultados((prev) => prev.filter((c) => c._id !== cancionId));
     } catch (error: any) {
       console.error("Error al agregar canción:", error);
-      alert(
+      setMensajeError(
         error.response?.data?.message ||
           "Error al agregar canción a la playlist"
       );
@@ -115,7 +118,7 @@ export const useBuscarCanciones = ({
       setIdsCancionesSeleccionadas(new Set());
     } catch (error: any) {
       console.error("Error al agregar canciones:", error);
-      alert(
+      setMensajeError(
         error.response?.data?.message ||
           "Error al agregar las canciones a la playlist"
       );
@@ -130,6 +133,10 @@ export const useBuscarCanciones = ({
     setIdsCancionesSeleccionadas(new Set());
   };
 
+  const limpiarError = () => {
+    setMensajeError("");
+  };
+
   return {
     // Estados
     consulta,
@@ -138,6 +145,7 @@ export const useBuscarCanciones = ({
     agregandoCancionId,
     idsCancionesSeleccionadas,
     agregandoMultiple,
+    mensajeError,
 
     // Acciones
     setConsulta,
@@ -146,5 +154,6 @@ export const useBuscarCanciones = ({
     toggleSeleccionCancion,
     agregarCancionesSeleccionadas,
     limpiarResultados,
+    limpiarError,
   };
 };

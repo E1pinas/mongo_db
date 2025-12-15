@@ -284,7 +284,7 @@ export const eliminarPlaylist = async (req, res) => {
 export const actualizarPlaylist = async (req, res) => {
   try {
     const { id } = req.params;
-    const { titulo, descripcion, esPublica } = req.body;
+    const { titulo, descripcion, esPublica, esColaborativa } = req.body;
     const usuarioId = req.userId;
 
     const playlist = await Playlist.findById(id).populate({
@@ -327,7 +327,23 @@ export const actualizarPlaylist = async (req, res) => {
     // Actualizar campos
     if (titulo !== undefined) playlist.titulo = titulo;
     if (descripcion !== undefined) playlist.descripcion = descripcion;
-    if (esPublica !== undefined) playlist.esPublica = esPublica;
+
+    // Si se hace privada y es colaborativa, desactivar modo colaborativo
+    if (esPublica === false && playlist.esColaborativa) {
+      playlist.esColaborativa = false;
+      playlist.colaboradores = [];
+    } else if (esPublica !== undefined) {
+      playlist.esPublica = esPublica;
+    }
+
+    // Si se desactiva el modo colaborativo, remover todos los colaboradores
+    if (esColaborativa !== undefined) {
+      if (esColaborativa === false && playlist.esColaborativa === true) {
+        // Está desactivando el modo colaborativo
+        playlist.colaboradores = [];
+      }
+      playlist.esColaborativa = esColaborativa;
+    }
 
     await playlist.save();
 
@@ -347,7 +363,7 @@ export const actualizarPlaylist = async (req, res) => {
 // 2) PATCH /playlist/:idPlaylist/portada con { nuevaPortadaUrl }
 export const actualizarPortadaPlaylist = async (req, res) => {
   try {
-    const { idPlaylist } = req.params;
+    const { id } = req.params;
     const { nuevaPortadaUrl } = req.body;
     const usuarioId = req.userId;
     const userRole = req.userRole;
@@ -357,7 +373,7 @@ export const actualizarPortadaPlaylist = async (req, res) => {
       return sendValidationError(res, errors);
     }
 
-    const playlist = await Playlist.findById(idPlaylist);
+    const playlist = await Playlist.findById(id);
 
     if (!playlist || playlist.estaEliminada) {
       return sendNotFound(res, "Playlist");
@@ -403,10 +419,10 @@ export const actualizarPortadaPlaylist = async (req, res) => {
 // 📌 Activar/desactivar modo colaborativo
 export const toggleModoColaborativo = async (req, res) => {
   try {
-    const { idPlaylist } = req.params;
+    const { id } = req.params;
     const usuarioId = req.userId;
 
-    const playlist = await Playlist.findById(idPlaylist);
+    const playlist = await Playlist.findById(id);
 
     if (!playlist || playlist.estaEliminada) {
       return sendNotFound(res, "Playlist");
@@ -444,7 +460,7 @@ export const toggleModoColaborativo = async (req, res) => {
 // 📌 Invitar colaborador a playlist
 export const invitarColaborador = async (req, res) => {
   try {
-    const { idPlaylist } = req.params;
+    const { id } = req.params;
     const { colaboradorId } = req.body;
     const usuarioId = req.userId;
 
@@ -453,7 +469,7 @@ export const invitarColaborador = async (req, res) => {
       return sendValidationError(res, errors);
     }
 
-    const playlist = await Playlist.findById(idPlaylist);
+    const playlist = await Playlist.findById(id);
 
     if (!playlist || playlist.estaEliminada) {
       return sendNotFound(res, "Playlist");
@@ -557,10 +573,10 @@ export const eliminarColaborador = async (req, res) => {
 // 📌 Salir de una playlist colaborativa (como colaborador)
 export const salirDePlaylist = async (req, res) => {
   try {
-    const { idPlaylist } = req.params;
+    const { id } = req.params;
     const usuarioId = req.userId;
 
-    const playlist = await Playlist.findById(idPlaylist);
+    const playlist = await Playlist.findById(id);
 
     if (!playlist || playlist.estaEliminada) {
       return sendNotFound(res, "Playlist");
@@ -587,9 +603,9 @@ export const salirDePlaylist = async (req, res) => {
 // 📌 Obtener colaboradores de una playlist
 export const obtenerColaboradores = async (req, res) => {
   try {
-    const { idPlaylist } = req.params;
+    const { id } = req.params;
 
-    const playlist = await Playlist.findById(idPlaylist).populate(
+    const playlist = await Playlist.findById(id).populate(
       "colaboradores",
       "nick nombre nombreArtistico apellidos avatarUrl"
     );

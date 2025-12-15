@@ -19,6 +19,9 @@ export const useAccionesInicio = ({
   const [comentariosCancion, setComentariosCancion] = useState<Cancion | null>(
     null
   );
+  const [mensajeError, setMensajeError] = useState("");
+
+  const limpiarError = () => setMensajeError("");
 
   const handleToggleLike = async (cancionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -50,7 +53,7 @@ export const useAccionesInicio = ({
       );
     } catch (err: any) {
       console.error("Error following user:", err);
-      alert("Error al seguir usuario");
+      setMensajeError("Error al seguir usuario");
     }
   };
 
@@ -59,5 +62,7 @@ export const useAccionesInicio = ({
     setComentariosCancion,
     handleToggleLike,
     handleFollowUser,
+    mensajeError,
+    limpiarError,
   };
 };

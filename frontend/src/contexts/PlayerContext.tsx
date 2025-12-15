@@ -267,9 +267,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setCurrentSong(null);
       setIsPlaying(false);
 
-      alert(
-        "Esta canción es de contenido explícito y no está disponible para menores de edad"
+      setModalMessage(
+        "Esta canción es de contenido explícito y no está disponible para menores de edad."
       );
+      setShowModal(true);
     }
 
     // Filtrar canciones explícitas de la cola
@@ -629,15 +630,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // Verificar si el usuario es menor de edad y la canción es explícita
     if (user && user.esMenorDeEdad && song.esExplicita === true) {
       console.log("🔞 Canción explícita bloqueada para usuario menor de edad");
-      alert(
-        "Este contenido es explícito y no está disponible para menores de edad"
+      setModalMessage(
+        "Este contenido es explícito y no está disponible para menores de edad."
       );
+      setShowModal(true);
       return;
     }
 
     if (!song.audioUrl || song.audioUrl === "") {
       console.error("❌ Error: La canción no tiene URL de audio válida");
-      alert("Esta canción no tiene un archivo de audio válido");
+      setModalMessage("Esta canción no tiene un archivo de audio válido.");
+      setShowModal(true);
       return;
     }
 
@@ -669,7 +672,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       })
       .catch((error) => {
         console.error("❌ Error al reproducir:", error);
-        alert("Error al reproducir la canción: " + error.message);
+        setModalMessage("Error al reproducir la canción: " + error.message);
+        setShowModal(true);
       });
 
     // Contar reproducción después de 30 segundos
@@ -787,9 +791,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           console.log(
             "⚠️ Todas las canciones son explícitas - no se puede reproducir"
           );
-          alert(
-            "Este contenido es explícito y no está disponible para menores de edad"
+          setModalMessage(
+            "Este contenido es explícito y no está disponible para menores de edad."
           );
+          setShowModal(true);
           return;
         }
       } else {
@@ -828,7 +833,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     if (!songToPlay.audioUrl || songToPlay.audioUrl === "") {
       console.error("❌ Error: La canción no tiene URL de audio válida");
-      alert("Esta canción no tiene un archivo de audio válido");
+      setModalMessage("Esta canción no tiene un archivo de audio válido.");
+      setShowModal(true);
       return;
     }
 
@@ -877,7 +883,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       })
       .catch((error) => {
         console.error("❌ Error al reproducir:", error);
-        alert("Error al reproducir la canción: " + error.message);
+        setModalMessage("Error al reproducir la canción: " + error.message);
+        setShowModal(true);
       });
 
     // Contar reproducción después de 30 segundos

@@ -21,15 +21,21 @@ interface UseAccionesSolicitudesResult {
   bloqueadoSeleccionado: any;
   mostrarModalEliminar: boolean;
   mostrarModalDesbloquear: boolean;
+  mensajeError: string;
+  mostrarConfirmBloqueo: boolean;
+  usuarioABloquear: { id: string; nick: string } | null;
   manejarAceptar: (solicitudId: string) => Promise<void>;
   manejarRechazar: (solicitudId: string) => Promise<void>;
   manejarBloquear: (solicitudId: string) => Promise<void>;
+  confirmarBloqueo: () => Promise<void>;
+  cancelarBloqueo: () => void;
   abrirModalEliminar: (amigoId: string, nick: string) => void;
   confirmarEliminarAmigo: () => Promise<void>;
   cerrarModalEliminar: () => void;
   abrirModalDesbloquear: (bloqueado: any) => void;
   confirmarDesbloquear: () => Promise<void>;
   cerrarModalDesbloquear: () => void;
+  limpiarError: () => void;
 }
 
 export const useAccionesSolicitudes = ({
@@ -46,6 +52,14 @@ export const useAccionesSolicitudes = ({
   const [bloqueadoSeleccionado, setBloqueadoSeleccionado] = useState<any>(null);
   const [mostrarModalEliminar, setMostrarModalEliminar] = useState(false);
   const [mostrarModalDesbloquear, setMostrarModalDesbloquear] = useState(false);
+  const [mensajeError, setMensajeError] = useState("");
+  const [mostrarConfirmBloqueo, setMostrarConfirmBloqueo] = useState(false);
+  const [usuarioABloquear, setUsuarioABloquear] = useState<{
+    id: string;
+    nick: string;
+  } | null>(null);
+
+  const limpiarError = () => setMensajeError("");
 
   const manejarAceptar = async (solicitudId: string) => {
     try {
@@ -56,7 +70,7 @@ export const useAccionesSolicitudes = ({
       );
     } catch (error: any) {
       console.error("Error accepting request:", error);
-      alert(error.message || "Error al aceptar solicitud");
+      setMensajeError(error.message || "Error al aceptar solicitud");
     } finally {
       setActionLoading(null);
     }
@@ -71,7 +85,7 @@ export const useAccionesSolicitudes = ({
       );
     } catch (error: any) {
       console.error("Error rejecting request:", error);
-      alert(error.message || "Error al rechazar solicitud");
+      setMensajeError(error.message || "Error al rechazar solicitud");
     } finally {
       setActionLoading(null);
     }
@@ -83,26 +97,32 @@ export const useAccionesSolicitudes = ({
 
     const solicitante = solicitud.solicitante as Usuario;
 
-    if (
-      !confirm(
-        `¿Bloquear a @${solicitante.nick}? No podrá ver tu perfil ni enviarte solicitudes.`
-      )
-    ) {
-      return;
-    }
+    setUsuarioABloquear({ id: solicitudId, nick: solicitante.nick });
+    setMostrarConfirmBloqueo(true);
+  };
+
+  const confirmarBloqueo = async () => {
+    if (!usuarioABloquear) return;
 
     try {
-      setActionLoading(solicitudId);
-      await servicioSolicitudes.bloquearDesdeSolicitud(solicitudId);
+      setActionLoading(usuarioABloquear.id);
+      await servicioSolicitudes.bloquearDesdeSolicitud(usuarioABloquear.id);
       setSolicitudesRecibidas(
-        solicitudesRecibidas.filter((s) => s._id !== solicitudId)
+        solicitudesRecibidas.filter((s) => s._id !== usuarioABloquear.id)
       );
+      setMostrarConfirmBloqueo(false);
+      setUsuarioABloquear(null);
     } catch (error: any) {
       console.error("Error blocking user:", error);
-      alert(error.message || "Error al bloquear usuario");
+      setMensajeError(error.message || "Error al bloquear usuario");
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const cancelarBloqueo = () => {
+    setMostrarConfirmBloqueo(false);
+    setUsuarioABloquear(null);
   };
 
   const abrirModalEliminar = (amigoId: string, nick: string) => {
@@ -125,7 +145,7 @@ export const useAccionesSolicitudes = ({
       setAmigoParaEliminar(null);
     } catch (error: any) {
       console.error("Error removing friend:", error);
-      alert(error.message || "Error al eliminar amistad");
+      setMensajeError(error.message || "Error al eliminar amistad");
     } finally {
       setActionLoading(null);
     }
@@ -153,7 +173,7 @@ export const useAccionesSolicitudes = ({
       setBloqueadoSeleccionado(null);
     } catch (error: any) {
       console.error("Error unblocking user:", error);
-      alert(error.message || "Error al desbloquear usuario");
+      setMensajeError(error.message || "Error al desbloquear usuario");
     } finally {
       setActionLoading(null);
     }
@@ -170,14 +190,20 @@ export const useAccionesSolicitudes = ({
     bloqueadoSeleccionado,
     mostrarModalEliminar,
     mostrarModalDesbloquear,
+    mensajeError,
+    mostrarConfirmBloqueo,
+    usuarioABloquear,
     manejarAceptar,
     manejarRechazar,
     manejarBloquear,
+    confirmarBloqueo,
+    cancelarBloqueo,
     abrirModalEliminar,
     confirmarEliminarAmigo,
     cerrarModalEliminar,
     abrirModalDesbloquear,
     confirmarDesbloquear,
     cerrarModalDesbloquear,
+    limpiarError,
   };
 };

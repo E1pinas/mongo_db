@@ -4,6 +4,7 @@ import { LoadingSpinner } from "../../components/common";
 import PostModal from "../../components/social/PostModal";
 import CommentModal from "../../components/social/CommentModal";
 import SongCommentModal from "../../components/musica/SongCommentModal";
+import Toast from "../../components/Toast";
 import type { TipoFiltro } from "./tipos";
 import {
   useNotificacionesFiltradas,
@@ -45,11 +46,12 @@ const Notificaciones = () => {
     filtro,
   });
 
-  const { manejarClickNotificacion } = useManejoNotificacion({
-    markAsRead,
-    abrirModalPost,
-    abrirModalCancionComentario,
-  });
+  const { manejarClickNotificacion, mensajeError, limpiarError } =
+    useManejoNotificacion({
+      markAsRead,
+      abrirModalPost,
+      abrirModalCancionComentario,
+    });
 
   // Cargar notificaciones al montar
   useEffect(() => {
@@ -124,6 +126,11 @@ const Notificaciones = () => {
               onClose={cerrarModalCancionComentario}
             />
           )}
+
+        {/* Toast de error */}
+        {mensajeError && (
+          <Toast message={mensajeError} type="error" onClose={limpiarError} />
+        )}
       </div>
     </div>
   );

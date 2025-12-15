@@ -18,6 +18,7 @@ export default function BlockButton({
   const [actionLoading, setActionLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [razonBloqueo, setRazonBloqueo] = useState("");
+  const [mensajeError, setMensajeError] = useState("");
 
   useEffect(() => {
     verificarEstadoBloqueo();
@@ -48,7 +49,9 @@ export default function BlockButton({
       onBlockChange?.(true);
     } catch (error: any) {
       console.error("Error al bloquear:", error);
-      alert(error.response?.data?.mensaje || "Error al bloquear usuario");
+      setMensajeError(
+        error.response?.data?.mensaje || "Error al bloquear usuario"
+      );
     } finally {
       setActionLoading(false);
     }
@@ -62,7 +65,9 @@ export default function BlockButton({
       onBlockChange?.(false);
     } catch (error: any) {
       console.error("Error al desbloquear:", error);
-      alert(error.response?.data?.mensaje || "Error al desbloquear usuario");
+      setMensajeError(
+        error.response?.data?.mensaje || "Error al desbloquear usuario"
+      );
     } finally {
       setActionLoading(false);
     }

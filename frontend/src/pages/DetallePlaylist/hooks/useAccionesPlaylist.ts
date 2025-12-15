@@ -17,6 +17,7 @@ interface UseAccionesPlaylistResult {
   cambiandoPrivacidad: boolean;
   mostrarConfirmarEliminar: boolean;
   mostrarConfirmarPrivacidad: boolean;
+  mensajeError: string;
 
   // Acciones
   setCancionAQuitar: (cancion: Cancion | null) => void;
@@ -26,6 +27,7 @@ interface UseAccionesPlaylistResult {
   manejarQuitarCancion: () => Promise<void>;
   manejarEliminarPlaylist: () => Promise<void>;
   manejarCambiarPrivacidad: () => Promise<void>;
+  limpiarError: () => void;
 
   // Permisos
   esCreador: () => boolean;
@@ -47,6 +49,7 @@ export const useAccionesPlaylist = ({
     useState(false);
   const [mostrarConfirmarPrivacidad, setMostrarConfirmarPrivacidad] =
     useState(false);
+  const [mensajeError, setMensajeError] = useState("");
 
   const esCreador = (): boolean => {
     if (!user || !playlist) return false;
@@ -89,7 +92,7 @@ export const useAccionesPlaylist = ({
       await recargarPlaylist();
     } catch (error: any) {
       console.error("Error al quitar canción:", error);
-      alert(error.message || "Error al quitar la canción");
+      setMensajeError(error.message || "Error al quitar la canción");
     } finally {
       setEliminandoCancion(false);
     }
@@ -106,7 +109,7 @@ export const useAccionesPlaylist = ({
       navigate("/playlists");
     } catch (error: any) {
       console.error("Error al eliminar playlist:", error);
-      alert(error.message || "Error al eliminar la playlist");
+      setMensajeError(error.message || "Error al eliminar la playlist");
       setBorrando(false);
     }
   };
@@ -125,13 +128,17 @@ export const useAccionesPlaylist = ({
       await recargarPlaylist();
     } catch (error: any) {
       console.error("Error al cambiar privacidad:", error);
-      alert(
+      setMensajeError(
         error.response?.data?.message ||
           "Error al cambiar la privacidad de la playlist"
       );
     } finally {
       setCambiandoPrivacidad(false);
     }
+  };
+
+  const limpiarError = () => {
+    setMensajeError("");
   };
 
   return {
@@ -142,6 +149,7 @@ export const useAccionesPlaylist = ({
     cambiandoPrivacidad,
     mostrarConfirmarEliminar,
     mostrarConfirmarPrivacidad,
+    mensajeError,
 
     // Acciones
     setCancionAQuitar,
@@ -151,6 +159,7 @@ export const useAccionesPlaylist = ({
     manejarQuitarCancion,
     manejarEliminarPlaylist,
     manejarCambiarPrivacidad,
+    limpiarError,
 
     // Permisos
     esCreador,

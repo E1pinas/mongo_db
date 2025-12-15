@@ -24,15 +24,13 @@ export function Albumes() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-neutral-900 via-neutral-900 to-neutral-800 p-6 text-white">
-      <div className="mx-auto max-w-7xl">
-        <CabeceraAlbumes onClickCrear={() => setMostrarModalCrear(true)} />
-
-        <FiltrosGenero
-          generoSeleccionado={generoSeleccionado}
-          onCambiarGenero={setGeneroSeleccionado}
-        />
-
+    <div className="min-h-screen bg-linear-to-b from-neutral-900 via-black to-black text-white">
+      <CabeceraAlbumes
+        onClickCrear={() => setMostrarModalCrear(true)}
+        generoSeleccionado={generoSeleccionado}
+        onCambiarGenero={setGeneroSeleccionado}
+      />
+      <div className="px-6 pb-20">
         <ListaAlbumes
           titulo="Mis Álbumes"
           albumes={albumesFiltradosMios}
@@ -54,13 +52,13 @@ export function Albumes() {
               : `No hay álbumes públicos de ${generoSeleccionado}`
           }
         />
-
-        <ModalCrearAlbum
-          mostrar={mostrarModalCrear}
-          onCerrar={() => setMostrarModalCrear(false)}
-          onAlbumCreado={manejarAlbumCreado}
-        />
       </div>
+
+      <ModalCrearAlbum
+        mostrar={mostrarModalCrear}
+        onCerrar={() => setMostrarModalCrear(false)}
+        onAlbumCreado={manejarAlbumCreado}
+      />
     </div>
   );
 }

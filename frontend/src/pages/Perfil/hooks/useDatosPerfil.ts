@@ -20,16 +20,19 @@ export const useDatosPerfil = (
 
       let datosUsuario: Usuario | null = null;
 
-      // Si no hay nick en la URL, mostrar el perfil actual
-      if (!nick) {
-        datosUsuario = usuarioActual;
+      // Si no hay nick en la URL, mostrar el perfil actual (cargar desde backend)
+      if (!nick && usuarioActual) {
+        try {
+          datosUsuario = await servicioPerfil.obtenerPerfilPorNick(
+            usuarioActual.nick
+          );
+        } catch (error) {
+          console.error("Error al cargar propio perfil:", error);
+          datosUsuario = usuarioActual;
+        }
       }
-      // Si el nick coincide con el usuario actual, usar los datos del contexto
-      else if (nick.toLowerCase() === usuarioActual?.nick.toLowerCase()) {
-        datosUsuario = usuarioActual;
-      }
-      // Si es diferente, cargar desde el backend
-      else {
+      // Siempre cargar desde el backend para obtener datos poblados
+      else if (nick) {
         try {
           datosUsuario = await servicioPerfil.obtenerPerfilPorNick(nick);
         } catch (error: any) {

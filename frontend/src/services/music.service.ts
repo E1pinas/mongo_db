@@ -741,6 +741,7 @@ export const musicService = {
       titulo?: string;
       descripcion?: string;
       esPublica?: boolean;
+      esColaborativa?: boolean;
     }
   ): Promise<Playlist> {
     try {
@@ -749,6 +750,39 @@ export const musicService = {
         playlist: Playlist;
         message: string;
       }>(`/playlists/${id}`, data);
+      return response.data.playlist;
+    } catch (error) {
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
+    }
+  },
+
+  // Invitar colaborador a playlist
+  async inviteCollaborator(
+    playlistId: string,
+    colaboradorId: string
+  ): Promise<void> {
+    try {
+      await api.post(`/playlists/${playlistId}/colaboradores`, {
+        colaboradorId,
+      });
+    } catch (error) {
+      const errorData = handleApiError(error);
+      throw new Error(errorData.message);
+    }
+  },
+
+  // Actualizar portada de playlist
+  async updatePlaylistCover(
+    playlistId: string,
+    nuevaPortadaUrl: string
+  ): Promise<Playlist> {
+    try {
+      const response = await api.patch<{
+        ok: boolean;
+        playlist: Playlist;
+        message: string;
+      }>(`/playlists/${playlistId}/portada`, { nuevaPortadaUrl });
       return response.data.playlist;
     } catch (error) {
       const errorData = handleApiError(error);

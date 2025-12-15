@@ -36,11 +36,6 @@ import SongPage from "./pages/DetalleCancion";
  */
 
 const router = createBrowserRouter([
-  // 🔓 Ruta pública de canción compartida (accesible sin login)
-  {
-    path: "/cancion/:id",
-    element: <SongPage />,
-  },
   // Rutas públicas (solo para usuarios NO autenticados)
   {
     element: <PublicRoute />,
@@ -90,6 +85,10 @@ const router = createBrowserRouter([
           {
             path: "playlist/:id",
             element: <PlaylistDetail />,
+          },
+          {
+            path: "cancion/:id",
+            element: <SongPage />,
           },
           {
             path: "canciones-favoritas",

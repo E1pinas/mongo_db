@@ -14,7 +14,7 @@ export const CampoNick = ({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-300 mb-2">
+      <label className="block text-sm font-semibold text-neutral-300 mb-2.5">
         Nombre de Usuario
       </label>
       <input
@@ -22,16 +22,18 @@ export const CampoNick = ({
         value={valor}
         onChange={(e) => alCambiar(e.target.value)}
         disabled={deshabilitado}
-        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 disabled:opacity-50"
+        className="w-full px-4 py-3 bg-neutral-900/50 border border-neutral-800 rounded-xl text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 disabled:opacity-50 transition-all backdrop-blur-sm"
         placeholder="usuario123"
         maxLength={30}
       />
-      <p className="mt-1 text-xs text-gray-400">
+      <p className="mt-2 text-xs text-neutral-400">
         Solo letras, números y guión bajo (_). Entre 3 y 30 caracteres.
       </p>
       {mostrarPreview && (
-        <p className="mt-1 text-xs text-purple-400">
-          Se guardará como: <span className="font-mono">{nickNormalizado}</span>
+        <p className="mt-2 text-xs text-purple-400 flex items-center gap-2">
+          <span className="inline-block w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
+          Se guardará como:{" "}
+          <span className="font-mono font-semibold">{nickNormalizado}</span>
         </p>
       )}
     </div>

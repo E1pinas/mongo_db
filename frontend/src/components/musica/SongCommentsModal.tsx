@@ -450,7 +450,7 @@ export default function SongCommentsModal({
       setNuevoComentario("");
     } catch (error: any) {
       console.error("Error creating comment:", error);
-      alert(
+      setMensajeError(
         `Error al crear comentario: ${
           error.response?.data?.mensaje || error.message
         }`
@@ -540,10 +540,11 @@ export default function SongCommentsModal({
     navigator.clipboard
       .writeText(url)
       .then(() => {
-        alert("URL copiada al portapapeles");
+        setMensajeExito("URL copiada al portapapeles");
       })
       .catch((err) => {
         console.error("Error al copiar URL:", err);
+        setMensajeError("Error al copiar la URL");
       });
   };
 

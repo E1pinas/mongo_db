@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../../../contexts/PlayerContext";
 import { musicService } from "../../../services/music.service";
@@ -23,6 +24,9 @@ export const useManejoNotificacion = ({
 }: UseManejoNotificacionParams) => {
   const navigate = useNavigate();
   const { playQueue } = usePlayer();
+  const [mensajeError, setMensajeError] = useState("");
+
+  const limpiarError = () => setMensajeError("");
 
   const manejarClickNotificacion = async (notif: Notificacion) => {
     // Marcar como leída
@@ -108,7 +112,7 @@ export const useManejoNotificacion = ({
       }
     } catch (error: any) {
       console.error("❌ Error al cargar la canción:", error);
-      alert(
+      setMensajeError(
         error.response?.status === 404
           ? "Esta canción ya no está disponible o fue eliminada"
           : "No se pudo cargar la canción. Intenta más tarde."
@@ -133,7 +137,7 @@ export const useManejoNotificacion = ({
       }
     } catch (error: any) {
       console.error("Error al cargar el álbum:", error);
-      alert(
+      setMensajeError(
         error.response?.status === 404
           ? "Este álbum fue retirado de la página"
           : "No se pudo cargar el álbum. Intenta más tarde."
@@ -142,28 +146,8 @@ export const useManejoNotificacion = ({
   };
 
   const manejarPlaylist = async (playlistId: string) => {
-    try {
-      const playlist = await musicService.getPlaylistById(playlistId);
-      if (playlist.canciones && playlist.canciones.length > 0) {
-        const canciones = playlist.canciones.filter(
-          (c) => typeof c !== "string"
-        );
-        if (canciones.length > 0) {
-          playQueue(canciones as any[], 0, {
-            type: "playlist",
-            id: playlist._id,
-            name: playlist.titulo,
-          });
-        }
-      }
-    } catch (error: any) {
-      console.error("Error al cargar la playlist:", error);
-      alert(
-        error.response?.status === 404
-          ? "Esta playlist fue retirada de la página"
-          : "No se pudo cargar la playlist. Intenta más tarde."
-      );
-    }
+    // Navegar directamente a la página de la playlist
+    navigate(`/playlist/${playlistId}`);
   };
 
   const manejarPost = (notif: Notificacion) => {
@@ -184,5 +168,7 @@ export const useManejoNotificacion = ({
 
   return {
     manejarClickNotificacion,
+    mensajeError,
+    limpiarError,
   };
 };

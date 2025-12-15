@@ -23,12 +23,15 @@ export const SeccionRedesSociales = ({
   ];
 
   return (
-    <div>
-      <h3 className="text-lg font-semibold text-white mb-4">Redes Sociales</h3>
-      <div className="grid grid-cols-2 gap-4">
+    <div className="bg-neutral-900/30 backdrop-blur-sm border border-neutral-800/50 rounded-xl p-6">
+      <h3 className="text-xl font-bold text-white mb-5 flex items-center gap-2">
+        <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full" />
+        Redes Sociales
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {redes.map(({ campo, label, placeholder }) => (
           <div key={campo}>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-semibold text-neutral-300 mb-2.5">
               {label}
             </label>
             <input
@@ -36,7 +39,7 @@ export const SeccionRedesSociales = ({
               value={formData[campo]}
               onChange={(e) => alCambiar(campo, e.target.value)}
               disabled={deshabilitado}
-              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 disabled:opacity-50"
+              className="w-full px-4 py-3 bg-neutral-900/50 border border-neutral-800 rounded-xl text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 disabled:opacity-50 transition-all"
               placeholder={placeholder}
             />
           </div>

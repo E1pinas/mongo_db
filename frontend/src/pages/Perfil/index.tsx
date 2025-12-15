@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth, usePlayer } from "../../contexts";
 import { Ban } from "lucide-react";
 import type { Cancion } from "../../types";
+import { Toast } from "../../components/Toast";
 import { useDatosPerfil, useEstadoRelacion, useContenidoPerfil } from "./hooks";
 import {
   CabeceraPerfil,
@@ -44,6 +45,8 @@ export default function Perfil() {
     useState(false);
   const [cancionAEditar, setCancionAEditar] = useState<Cancion | null>(null);
   const [razonBloqueo, setRazonBloqueo] = useState("");
+  const [mensajeError, setMensajeError] = useState("");
+  const [mensajeExito, setMensajeExito] = useState("");
 
   // Hooks personalizados
   const { usuarioPerfil, cargando, errorPerfil } = useDatosPerfil(
@@ -106,34 +109,32 @@ export default function Perfil() {
     }
   }, [usuarioActual, nick, navigate]);
 
-  // Cargar contenido inicial (canciones)
+  // Sincronizar canciones, álbumes y playlists desde el perfil
   useEffect(() => {
-    if (usuarioPerfil && esPropioUsuario) {
-      cargarContenido("canciones");
+    if (usuarioPerfil) {
+      // Los datos ya vienen en el perfil desde el backend
+      setCanciones((usuarioPerfil as any).misCanciones || []);
+      setAlbumes((usuarioPerfil as any).misAlbumes || []);
+      setPlaylists((usuarioPerfil as any).playlistsCreadas || []);
     }
-  }, [usuarioPerfil, esPropioUsuario]);
+  }, [usuarioPerfil]);
 
-  // Cargar contenido cuando cambia la pestaña
+  // Cargar contenido cuando cambia la pestaña (solo seguidores/siguiendo)
   useEffect(() => {
-    if (!usuarioPerfil) return;
-
-    // Para canciones, álbumes y playlists, solo cargar si es el propio usuario
-    if (pestañaActiva === "canciones" || pestañaActiva === "albumes" || pestañaActiva === "playlists") {
-      if (esPropioUsuario) {
-        cargarContenido(pestañaActiva);
-      }
-    } else if (pestañaActiva !== "posts") {
-      // Para seguidores y siguiendo, cargar siempre
+    if (
+      usuarioPerfil &&
+      (pestañaActiva === "seguidores" || pestañaActiva === "siguiendo")
+    ) {
       cargarContenido(pestañaActiva);
     }
-  }, [pestañaActiva, usuarioPerfil, esPropioUsuario]);
+  }, [pestañaActiva, usuarioPerfil]);
 
   // Manejadores de acciones
   const manejarSeguir = async () => {
     try {
       await seguir();
     } catch (error: any) {
-      alert(error.message || "Error al seguir");
+      setMensajeError(error.message || "Error al seguir");
     }
   };
 
@@ -142,7 +143,7 @@ export default function Perfil() {
       await dejarDeSeguir();
       setMostrarModalDejarSeguir(false);
     } catch (error: any) {
-      alert(error.message || "Error al dejar de seguir");
+      setMensajeError(error.message || "Error al dejar de seguir");
     }
   };
 
@@ -150,7 +151,7 @@ export default function Perfil() {
     try {
       await enviarSolicitudAmistad();
     } catch (error: any) {
-      alert(error.message || "Error al enviar solicitud");
+      setMensajeError(error.message || "Error al enviar solicitud");
     }
   };
 
@@ -158,7 +159,7 @@ export default function Perfil() {
     try {
       await cancelarSolicitud();
     } catch (error: any) {
-      alert(error.message || "Error al cancelar solicitud");
+      setMensajeError(error.message || "Error al cancelar solicitud");
     }
   };
 
@@ -167,7 +168,7 @@ export default function Perfil() {
       await eliminarAmistad();
       setMostrarModalEliminarAmigo(false);
     } catch (error: any) {
-      alert(error.message || "Error al eliminar amistad");
+      setMensajeError(error.message || "Error al eliminar amistad");
     }
   };
 
@@ -181,7 +182,7 @@ export default function Perfil() {
         cancionesDisponibles = canciones.filter((c) => !c.esExplicita);
 
         if (cancion.esExplicita) {
-          alert(
+          setMensajeError(
             "No puedes reproducir contenido explícito siendo menor de edad."
           );
           return;
@@ -205,10 +206,10 @@ export default function Perfil() {
       setCanciones(canciones.filter((c) => c._id !== cancionAEliminar._id));
       setMostrarModalEliminarCancion(false);
       setCancionAEliminar(null);
-      alert("Canción eliminada correctamente");
+      setMensajeExito("Canción eliminada correctamente");
     } catch (error: any) {
       console.error("Error al eliminar canción:", error);
-      alert(error.message || "Error al eliminar canción");
+      setMensajeError(error.message || "Error al eliminar canción");
     }
   };
 
@@ -257,430 +258,482 @@ export default function Perfil() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
-      {/* Cabecera del perfil */}
-      <CabeceraPerfil
-        usuario={usuarioPerfil}
-        esPropioUsuario={esPropioUsuario}
-        totalCanciones={canciones.length}
-        totalSeguidores={
-          (usuarioPerfil as any).estadisticas?.totalSeguidores || 0
-        }
-        totalSiguiendo={(usuarioPerfil as any).estadisticas?.totalSeguidos || 0}
-        alClickConfiguracion={() => navigate("/configuracion")}
-        botonesAccion={
-          !esPropioUsuario ? (
-            <BotonesAccion
-              estadoRelacion={estadoRelacion}
-              estaSiguiendo={estaSiguiendo}
-              aceptaSolicitudes={aceptaSolicitudes}
-              cargandoAccion={cargandoAccion}
-              alSeguir={manejarSeguir}
-              alDejarDeSeguir={() => setMostrarModalDejarSeguir(true)}
-              alEnviarSolicitud={manejarEnviarSolicitud}
-              alAceptarSolicitud={aceptarSolicitud}
-              alRechazarSolicitud={rechazarSolicitud}
-              alCancelarSolicitud={manejarCancelarSolicitud}
-              alEliminarAmigo={() => setMostrarModalEliminarAmigo(true)}
-              alReportar={() => setMostrarModalReporte(true)}
-              alBloquear={() => setMostrarModalBloqueo(true)}
-            />
-          ) : undefined
-        }
-      />
+    <>
+      {mensajeError && (
+        <Toast
+          message={mensajeError}
+          type="error"
+          onClose={() => setMensajeError("")}
+        />
+      )}
+      {mensajeExito && (
+        <Toast
+          message={mensajeExito}
+          type="success"
+          onClose={() => setMensajeExito("")}
+        />
+      )}
+      <div className="min-h-screen bg-neutral-950 text-white">
+        {/* Cabecera del perfil */}
+        <CabeceraPerfil
+          usuario={usuarioPerfil}
+          esPropioUsuario={esPropioUsuario}
+          totalCanciones={canciones.length}
+          totalSeguidores={
+            (usuarioPerfil as any).estadisticas?.totalSeguidores || 0
+          }
+          totalSiguiendo={
+            (usuarioPerfil as any).estadisticas?.totalSeguidos || 0
+          }
+          alClickConfiguracion={() => navigate("/configuracion")}
+          botonesAccion={
+            !esPropioUsuario ? (
+              <BotonesAccion
+                estadoRelacion={estadoRelacion}
+                estaSiguiendo={estaSiguiendo}
+                aceptaSolicitudes={aceptaSolicitudes}
+                cargandoAccion={cargandoAccion}
+                alSeguir={manejarSeguir}
+                alDejarDeSeguir={() => setMostrarModalDejarSeguir(true)}
+                alEnviarSolicitud={manejarEnviarSolicitud}
+                alAceptarSolicitud={aceptarSolicitud}
+                alRechazarSolicitud={rechazarSolicitud}
+                alCancelarSolicitud={manejarCancelarSolicitud}
+                alEliminarAmigo={() => setMostrarModalEliminarAmigo(true)}
+                alReportar={() => setMostrarModalReporte(true)}
+                alBloquear={() => setMostrarModalBloqueo(true)}
+              />
+            ) : undefined
+          }
+        />
 
-      {/* Pestañas */}
-      <Pestañas
-        pestañaActiva={pestañaActiva}
-        alCambiarPestaña={setPestañaActiva}
-        totalCanciones={canciones.length}
-        totalAlbumes={albumes.length}
-        totalPlaylists={playlists.length}
-        totalSeguidores={
-          (usuarioPerfil as any).estadisticas?.totalSeguidores || 0
-        }
-        totalSiguiendo={(usuarioPerfil as any).estadisticas?.totalSeguidos || 0}
-      />
+        {/* Pestañas */}
+        <Pestañas
+          pestañaActiva={pestañaActiva}
+          alCambiarPestaña={setPestañaActiva}
+          totalCanciones={canciones.length}
+          totalAlbumes={albumes.length}
+          totalPlaylists={playlists.length}
+          totalSeguidores={
+            (usuarioPerfil as any).estadisticas?.totalSeguidores || 0
+          }
+          totalSiguiendo={
+            (usuarioPerfil as any).estadisticas?.totalSeguidos || 0
+          }
+        />
 
-      {/* Contenido de las pestañas */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        {pestañaActiva === "posts" && <PostFeed userId={usuarioPerfil._id} />}
+        {/* Contenido de las pestañas */}
+        <div className="max-w-7xl mx-auto px-8 py-8">
+          {pestañaActiva === "posts" && <PostFeed userId={usuarioPerfil._id} />}
 
-        {pestañaActiva === "canciones" && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-6">
-              Todas las pistas
-            </h2>
-            <div className="space-y-1">
+          {pestañaActiva === "canciones" && (
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-6">
+                Todas las pistas
+              </h2>
+              <div className="space-y-1">
+                {cargandoContenido ? (
+                  <div className="text-center py-12 text-neutral-400">
+                    Cargando canciones...
+                  </div>
+                ) : canciones.length === 0 ? (
+                  <div className="text-center py-12 text-neutral-400">
+                    No hay canciones
+                  </div>
+                ) : (
+                  canciones.map((cancion, indice) => (
+                    <SongRow
+                      key={cancion._id}
+                      cancion={cancion}
+                      index={indice}
+                      isCurrentSong={currentSong?._id === cancion._id}
+                      isPlaying={currentSong?._id === cancion._id && isPlaying}
+                      onPlay={() => manejarReproducirCancion(cancion)}
+                      onOpenComments={() => setCancionComentarios(cancion)}
+                      showCreatorActions={esPropioUsuario}
+                      onEdit={
+                        esPropioUsuario
+                          ? () => {
+                              setCancionAEditar(cancion);
+                              setMostrarModalEditarCancion(true);
+                            }
+                          : undefined
+                      }
+                      onDelete={
+                        esPropioUsuario
+                          ? () => {
+                              setCancionAEliminar(cancion);
+                              setMostrarModalEliminarCancion(true);
+                            }
+                          : undefined
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {pestañaActiva === "albumes" && (
+            <div>
               {cargandoContenido ? (
                 <div className="text-center py-12 text-neutral-400">
-                  Cargando canciones...
+                  Cargando álbumes...
                 </div>
-              ) : canciones.length === 0 ? (
+              ) : albumes.length === 0 ? (
                 <div className="text-center py-12 text-neutral-400">
-                  No hay canciones
+                  No hay álbumes
                 </div>
               ) : (
-                canciones.map((cancion, indice) => (
-                  <SongRow
-                    key={cancion._id}
-                    cancion={cancion}
-                    index={indice}
-                    isCurrentSong={currentSong?._id === cancion._id}
-                    isPlaying={currentSong?._id === cancion._id && isPlaying}
-                    onPlay={() => manejarReproducirCancion(cancion)}
-                    onOpenComments={() => setCancionComentarios(cancion)}
-                    showCreatorActions={esPropioUsuario}
-                    onEdit={
-                      esPropioUsuario
-                        ? () => {
-                            setCancionAEditar(cancion);
-                            setMostrarModalEditarCancion(true);
-                          }
-                        : undefined
-                    }
-                    onDelete={
-                      esPropioUsuario
-                        ? () => {
-                            setCancionAEliminar(cancion);
-                            setMostrarModalEliminarCancion(true);
-                          }
-                        : undefined
-                    }
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {pestañaActiva === "albumes" && (
-          <div>
-            {cargandoContenido ? (
-              <div className="text-center py-12 text-neutral-400">
-                Cargando álbumes...
-              </div>
-            ) : albumes.length === 0 ? (
-              <div className="text-center py-12 text-neutral-400">
-                No hay álbumes
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {albumes.map((album) => (
-                  <div
-                    key={album._id}
-                    onClick={() => navigate(`/album/${album._id}`)}
-                    className="bg-neutral-900 rounded-lg p-4 hover:bg-neutral-800 transition-colors cursor-pointer"
-                  >
-                    <div className="aspect-square bg-neutral-800 rounded-lg mb-3 overflow-hidden">
-                      {album.portada && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {albumes.map((album) => (
+                    <div
+                      key={album._id}
+                      onClick={() => navigate(`/album/${album._id}`)}
+                      className="bg-neutral-900 rounded-lg p-4 hover:bg-neutral-800 transition-colors cursor-pointer"
+                    >
+                      <div className="relative aspect-square bg-neutral-800 rounded-lg mb-3 overflow-hidden group">
                         <img
-                          src={`http://localhost:3900/uploads/portadas/${album.portada}`}
+                          src={album.portadaUrl || "/cover.jpg"}
                           alt={album.titulo}
                           className="w-full h-full object-cover"
                         />
-                      )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                            <svg
+                              className="w-6 h-6 text-white ml-1"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                      <h3 className="font-semibold text-white truncate">
+                        {album.titulo}
+                      </h3>
+                      <p className="text-sm text-neutral-400">
+                        {album.artistas &&
+                        album.artistas.length > 0 &&
+                        typeof album.artistas[0] !== "string"
+                          ? album.artistas[0].nombreArtistico ||
+                            album.artistas[0].nick
+                          : usuarioPerfil?.nombreArtistico ||
+                            usuarioPerfil?.nick}{" "}
+                        • {album.canciones?.length || 0} canciones
+                      </p>
                     </div>
-                    <h3 className="font-semibold text-white truncate">
-                      {album.titulo}
-                    </h3>
-                    <p className="text-sm text-neutral-400">
-                      {album.canciones?.length || 0} canciones
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-        {pestañaActiva === "playlists" && (
-          <div>
-            {cargandoContenido ? (
-              <div className="text-center py-12 text-neutral-400">
-                Cargando playlists...
-              </div>
-            ) : playlists.length === 0 ? (
-              <div className="text-center py-12 text-neutral-400">
-                No hay playlists
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {playlists.map((playlist) => (
-                  <div
-                    key={playlist._id}
-                    onClick={() => navigate(`/playlist/${playlist._id}`)}
-                    className="bg-neutral-900 rounded-lg p-4 hover:bg-neutral-800 transition-colors cursor-pointer"
-                  >
-                    <div className="aspect-square bg-neutral-800 rounded-lg mb-3 overflow-hidden">
-                      {playlist.imagen && (
+          {pestañaActiva === "playlists" && (
+            <div>
+              {cargandoContenido ? (
+                <div className="text-center py-12 text-neutral-400">
+                  Cargando playlists...
+                </div>
+              ) : playlists.length === 0 ? (
+                <div className="text-center py-12 text-neutral-400">
+                  No hay playlists
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {playlists.map((playlist) => (
+                    <div
+                      key={playlist._id}
+                      onClick={() => navigate(`/playlist/${playlist._id}`)}
+                      className="bg-neutral-900 rounded-lg p-4 hover:bg-neutral-800 transition-colors cursor-pointer"
+                    >
+                      <div className="relative aspect-square bg-neutral-800 rounded-lg mb-3 overflow-hidden group">
                         <img
-                          src={`http://localhost:3900/uploads/playlists/${playlist.imagen}`}
-                          alt={playlist.nombre}
+                          src={playlist.portadaUrl || "/cover.jpg"}
+                          alt={playlist.titulo}
                           className="w-full h-full object-cover"
                         />
-                      )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                            <svg
+                              className="w-6 h-6 text-white ml-1"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                      <h3 className="font-semibold text-white truncate">
+                        {playlist.titulo}
+                      </h3>
+                      <p className="text-sm text-neutral-400">
+                        {typeof playlist.creador === "string"
+                          ? "Playlist"
+                          : playlist.creador?.nombreArtistico ||
+                            playlist.creador?.nick ||
+                            "Desconocido"}{" "}
+                        • {playlist.canciones?.length || 0} canciones
+                      </p>
                     </div>
-                    <h3 className="font-semibold text-white truncate">
-                      {playlist.nombre}
-                    </h3>
-                    <p className="text-sm text-neutral-400">
-                      {playlist.canciones?.length || 0} canciones
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {pestañaActiva === "seguidores" && (
+            <ListaUsuarios
+              usuarios={seguidores}
+              titulo="Seguidores"
+              cargando={cargandoContenido}
+            />
+          )}
+
+          {pestañaActiva === "siguiendo" && (
+            <ListaUsuarios
+              usuarios={seguidos}
+              titulo="Siguiendo"
+              cargando={cargandoContenido}
+            />
+          )}
+        </div>
+
+        {/* Modales */}
+        {mostrarModalBloqueo && usuarioPerfil && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-neutral-900 rounded-lg max-w-md w-full p-6">
+              <h3 className="text-xl font-bold mb-4 text-red-400">
+                ¿Bloquear usuario?
+              </h3>
+              <div className="space-y-3 mb-6 text-sm text-neutral-300">
+                <p>
+                  Al bloquear a{" "}
+                  {usuarioPerfil.nombreArtistico || usuarioPerfil.nick}:
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>No podrá ver tu perfil</li>
+                  <li>No podrá encontrarte en búsquedas</li>
+                  <li>Se eliminarán las relaciones de amistad y seguimiento</li>
+                  <li>No podrá interactuar contigo</li>
+                </ul>
               </div>
-            )}
+
+              {/* Campo de razón */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2 text-neutral-300">
+                  Razón del bloqueo (opcional)
+                </label>
+                <textarea
+                  value={razonBloqueo}
+                  onChange={(e) => setRazonBloqueo(e.target.value)}
+                  placeholder="Ej: Spam, acoso, contenido inapropiado..."
+                  maxLength={200}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                />
+                <p className="text-xs text-neutral-500 mt-1">
+                  {razonBloqueo.length}/200 caracteres
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      await servicioPerfil.bloquearUsuario(
+                        usuarioPerfil._id,
+                        razonBloqueo.trim() || undefined
+                      );
+                      setMostrarModalBloqueo(false);
+                      setRazonBloqueo("");
+                      navigate("/");
+                    } catch (error: any) {
+                      setMensajeError(
+                        error.message || "Error al bloquear usuario"
+                      );
+                    }
+                  }}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-semibold"
+                >
+                  Sí, bloquear
+                </button>
+                <button
+                  onClick={() => {
+                    setMostrarModalBloqueo(false);
+                    setRazonBloqueo("");
+                  }}
+                  className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {pestañaActiva === "seguidores" && (
-          <ListaUsuarios
-            usuarios={seguidores}
-            titulo="Seguidores"
-            cargando={cargandoContenido}
+        {mostrarModalEliminarAmigo && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-neutral-900 rounded-lg p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold mb-4">Eliminar amigo</h3>
+              <p className="text-neutral-300 mb-6">
+                ¿Estás seguro de que quieres eliminar a{" "}
+                {usuarioPerfil.nombreArtistico || usuarioPerfil.nick} de tus
+                amigos?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMostrarModalEliminarAmigo(false)}
+                  className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={manejarEliminarAmigo}
+                  disabled={cargandoAccion}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mostrarModalDejarSeguir && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-neutral-900 rounded-lg p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold mb-4">Dejar de seguir</h3>
+              <p className="text-neutral-300 mb-6">
+                ¿Estás seguro de que quieres dejar de seguir a{" "}
+                {usuarioPerfil.nombreArtistico || usuarioPerfil.nick}?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMostrarModalDejarSeguir(false)}
+                  className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={manejarDejarDeSeguir}
+                  disabled={cargandoAccion}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Dejar de seguir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mostrarModalEliminarCancion && cancionAEliminar && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-neutral-900 rounded-lg p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold mb-4 text-red-400">
+                Eliminar canción
+              </h3>
+              <p className="text-neutral-300 mb-2">
+                ¿Estás seguro de que quieres eliminar{" "}
+                <strong>{cancionAEliminar.titulo}</strong>?
+              </p>
+              <p className="text-sm text-red-400 mb-6">
+                Esta acción no se puede deshacer y la canción se eliminará
+                permanentemente.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setMostrarModalEliminarCancion(false);
+                    setCancionAEliminar(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={manejarEliminarCancion}
+                  disabled={cargandoAccion}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mostrarModalSuspendido && (
+          <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-700">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="bg-yellow-600/20 p-3 rounded-full">
+                  <Ban className="w-6 h-6 text-yellow-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    Tu cuenta está suspendida
+                  </h3>
+                  <p className="text-gray-300 mb-3">
+                    No puedes ver perfiles de otros usuarios mientras tu cuenta
+                    esté suspendida.
+                  </p>
+                  <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                    <p className="text-sm text-gray-400 mb-1">
+                      Razón de la suspensión:
+                    </p>
+                    <p className="text-yellow-400 font-medium">
+                      {(usuarioActual as any)?.razonSuspension ||
+                        "Violación de normas comunitarias"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setMostrarModalSuspendido(false);
+                  navigate("/", { replace: true });
+                }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cancionComentarios && (
+          <SongCommentsModal
+            song={cancionComentarios}
+            isOpen={!!cancionComentarios}
+            onClose={() => setCancionComentarios(null)}
           />
         )}
 
-        {pestañaActiva === "siguiendo" && (
-          <ListaUsuarios
-            usuarios={seguidos}
-            titulo="Siguiendo"
-            cargando={cargandoContenido}
+        {cancionAEditar && (
+          <EditSongModal
+            isOpen={mostrarModalEditarCancion}
+            onClose={() => {
+              setMostrarModalEditarCancion(false);
+              setCancionAEditar(null);
+            }}
+            onSave={manejarGuardarCancionEditada}
+            song={cancionAEditar}
+          />
+        )}
+
+        {mostrarModalReporte && usuarioPerfil && (
+          <ReportModal
+            isOpen={mostrarModalReporte}
+            onClose={() => setMostrarModalReporte(false)}
+            contentType="usuario"
+            contentId={usuarioPerfil._id}
+            contentTitle={usuarioPerfil.nombreArtistico || usuarioPerfil.nick}
           />
         )}
       </div>
-
-      {/* Modales */}
-      {mostrarModalBloqueo && usuarioPerfil && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-bold mb-4 text-red-400">
-              ¿Bloquear usuario?
-            </h3>
-            <div className="space-y-3 mb-6 text-sm text-neutral-300">
-              <p>
-                Al bloquear a{" "}
-                {usuarioPerfil.nombreArtistico || usuarioPerfil.nick}:
-              </p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>No podrá ver tu perfil</li>
-                <li>No podrá encontrarte en búsquedas</li>
-                <li>Se eliminarán las relaciones de amistad y seguimiento</li>
-                <li>No podrá interactuar contigo</li>
-              </ul>
-            </div>
-
-            {/* Campo de razón */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2 text-neutral-300">
-                Razón del bloqueo (opcional)
-              </label>
-              <textarea
-                value={razonBloqueo}
-                onChange={(e) => setRazonBloqueo(e.target.value)}
-                placeholder="Ej: Spam, acoso, contenido inapropiado..."
-                maxLength={200}
-                rows={3}
-                className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-              />
-              <p className="text-xs text-neutral-500 mt-1">
-                {razonBloqueo.length}/200 caracteres
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={async () => {
-                  try {
-                    await servicioPerfil.bloquearUsuario(
-                      usuarioPerfil._id,
-                      razonBloqueo.trim() || undefined
-                    );
-                    setMostrarModalBloqueo(false);
-                    setRazonBloqueo("");
-                    navigate("/");
-                  } catch (error: any) {
-                    alert(error.message || "Error al bloquear usuario");
-                  }
-                }}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-semibold"
-              >
-                Sí, bloquear
-              </button>
-              <button
-                onClick={() => {
-                  setMostrarModalBloqueo(false);
-                  setRazonBloqueo("");
-                }}
-                className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mostrarModalEliminarAmigo && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4">Eliminar amigo</h3>
-            <p className="text-neutral-300 mb-6">
-              ¿Estás seguro de que quieres eliminar a{" "}
-              {usuarioPerfil.nombreArtistico || usuarioPerfil.nick} de tus
-              amigos?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setMostrarModalEliminarAmigo(false)}
-                className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={manejarEliminarAmigo}
-                disabled={cargandoAccion}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mostrarModalDejarSeguir && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4">Dejar de seguir</h3>
-            <p className="text-neutral-300 mb-6">
-              ¿Estás seguro de que quieres dejar de seguir a{" "}
-              {usuarioPerfil.nombreArtistico || usuarioPerfil.nick}?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setMostrarModalDejarSeguir(false)}
-                className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={manejarDejarDeSeguir}
-                disabled={cargandoAccion}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                Dejar de seguir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mostrarModalEliminarCancion && cancionAEliminar && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4 text-red-400">
-              Eliminar canción
-            </h3>
-            <p className="text-neutral-300 mb-2">
-              ¿Estás seguro de que quieres eliminar{" "}
-              <strong>{cancionAEliminar.titulo}</strong>?
-            </p>
-            <p className="text-sm text-red-400 mb-6">
-              Esta acción no se puede deshacer y la canción se eliminará
-              permanentemente.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setMostrarModalEliminarCancion(false);
-                  setCancionAEliminar(null);
-                }}
-                className="flex-1 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={manejarEliminarCancion}
-                disabled={cargandoAccion}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {mostrarModalSuspendido && (
-        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg max-w-md w-full p-6 shadow-2xl border border-gray-700">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="bg-yellow-600/20 p-3 rounded-full">
-                <Ban className="w-6 h-6 text-yellow-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-white mb-2">
-                  Tu cuenta está suspendida
-                </h3>
-                <p className="text-gray-300 mb-3">
-                  No puedes ver perfiles de otros usuarios mientras tu cuenta
-                  esté suspendida.
-                </p>
-                <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
-                  <p className="text-sm text-gray-400 mb-1">
-                    Razón de la suspensión:
-                  </p>
-                  <p className="text-yellow-400 font-medium">
-                    {(usuarioActual as any)?.razonSuspension ||
-                      "Violación de normas comunitarias"}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setMostrarModalSuspendido(false);
-                navigate("/", { replace: true });
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
-            >
-              Aceptar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {cancionComentarios && (
-        <SongCommentsModal
-          song={cancionComentarios}
-          isOpen={!!cancionComentarios}
-          onClose={() => setCancionComentarios(null)}
-        />
-      )}
-
-      {cancionAEditar && (
-        <EditSongModal
-          isOpen={mostrarModalEditarCancion}
-          onClose={() => {
-            setMostrarModalEditarCancion(false);
-            setCancionAEditar(null);
-          }}
-          onSave={manejarGuardarCancionEditada}
-          song={cancionAEditar}
-        />
-      )}
-
-      {mostrarModalReporte && usuarioPerfil && (
-        <ReportModal
-          isOpen={mostrarModalReporte}
-          onClose={() => setMostrarModalReporte(false)}
-          contentType="usuario"
-          contentId={usuarioPerfil._id}
-          contentTitle={usuarioPerfil.nombreArtistico || usuarioPerfil.nick}
-        />
-      )}
-    </div>
+    </>
   );
 }

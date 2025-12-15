@@ -1,23 +1,15 @@
-import {
-  Play,
-  Heart,
-  Plus,
-  Lock,
-  Unlock,
-  Trash2,
-  MoreHorizontal,
-} from "lucide-react";
+import { Play, Heart, Plus, Edit3, Trash2 } from "lucide-react";
 import type { Playlist } from "../../../types";
 
 interface BotonesAccionPlaylistProps {
   playlist: Playlist;
   estaSiguiendo: boolean;
   esCreador: boolean;
-  cambiandoPrivacidad: boolean;
+  puedeEditar: boolean;
   onReproducirTodo: () => void;
   onToggleSeguir: () => void;
   onAgregarCanciones: () => void;
-  onCambiarPrivacidad: () => void;
+  onEditar: () => void;
   onEliminar: () => void;
 }
 
@@ -25,11 +17,11 @@ export const BotonesAccionPlaylist = ({
   playlist,
   estaSiguiendo,
   esCreador,
-  cambiandoPrivacidad,
+  puedeEditar,
   onReproducirTodo,
   onToggleSeguir,
   onAgregarCanciones,
-  onCambiarPrivacidad,
+  onEditar,
   onEliminar,
 }: BotonesAccionPlaylistProps) => {
   const canciones =
@@ -62,22 +54,24 @@ export const BotonesAccionPlaylist = ({
           />
         </button>
 
+        {puedeEditar && (
+          <button
+            onClick={onAgregarCanciones}
+            className="w-12 h-12 flex items-center justify-center hover:bg-green-500/20 text-green-400 border border-green-500/30 rounded-full transition-all hover:scale-110"
+            title="Agregar canciones"
+          >
+            <Plus size={20} />
+          </button>
+        )}
+
         {esCreador && (
           <>
             <button
-              onClick={onAgregarCanciones}
-              className="w-12 h-12 flex items-center justify-center hover:bg-green-500/20 text-green-400 border border-green-500/30 rounded-full transition-all hover:scale-110"
-              title="Agregar canciones"
+              onClick={onEditar}
+              className="w-12 h-12 flex items-center justify-center hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full transition-all hover:scale-110"
+              title="Editar playlist"
             >
-              <Plus size={20} />
-            </button>
-            <button
-              onClick={onCambiarPrivacidad}
-              disabled={cambiandoPrivacidad}
-              className="w-12 h-12 flex items-center justify-center hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-full transition-all hover:scale-110 disabled:opacity-50"
-              title={playlist.esPublica ? "Hacer privada" : "Hacer pública"}
-            >
-              {playlist.esPublica ? <Unlock size={20} /> : <Lock size={20} />}
+              <Edit3 size={20} />
             </button>
             <button
               onClick={onEliminar}
@@ -88,10 +82,6 @@ export const BotonesAccionPlaylist = ({
             </button>
           </>
         )}
-
-        <button className="w-12 h-12 flex items-center justify-center hover:bg-white/10 backdrop-blur-sm border border-white/10 rounded-full transition-all">
-          <MoreHorizontal size={22} className="text-neutral-400" />
-        </button>
       </div>
     </div>
   );

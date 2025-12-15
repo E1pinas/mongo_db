@@ -261,7 +261,7 @@ export const obtenerPerfilCompleto = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const usuario = await Usuario.findOne({ nick: nickLowerCase })
+    const usuario = await Usuario.findById(id)
       .select("-password")
       .populate({
         path: "misCanciones",

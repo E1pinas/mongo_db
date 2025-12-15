@@ -4,6 +4,7 @@ import { usePlayer } from "../../contexts";
 import type { Cancion } from "../../types";
 import { ConfirmModal } from "../../components/common";
 import SongCommentsModal from "../../components/musica/SongCommentsModal";
+import { musicService } from "../../services/music.service";
 
 // Hooks
 import { useDatosPlaylist } from "./hooks/useDatosPlaylist";
@@ -16,6 +17,7 @@ import { BotonesAccionPlaylist } from "./componentes/BotonesAccionPlaylist";
 import { ListaCancionesPlaylist } from "./componentes/ListaCancionesPlaylist";
 import { ModalAgregarCanciones } from "./componentes/ModalAgregarCanciones";
 import { VistaErrorPlaylist } from "./componentes/VistaErrorPlaylist";
+import { ModalEditarPlaylist } from "./componentes/ModalEditarPlaylist";
 
 export default function DetallePlaylist() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +31,7 @@ export default function DetallePlaylist() {
   ] = useState<Cancion | null>(null);
   const [mostrarModalAgregarCanciones, setMostrarModalAgregarCanciones] =
     useState(false);
+  const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
 
   // Hooks de datos y acciones
   const { playlist, cargando, error, estaSiguiendo, recargarPlaylist } =
@@ -103,6 +106,58 @@ export default function DetallePlaylist() {
     limpiarResultados();
   };
 
+  const manejarGuardarEdicion = async (datos: {
+    titulo: string;
+    descripcion: string;
+    esPublica: boolean;
+    esColaborativa: boolean;
+    portadaFile?: File | null;
+    amigosSeleccionados?: string[];
+  }) => {
+    if (!id) return;
+
+    // Actualizar información básica
+    await musicService.updatePlaylist(id, {
+      titulo: datos.titulo,
+      descripcion: datos.descripcion,
+      esPublica: datos.esPublica,
+      esColaborativa: datos.esColaborativa,
+    });
+
+    // Si hay nueva portada, subirla
+    if (datos.portadaFile) {
+      try {
+        // Subir la imagen primero
+        const uploadResponse = await musicService.subirImagen(
+          datos.portadaFile
+        );
+
+        // Actualizar la portada de la playlist
+        await musicService.updatePlaylistCover(id, uploadResponse.imagenUrl);
+      } catch (error: any) {
+        console.error("Error al subir portada:", error);
+        throw new Error(error.message || "Error al subir la portada");
+      }
+    }
+
+    // Si se activó el modo colaborativo y hay amigos seleccionados, invitarlos
+    if (
+      datos.esColaborativa &&
+      datos.amigosSeleccionados &&
+      datos.amigosSeleccionados.length > 0
+    ) {
+      for (const amigoId of datos.amigosSeleccionados) {
+        try {
+          await musicService.inviteCollaborator(id, amigoId);
+        } catch (error) {
+          console.error(`Error al invitar a ${amigoId}:`, error);
+        }
+      }
+    }
+
+    await recargarPlaylist();
+  };
+
   // Renderizado de estados
   if (cargando) {
     return (
@@ -129,11 +184,11 @@ export default function DetallePlaylist() {
         playlist={playlist}
         estaSiguiendo={estaSiguiendo}
         esCreador={esCreador()}
-        cambiandoPrivacidad={cambiandoPrivacidad}
+        puedeEditar={puedeEditar()}
         onReproducirTodo={manejarReproducirTodo}
         onToggleSeguir={manejarToggleSeguir}
         onAgregarCanciones={() => setMostrarModalAgregarCanciones(true)}
-        onCambiarPrivacidad={() => setMostrarConfirmarPrivacidad(true)}
+        onEditar={() => setMostrarModalEditar(true)}
         onEliminar={() => setMostrarConfirmarEliminar(true)}
       />
 
@@ -224,6 +279,14 @@ Tip: Si no quieres que otros vean esta playlist, considera hacerla privada en lu
           onAgregarSeleccionadas={agregarCancionesSeleccionadas}
         />
       )}
+
+      {/* Modal de editar playlist */}
+      <ModalEditarPlaylist
+        mostrar={mostrarModalEditar}
+        playlist={playlist}
+        onCerrar={() => setMostrarModalEditar(false)}
+        onGuardar={manejarGuardarEdicion}
+      />
     </div>
   );
 }

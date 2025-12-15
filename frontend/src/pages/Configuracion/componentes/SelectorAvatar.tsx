@@ -14,8 +14,11 @@ export const SelectorAvatar = ({
   deshabilitado = false,
 }: SelectorAvatarProps) => {
   return (
-    <div className="relative w-24 h-24 mx-auto -mt-12 group">
-      <div className="w-24 h-24 rounded-full bg-gray-700 border-4 border-gray-900 overflow-hidden flex items-center justify-center">
+    <div className="relative w-32 h-32 mx-auto -mt-16 group">
+      {/* Glow effect */}
+      <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full blur-lg opacity-0 group-hover:opacity-60 transition-opacity duration-300" />
+
+      <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-neutral-800 to-neutral-900 border-4 border-neutral-900 overflow-hidden flex items-center justify-center shadow-2xl">
         {avatarPreview ? (
           <img
             src={avatarPreview}
@@ -23,7 +26,7 @@ export const SelectorAvatar = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <User className="w-12 h-12 text-gray-400" />
+          <User className="w-16 h-16 text-neutral-600" />
         )}
       </div>
 
@@ -31,9 +34,12 @@ export const SelectorAvatar = ({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={deshabilitado}
-        className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center disabled:opacity-50"
+        className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
       >
-        <Camera className="w-6 h-6 text-white" />
+        <div className="text-center">
+          <Camera className="w-7 h-7 text-white mx-auto mb-1" />
+          <p className="text-xs text-white font-medium">Cambiar</p>
+        </div>
       </button>
 
       <input

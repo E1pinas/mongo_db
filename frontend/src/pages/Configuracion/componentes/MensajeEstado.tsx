@@ -11,13 +11,20 @@ export const MensajeEstado = ({ mensaje }: MensajeEstadoProps) => {
 
   return (
     <div
-      className={`mb-4 p-4 rounded-lg ${
+      className={`mb-6 p-4 rounded-xl border backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-300 ${
         esError
-          ? "bg-red-500/20 text-red-400 border border-red-500/50"
-          : "bg-green-500/20 text-green-400 border border-green-500/50"
+          ? "bg-red-500/10 text-red-400 border-red-500/30"
+          : "bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-400 border-green-500/30"
       }`}
     >
-      <p className="whitespace-pre-line">{mensaje}</p>
+      <p className="whitespace-pre-line flex items-start gap-2 font-medium">
+        {esError ? (
+          <span className="text-lg">⚠️</span>
+        ) : (
+          <span className="text-lg">✓</span>
+        )}
+        <span>{mensaje.replace(/^(✓|⚠️)\s*/, "")}</span>
+      </p>
     </div>
   );
 };

@@ -1,7 +1,6 @@
+import { useNavigate } from "react-router-dom";
+import { Disc } from "lucide-react";
 import type { Album } from "../../../types";
-import { MediaGrid } from "../../../components/common";
-import { AlbumCard } from "../../../components/musica";
-import { usePlayer } from "../../../contexts";
 
 interface ListaAlbumesProps {
   titulo: string;
@@ -16,46 +15,69 @@ export const ListaAlbumes = ({
   cargando,
   mensajeSinAlbumes = "No hay álbumes disponibles",
 }: ListaAlbumesProps) => {
-  const { playQueue } = usePlayer();
+  const navigate = useNavigate();
 
-  const manejarReproducirAlbum = async (album: Album, e: React.MouseEvent) => {
-    e.stopPropagation();
-    console.log("Reproduciendo álbum:", album);
-    if (album.canciones && album.canciones.length > 0) {
-      const canciones = album.canciones.map((cancion: any) =>
-        typeof cancion === "string" ? { _id: cancion } : cancion
-      );
-      await playQueue(canciones as any, 0, {
-        type: "album",
-        id: album._id,
-        name: album.titulo,
-      });
-    }
+  const obtenerNombresArtistas = (album: Album) => {
+    if (!album.artistas || album.artistas.length === 0) return "Tú";
+
+    if (typeof album.artistas[0] === "string") return "Tú";
+
+    return album.artistas
+      .map((a: any) => a.nombreArtistico || a.nick || a.nombre)
+      .join(", ");
   };
 
   return (
-    <div className="mb-8">
-      <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-        {titulo}
-      </h2>
+    <div className="mb-12">
+      <h2 className="mb-6 text-2xl font-bold text-white">{titulo}</h2>
       {cargando ? (
         <div className="flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-600 border-t-transparent"></div>
         </div>
       ) : albumes.length === 0 ? (
-        <p className="py-12 text-center text-gray-500 dark:text-gray-400">
+        <p className="py-12 text-center text-neutral-400">
           {mensajeSinAlbumes}
         </p>
       ) : (
-        <MediaGrid>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {albumes.map((album) => (
-            <AlbumCard
+            <div
               key={album._id}
-              album={album}
-              onPlay={(e) => manejarReproducirAlbum(album, e)}
-            />
+              onClick={() => navigate(`/album/${album._id}`)}
+              className="group cursor-pointer"
+            >
+              <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-neutral-900">
+                {album.portadaUrl ? (
+                  <img
+                    src={album.portadaUrl}
+                    alt={album.titulo}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-orange-500 to-red-600">
+                    <Disc size={48} className="text-white" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full bg-orange-500 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 flex items-center justify-center shadow-lg">
+                  <svg
+                    className="w-5 h-5 text-white ml-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="font-semibold text-white truncate group-hover:text-orange-400 transition-colors">
+                {album.titulo}
+              </h3>
+              <p className="text-sm text-neutral-400 truncate">
+                {obtenerNombresArtistas(album)}
+              </p>
+            </div>
           ))}
-        </MediaGrid>
+        </div>
       )}
     </div>
   );

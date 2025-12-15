@@ -43,10 +43,13 @@ const Settings = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="bg-gray-900 rounded-xl shadow-2xl max-w-2xl w-full">
-          <form onSubmit={guardarCambios} className="p-6">
+        <div className="relative bg-gradient-to-br from-neutral-900/95 via-neutral-950/95 to-neutral-900/95 backdrop-blur-xl rounded-2xl shadow-2xl max-w-2xl w-full border border-neutral-800/50">
+          {/* Glow effect */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-2xl blur-xl opacity-50" />
+
+          <form onSubmit={guardarCambios} className="relative p-6">
             <CabeceraModal
               guardando={guardando}
               alGuardar={guardarCambios}

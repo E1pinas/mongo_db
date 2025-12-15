@@ -8,6 +8,7 @@ import { ListaAmigos } from "./componentes/ListaAmigos";
 import { ListaBloqueados } from "./componentes/ListaBloqueados";
 import { ModalEliminarAmigo } from "./componentes/ModalEliminarAmigo";
 import { ModalDesbloquearUsuario } from "./componentes/ModalDesbloquearUsuario";
+import Toast from "../../components/Toast";
 
 export function Solicitudes() {
   const [pestanaActiva, setPestanaActiva] = useState<TipoPestana>("recibidas");
@@ -28,15 +29,21 @@ export function Solicitudes() {
     bloqueadoSeleccionado,
     mostrarModalEliminar,
     mostrarModalDesbloquear,
+    mensajeError,
+    mostrarConfirmBloqueo,
+    usuarioABloquear,
     manejarAceptar,
     manejarRechazar,
     manejarBloquear,
+    confirmarBloqueo,
+    cancelarBloqueo,
     abrirModalEliminar,
     confirmarEliminarAmigo,
     cerrarModalEliminar,
     abrirModalDesbloquear,
     confirmarDesbloquear,
     cerrarModalDesbloquear,
+    limpiarError,
   } = useAccionesSolicitudes({
     solicitudesRecibidas,
     setSolicitudesRecibidas,
@@ -126,6 +133,56 @@ export function Solicitudes() {
           onConfirmar={confirmarDesbloquear}
           onCancelar={cerrarModalDesbloquear}
         />
+
+        {/* Modal confirmar bloqueo */}
+        {mostrarConfirmBloqueo && usuarioABloquear && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-neutral-900 rounded-xl p-6 max-w-md w-full border border-neutral-800 shadow-2xl">
+              <h3 className="text-xl font-bold text-white mb-3">
+                ¿Bloquear usuario?
+              </h3>
+              <p className="text-neutral-300 mb-2">
+                ¿Estás seguro de que quieres bloquear a{" "}
+                <span className="text-orange-400 font-semibold">
+                  @{usuarioABloquear.nick}
+                </span>
+                ?
+              </p>
+              <p className="text-sm text-neutral-400 mb-6">
+                Esta persona no podrá ver tu perfil ni enviarte solicitudes de
+                amistad.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelarBloqueo}
+                  className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-medium transition-colors"
+                  disabled={actionLoading !== null}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarBloqueo}
+                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  disabled={actionLoading !== null}
+                >
+                  {actionLoading === usuarioABloquear.id ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Bloqueando...
+                    </span>
+                  ) : (
+                    "Bloquear"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Toast de error */}
+        {mensajeError && (
+          <Toast message={mensajeError} type="error" onClose={limpiarError} />
+        )}
       </div>
     </div>
   );
