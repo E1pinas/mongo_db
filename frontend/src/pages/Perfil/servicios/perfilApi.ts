@@ -16,11 +16,17 @@ export const servicioPerfil = {
   },
 
   // Agregar al historial de recientes
-  agregarARecientes: async (usuarioId: string): Promise<void> => {
+  agregarARecientes: async (usuario: Usuario): Promise<void> => {
     try {
+      const usuarioExtendido = usuario as any;
       recentService.addRecentItem({
-        type: "profile" as any,
-        id: usuarioId,
+        type: "perfil" as any,
+        id: usuario.nick, // Usar nick para la navegación
+        titulo: usuario.nombreArtistico || usuario.nick,
+        subtitulo: usuario.nombreArtistico
+          ? `@${usuario.nick}`
+          : `${usuario.nombre} ${usuario.apellidos}`,
+        imagenUrl: usuarioExtendido.avatarUrl || "",
       });
     } catch (error) {
       console.error("Error al agregar a recientes:", error);

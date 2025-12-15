@@ -72,7 +72,7 @@ export const useDatosPerfil = (
 
       // Agregar al historial de recientes (solo si no es tu propio perfil)
       if (datosUsuario && datosUsuario._id !== usuarioActual?._id) {
-        await servicioPerfil.agregarARecientes(datosUsuario._id);
+        await servicioPerfil.agregarARecientes(datosUsuario);
       }
     } catch (error) {
       console.error("Error al cargar perfil:", error);

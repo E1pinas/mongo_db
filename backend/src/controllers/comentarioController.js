@@ -38,12 +38,15 @@ export const crearComentario = async (req, res) => {
 
     // Notificar al dueño del perfil (si no es el mismo que comenta)
     if (req.userId !== perfilDestino) {
-      const autor = await Usuario.findById(req.userId).select("nick");
+      const autor = await Usuario.findById(req.userId).select(
+        "nick nombreArtistico"
+      );
+      const nombreMostrar = autor.nombreArtistico || autor.nick;
       await Notificacion.create({
         usuarioDestino: perfilDestino,
         usuarioOrigen: req.userId,
         tipo: "comentario_en_perfil",
-        mensaje: `${autor.nick} ha comentado en tu perfil`,
+        mensaje: `${nombreMostrar} ha comentado en tu perfil`,
         recurso: {
           tipo: "comment",
           id: comentario._id,

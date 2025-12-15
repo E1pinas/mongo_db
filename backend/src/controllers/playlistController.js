@@ -509,12 +509,15 @@ export const invitarColaborador = async (req, res) => {
     await playlist.save();
 
     // Crear notificación para el colaborador
-    const creador = await Usuario.findById(usuarioId);
+    const creador = await Usuario.findById(usuarioId).select(
+      "nick nombreArtistico"
+    );
+    const nombreMostrar = creador.nombreArtistico || creador.nick;
     await Notificacion.create({
       usuarioDestino: colaboradorId,
       usuarioOrigen: usuarioId,
       tipo: "nueva_playlist_artista",
-      mensaje: `${creador.nick} te ha invitado a colaborar en la playlist "${playlist.titulo}"`,
+      mensaje: `${nombreMostrar} te ha invitado a colaborar en la playlist "${playlist.titulo}"`,
       recurso: {
         tipo: "playlist",
         id: playlist._id,

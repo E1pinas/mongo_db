@@ -52,3 +52,5 @@ export function Toast({
     </div>
   );
 }
+
+export default Toast;

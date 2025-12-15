@@ -68,12 +68,15 @@ export const enviarSolicitudAmistad = async (req, res) => {
           await solicitudExistente.save();
 
           // Crear notificación de amistad aceptada
-          const solicitante = await Usuario.findById(solicitanteId);
+          const solicitante = await Usuario.findById(solicitanteId).select(
+            "nick nombreArtistico"
+          );
+          const nombreMostrar = solicitante.nombreArtistico || solicitante.nick;
           await Notificacion.create({
             usuarioDestino: solicitudExistente.solicitante,
             usuarioOrigen: solicitanteId,
             tipo: "amistad_aceptada",
-            mensaje: `${solicitante.nick} aceptó tu solicitud de amistad`,
+            mensaje: `${nombreMostrar} aceptó tu solicitud de amistad`,
             recurso: {
               tipo: "user",
               id: solicitanteId,
@@ -103,12 +106,15 @@ export const enviarSolicitudAmistad = async (req, res) => {
         await solicitudExistente.save();
 
         // Crear notificación para el receptor
-        const solicitante = await Usuario.findById(solicitanteId);
+        const solicitante = await Usuario.findById(solicitanteId).select(
+          "nick nombreArtistico"
+        );
+        const nombreMostrar = solicitante.nombreArtistico || solicitante.nick;
         await Notificacion.create({
           usuarioDestino: usuarioId,
           usuarioOrigen: solicitanteId,
           tipo: "solicitud_amistad",
-          mensaje: `${solicitante.nick} te ha enviado una solicitud de amistad`,
+          mensaje: `${nombreMostrar} te ha enviado una solicitud de amistad`,
           recurso: {
             tipo: "user",
             id: solicitanteId,
@@ -133,12 +139,15 @@ export const enviarSolicitudAmistad = async (req, res) => {
     await nuevaSolicitud.save();
 
     // Crear notificación para el receptor
-    const solicitante = await Usuario.findById(solicitanteId);
+    const solicitante = await Usuario.findById(solicitanteId).select(
+      "nick nombreArtistico"
+    );
+    const nombreMostrar = solicitante.nombreArtistico || solicitante.nick;
     await Notificacion.create({
       usuarioDestino: usuarioId,
       usuarioOrigen: solicitanteId,
       tipo: "solicitud_amistad",
-      mensaje: `${solicitante.nick} te ha enviado una solicitud de amistad`,
+      mensaje: `${nombreMostrar} te ha enviado una solicitud de amistad`,
       recurso: {
         tipo: "user",
         id: solicitanteId,
@@ -203,12 +212,15 @@ export const aceptarSolicitudAmistad = async (req, res) => {
     });
 
     // Crear notificación para el solicitante informando que aceptaron su solicitud
-    const receptor = await Usuario.findById(receptorId);
+    const receptor = await Usuario.findById(receptorId).select(
+      "nick nombreArtistico"
+    );
+    const nombreMostrar = receptor.nombreArtistico || receptor.nick;
     await Notificacion.create({
       usuarioDestino: solicitud.solicitante,
       usuarioOrigen: receptorId,
       tipo: "amistad_aceptada",
-      mensaje: `${receptor.nick} ha aceptado tu solicitud de amistad`,
+      mensaje: `${nombreMostrar} ha aceptado tu solicitud de amistad`,
       recurso: {
         tipo: "user",
         id: receptorId,

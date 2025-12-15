@@ -116,9 +116,10 @@ export const notificarNuevaCancion = async (cancion, usuarioId) => {
       }
 
       const usuario = await Usuario.findById(usuarioId).select(
-        "nick estadisticas.totalCancionesSubidas"
+        "nick nombreArtistico estadisticas.totalCancionesSubidas"
       );
-      console.log("👤 Usuario encontrado:", usuario.nick);
+      const nombreMostrar = usuario.nombreArtistico || usuario.nick;
+      console.log("👤 Usuario encontrado:", nombreMostrar);
       console.log(
         "📊 Total canciones del usuario:",
         usuario.estadisticas?.totalCancionesSubidas
@@ -127,8 +128,8 @@ export const notificarNuevaCancion = async (cancion, usuarioId) => {
       const totalCanciones = usuario.estadisticas?.totalCancionesSubidas || 1;
       const mensaje =
         totalCanciones === 1
-          ? `${usuario.nick} ha subido su primera canción: "${cancionActualizada.titulo}"`
-          : `${usuario.nick} ha subido una nueva canción: "${cancionActualizada.titulo}"`;
+          ? `${nombreMostrar} ha subido su primera canción: "${cancionActualizada.titulo}"`
+          : `${nombreMostrar} ha subido una nueva canción: "${cancionActualizada.titulo}"`;
 
       console.log("📢 MENSAJE GENERADO:", mensaje);
 
@@ -176,17 +177,18 @@ export const notificarNuevoAlbum = async (album, usuarioId) => {
       }
 
       const usuario = await Usuario.findById(usuarioId).select(
-        "nick estadisticas.totalAlbumesSubidos"
+        "nick nombreArtistico estadisticas.totalAlbumesSubidos"
       );
+      const nombreMostrar = usuario.nombreArtistico || usuario.nick;
 
       const totalAlbumes = usuario.estadisticas?.totalAlbumesSubidos || 1;
       const numCanciones = albumActualizado.canciones?.length || 0;
 
       let mensaje;
       if (totalAlbumes === 1) {
-        mensaje = `${usuario.nick} ha lanzado su primer álbum: "${albumActualizado.titulo}" con ${numCanciones} canciones`;
+        mensaje = `${nombreMostrar} ha lanzado su primer álbum: "${albumActualizado.titulo}" con ${numCanciones} canciones`;
       } else {
-        mensaje = `${usuario.nick} ha lanzado un nuevo álbum: "${albumActualizado.titulo}"`;
+        mensaje = `${nombreMostrar} ha lanzado un nuevo álbum: "${albumActualizado.titulo}"`;
       }
 
       console.log("📢 Notificación de álbum enviada:", mensaje);
@@ -233,17 +235,18 @@ export const notificarNuevaPlaylist = async (playlist, usuarioId) => {
       }
 
       const usuario = await Usuario.findById(usuarioId).select(
-        "nick playlistsCreadas"
+        "nick nombreArtistico playlistsCreadas"
       );
+      const nombreMostrar = usuario.nombreArtistico || usuario.nick;
 
       const totalPlaylists = usuario.playlistsCreadas?.length || 1;
       const numCanciones = playlistActualizada.canciones?.length || 0;
 
       let mensaje;
       if (totalPlaylists === 1) {
-        mensaje = `${usuario.nick} ha creado su primera playlist: "${playlistActualizada.titulo}" con ${numCanciones} canciones`;
+        mensaje = `${nombreMostrar} ha creado su primera playlist: "${playlistActualizada.titulo}" con ${numCanciones} canciones`;
       } else {
-        mensaje = `${usuario.nick} ha creado una nueva playlist: "${playlistActualizada.titulo}"`;
+        mensaje = `${nombreMostrar} ha creado una nueva playlist: "${playlistActualizada.titulo}"`;
       }
 
       console.log("📢 Notificación de playlist enviada:", mensaje);
@@ -268,7 +271,10 @@ export const notificarNuevaPlaylist = async (playlist, usuarioId) => {
  */
 export const notificarNuevoPost = async (post, usuarioId) => {
   try {
-    const usuario = await Usuario.findById(usuarioId).select("nick");
+    const usuario = await Usuario.findById(usuarioId).select(
+      "nick nombreArtistico"
+    );
+    const nombreMostrar = usuario.nombreArtistico || usuario.nick;
 
     let mensajeTipo = "";
     if (post.tipo === "texto") {
@@ -284,7 +290,7 @@ export const notificarNuevoPost = async (post, usuarioId) => {
     await notificarSeguidoresYAmigos(
       usuarioId,
       "nuevo_post",
-      `${usuario.nick} ${mensajeTipo}`,
+      `${nombreMostrar} ${mensajeTipo}`,
       {
         tipo: "post",
         id: post._id,

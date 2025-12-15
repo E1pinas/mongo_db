@@ -1,4 +1,6 @@
 import { Calendar, Settings } from "lucide-react";
+import { FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6";
 import type { Usuario } from "../../../types";
 import { formatTimeAgo } from "../../../utils/dateFormat";
 import { formatNumber } from "../../../utils/formatHelpers";
@@ -26,36 +28,85 @@ export const CabeceraPerfil: React.FC<PropsCabeceraPerfil> = ({
   const urlBanner = usuarioExtendido.bannerUrl || undefined;
   const urlAvatar = usuarioExtendido.avatarUrl || "/avatar.png";
 
+  // Función para limpiar el username (quitar @ si existe)
+  const limpiarUsername = (username: string): string => {
+    if (!username) return "";
+    return username.trim().replace(/^@/, "");
+  };
+
+  // Función para construir URL completa desde username
+  const construirURL = (plataforma: string, username: string): string => {
+    if (!username) return "";
+    const usernamelimpio = limpiarUsername(username);
+    if (!usernamelimpio) return "";
+
+    const baseURLs: Record<string, string> = {
+      instagram: "https://instagram.com/",
+      tiktok: "https://tiktok.com/@",
+      youtube: "https://youtube.com/@",
+      x: "https://x.com/",
+    };
+
+    return baseURLs[plataforma] + usernamelimpio;
+  };
+
   const redesSociales = [
     {
-      nombre: "Instagram",
-      url: usuarioExtendido.instagram,
-      icon: "📷",
-      color: "from-purple-600 to-pink-500",
-      bgColor: "bg-purple-600",
+      username: limpiarUsername(
+        usuarioExtendido.redes?.instagram || usuarioExtendido.instagram || ""
+      ),
+      url: construirURL(
+        "instagram",
+        usuarioExtendido.redes?.instagram || usuarioExtendido.instagram || ""
+      ),
+      icon: FaInstagram,
+      bgColor: "bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500",
+      hoverColor:
+        "hover:from-purple-700 hover:via-pink-700 hover:to-orange-600",
     },
     {
-      nombre: "TikTok",
-      url: usuarioExtendido.tiktok,
-      icon: "🎵",
-      color: "from-black to-cyan-500",
+      username: limpiarUsername(
+        usuarioExtendido.redes?.tiktok || usuarioExtendido.tiktok || ""
+      ),
+      url: construirURL(
+        "tiktok",
+        usuarioExtendido.redes?.tiktok || usuarioExtendido.tiktok || ""
+      ),
+      icon: FaTiktok,
       bgColor: "bg-black",
+      hoverColor: "hover:bg-neutral-900",
     },
     {
-      nombre: "YouTube",
-      url: usuarioExtendido.youtube,
-      icon: "▶️",
-      color: "from-red-600 to-red-500",
+      username: limpiarUsername(
+        usuarioExtendido.redes?.youtube || usuarioExtendido.youtube || ""
+      ),
+      url: construirURL(
+        "youtube",
+        usuarioExtendido.redes?.youtube || usuarioExtendido.youtube || ""
+      ),
+      icon: FaYoutube,
       bgColor: "bg-red-600",
+      hoverColor: "hover:bg-red-700",
     },
     {
-      nombre: "Twitter",
-      url: usuarioExtendido.twitter,
-      icon: "🐦",
-      color: "from-sky-500 to-blue-500",
-      bgColor: "bg-sky-500",
+      username: limpiarUsername(
+        usuarioExtendido.redes?.x ||
+          usuarioExtendido.x ||
+          usuarioExtendido.twitter ||
+          ""
+      ),
+      url: construirURL(
+        "x",
+        usuarioExtendido.redes?.x ||
+          usuarioExtendido.x ||
+          usuarioExtendido.twitter ||
+          ""
+      ),
+      icon: FaXTwitter,
+      bgColor: "bg-black",
+      hoverColor: "hover:bg-neutral-900",
     },
-  ].filter((red) => red.url);
+  ].filter((red) => red.username && red.url);
 
   return (
     <div className="relative overflow-visible">
@@ -103,18 +154,21 @@ export const CabeceraPerfil: React.FC<PropsCabeceraPerfil> = ({
               {/* Botones de Redes Sociales */}
               {redesSociales.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {redesSociales.map((red) => (
-                    <a
-                      key={red.nombre}
-                      href={red.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex items-center gap-2 px-3 py-1.5 ${red.bgColor} hover:opacity-90 rounded-md text-white font-medium text-sm transition-opacity shadow-lg`}
-                    >
-                      <span className="text-base">{red.icon}</span>
-                      <span>{red.nombre}</span>
-                    </a>
-                  ))}
+                  {redesSociales.map((red, index) => {
+                    const IconComponent = red.icon;
+                    return (
+                      <a
+                        key={index}
+                        href={red.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 px-3 py-1.5 ${red.bgColor} ${red.hoverColor} rounded-lg text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl hover:scale-105`}
+                      >
+                        <IconComponent className="w-4 h-4" />
+                        <span>@{red.username}</span>
+                      </a>
+                    );
+                  })}
                 </div>
               )}
 
