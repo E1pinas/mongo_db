@@ -10,6 +10,8 @@ export default function WelcomeModal({ onComplete }: WelcomeModalProps) {
   const [bio, setBio] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string>("");
   const [perfilPublico, setPerfilPublico] = useState(true);
   const [recibirSolicitudes, setRecibirSolicitudes] = useState(true);
   const [error, setError] = useState("");
@@ -34,6 +36,25 @@ export default function WelcomeModal({ onComplete }: WelcomeModalProps) {
     setError("");
   };
 
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Solo se permiten imágenes");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("La imagen no puede superar los 5MB");
+      return;
+    }
+
+    setBannerFile(file);
+    setBannerPreview(URL.createObjectURL(file));
+    setError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -54,6 +75,11 @@ export default function WelcomeModal({ onComplete }: WelcomeModalProps) {
 
     try {
       setIsLoading(true);
+      // Si hay banner, subirlo también
+      if (bannerFile) {
+        await authService.uploadBanner(bannerFile);
+      }
+
       setError("");
 
       // Primero actualizar el perfil de texto y privacidad
@@ -89,10 +115,11 @@ export default function WelcomeModal({ onComplete }: WelcomeModalProps) {
           <h2 className="text-xl font-bold">Completa tu perfil</h2>
           <button
             type="button"
-            disabled
-            className="px-4 py-1.5 bg-white text-black rounded-full font-medium text-sm cursor-not-allowed opacity-50"
+            disabled={isLoading || !nombreArtistico.trim()}
+            onClick={handleSubmit}
+            className="px-4 py-1.5 bg-white hover:bg-neutral-200 text-black rounded-full font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Guardar
+            {isLoading ? "Guardando..." : "Guardar"}
           </button>
         </div>
 
@@ -102,24 +129,50 @@ export default function WelcomeModal({ onComplete }: WelcomeModalProps) {
             <label className="block text-sm font-medium mb-2">
               Banner del perfil
             </label>
-            <div className="relative h-40 bg-linear-to-br from-orange-600 to-orange-800 rounded-lg flex items-center justify-center">
-              <div className="text-neutral-400">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="48"
-                  height="48"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                  <circle cx="12" cy="13" r="4"></circle>
-                </svg>
+            <label className="cursor-pointer block">
+              <div className="relative h-40 bg-linear-to-br from-orange-600 to-orange-800 rounded-lg overflow-hidden flex items-center justify-center group">
+                {bannerPreview ? (
+                  <>
+                    <img
+                      src={bannerPreview}
+                      alt="Banner preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-white font-medium">
+                        Cambiar banner
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-neutral-400 group-hover:text-white transition-colors">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="48"
+                      height="48"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                      <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    <p className="text-sm mt-2 text-center">
+                      Click para subir banner
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleBannerChange}
+                className="hidden"
+              />
+            </label>
             <p className="text-xs text-neutral-500 mt-2">
               Recomendado: 1500x500px, máximo 5MB
             </p>

@@ -370,7 +370,9 @@ export const actualizarCancion = async (req, res) => {
       { _id: req.params.id, artistas: req.userId, estaEliminada: false },
       { $set: actualizaciones },
       { new: true }
-    );
+    )
+      .populate("artistas", "nick nombre nombreArtistico avatarUrl")
+      .populate("album", "titulo portadaUrl");
 
     if (!cancion) {
       return sendNotFound(res, "Canción o no tienes permisos");

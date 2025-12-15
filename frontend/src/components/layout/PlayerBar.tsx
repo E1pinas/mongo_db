@@ -425,7 +425,7 @@ export default function PlayerBar() {
           <div className="hidden md:flex items-center gap-3">
             <button
               onClick={() => setVolume(volume > 0 ? 0 : 0.75)}
-              className="p-2.5 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-all hover:scale-110"
+              className="p-2.5 rounded-full bg-neutral-800 hover:bg-neutral-700 text-orange-500 hover:text-orange-400 transition-all hover:scale-110"
               title={volume > 0 ? "Silenciar" : "Activar sonido"}
             >
               {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -440,13 +440,13 @@ export default function PlayerBar() {
               }}
             >
               <div
-                className="h-full bg-white group-hover:bg-orange-500 transition-colors relative shadow-lg"
+                className="h-full bg-orange-500 transition-colors relative shadow-lg"
                 style={{ width: `${volume * 100}%` }}
               >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-orange-500 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <span className="text-xs text-neutral-400 w-10 font-medium tabular-nums">
+            <span className="text-xs text-orange-400 w-10 font-medium tabular-nums">
               {Math.round(volume * 100)}%
             </span>
           </div>

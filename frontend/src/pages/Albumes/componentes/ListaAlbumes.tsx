@@ -28,16 +28,33 @@ export const ListaAlbumes = ({
   };
 
   return (
-    <div className="mb-12">
-      <h2 className="mb-6 text-2xl font-bold text-white">{titulo}</h2>
+    <div className="mb-16">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-1 h-8 bg-linear-to-b from-orange-500 to-red-600 rounded-full" />
+        <h2 className="text-3xl font-bold text-white">{titulo}</h2>
+        {!cargando && albumes.length > 0 && (
+          <span className="ml-2 px-3 py-1 text-sm font-semibold text-orange-400 bg-orange-500/10 rounded-full border border-orange-500/20">
+            {albumes.length}
+          </span>
+        )}
+      </div>
       {cargando ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-600 border-t-transparent"></div>
+        <div className="flex items-center justify-center py-20">
+          <div className="relative">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-600/30 border-t-orange-600"></div>
+            <Disc
+              className="absolute inset-0 m-auto text-orange-500 animate-pulse"
+              size={20}
+            />
+          </div>
         </div>
       ) : albumes.length === 0 ? (
-        <p className="py-12 text-center text-neutral-400">
-          {mensajeSinAlbumes}
-        </p>
+        <div className="py-20 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-neutral-800/50 mb-4">
+            <Disc size={40} className="text-neutral-600" />
+          </div>
+          <p className="text-neutral-400 text-lg">{mensajeSinAlbumes}</p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {albumes.map((album) => (

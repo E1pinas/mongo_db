@@ -193,7 +193,17 @@ export default function Perfil() {
         (c) => c._id === cancion._id
       );
       if (indicCancion !== -1) {
-        playQueue(cancionesDisponibles, indicCancion);
+        const contextName = esPropioUsuario
+          ? "Tu música"
+          : `Música de ${
+              usuarioPerfil?.nombreArtistico || usuarioPerfil?.nick || "artista"
+            }`;
+
+        playQueue(cancionesDisponibles, indicCancion, {
+          type: "profile",
+          id: usuarioPerfil?._id || "",
+          name: contextName,
+        });
       }
     }
   };
@@ -213,12 +223,32 @@ export default function Perfil() {
     }
   };
 
-  const manejarGuardarCancionEditada = async (cancionEditada: Cancion) => {
-    setCanciones(
-      canciones.map((c) => (c._id === cancionEditada._id ? cancionEditada : c))
-    );
-    setMostrarModalEditarCancion(false);
-    setCancionAEditar(null);
+  const manejarGuardarCancionEditada = async (data: {
+    titulo: string;
+    generos: string[];
+    esPrivada: boolean;
+    esExplicita: boolean;
+  }) => {
+    if (!cancionAEditar) return;
+
+    try {
+      const cancionActualizada = await servicioPerfil.actualizarCancion(
+        cancionAEditar._id,
+        data
+      );
+      setCanciones(
+        canciones.map((c) =>
+          c._id === cancionAEditar._id ? cancionActualizada : c
+        )
+      );
+      setMostrarModalEditarCancion(false);
+      setCancionAEditar(null);
+      setMensajeExito("Canción actualizada correctamente");
+    } catch (error: any) {
+      console.error("Error al actualizar canción:", error);
+      setMensajeError(error.message || "Error al actualizar canción");
+      throw error; // Re-lanzar para que el modal pueda manejarlo
+    }
   };
 
   // Renderizado de estados de carga y error
@@ -708,7 +738,6 @@ export default function Perfil() {
         {cancionComentarios && (
           <SongCommentsModal
             song={cancionComentarios}
-            isOpen={!!cancionComentarios}
             onClose={() => setCancionComentarios(null)}
           />
         )}

@@ -12,13 +12,21 @@ import { useAuth } from "./AuthContext";
 interface PlayerContextType extends PlayerState {
   playSong: (
     song: Cancion,
-    context?: { type: "album" | "playlist"; id: string; name: string }
+    context?: {
+      type: "album" | "playlist" | "profile";
+      id: string;
+      name: string;
+    }
   ) => void;
   addToQueue: (song: Cancion) => void;
   playQueue: (
     songs: Cancion[],
     startIndex?: number,
-    context?: { type: "album" | "playlist"; id: string; name: string }
+    context?: {
+      type: "album" | "playlist" | "profile";
+      id: string;
+      name: string;
+    }
   ) => void;
   togglePlay: () => void;
   skipNext: () => void;
@@ -30,7 +38,7 @@ interface PlayerContextType extends PlayerState {
   clearQueue: () => void;
   removeFromQueue: (index: number) => void;
   currentContext: {
-    type: "album" | "playlist";
+    type: "album" | "playlist" | "profile";
     id: string;
     name: string;
   } | null;
@@ -55,7 +63,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [shuffle, setShuffle] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentContext, setCurrentContext] = useState<{
-    type: "album" | "playlist";
+    type: "album" | "playlist" | "profile";
     id: string;
     name: string;
   } | null>(null);
@@ -1194,19 +1202,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   };
 
   const clearQueue = () => {
-    setQueue([]);
-    setOriginalQueue([]);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
+    // Solo limpiar las canciones después de la actual
+    const currentSongInQueue = currentSong;
+    if (currentSongInQueue) {
+      setQueue([currentSongInQueue]);
+      setOriginalQueue([currentSongInQueue]);
+      setCurrentIndex(0);
+    } else {
+      // Si no hay canción actual, limpiar todo
+      setQueue([]);
+      setOriginalQueue([]);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+      setCurrentSong(null);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setCurrentIndex(0);
+      setShuffle(false);
+      setRepeat("off");
     }
-    setCurrentSong(null);
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-    setCurrentIndex(0);
-    setShuffle(false);
-    setRepeat("off");
   };
 
   const removeFromQueue = (index: number) => {

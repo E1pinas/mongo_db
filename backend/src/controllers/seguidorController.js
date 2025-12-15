@@ -479,7 +479,7 @@ export const obtenerUsuariosSugeridos = async (req, res) => {
       role: { $nin: ["admin", "super_admin"] }, // Excluir administradores
       baneado: false, // Excluir usuarios baneados
     })
-      .select("_id nick nombreArtistico fotoPerfil estadisticas role")
+      .select("_id nick nombreArtistico avatarUrl estadisticas role")
       .sort({ "estadisticas.totalSeguidores": -1 }) // Ordenar por popularidad
       .limit(12); // Limitar a 12 usuarios
 

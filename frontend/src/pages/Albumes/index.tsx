@@ -30,6 +30,7 @@ export function Albumes() {
         generoSeleccionado={generoSeleccionado}
         onCambiarGenero={setGeneroSeleccionado}
       />
+
       <div className="px-6 pb-20">
         <ListaAlbumes
           titulo="Mis Álbumes"

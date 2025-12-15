@@ -37,15 +37,15 @@ export default function EditSongModal({
   onSave,
   song,
 }: EditSongModalProps) {
-  const [titulo, setTitulo] = useState(song.titulo);
-  const [generos, setGeneros] = useState<string[]>(song.generos || []);
-  const [esPrivada, setEsPrivada] = useState(song.esPrivada || false);
-  const [esExplicita, setEsExplicita] = useState(song.esExplicita || false);
+  const [titulo, setTitulo] = useState(song?.titulo || "");
+  const [generos, setGeneros] = useState<string[]>(song?.generos || []);
+  const [esPrivada, setEsPrivada] = useState(song?.esPrivada || false);
+  const [esExplicita, setEsExplicita] = useState(song?.esExplicita || false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && song) {
       setTitulo(song.titulo);
       setGeneros(song.generos || []);
       setEsPrivada(song.esPrivada || false);

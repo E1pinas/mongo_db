@@ -134,6 +134,38 @@ export const servicioPerfil = {
     return await followerService.getFollowing(usuarioId);
   },
 
+  // Actualizar canción
+  actualizarCancion: async (
+    cancionId: string,
+    data: {
+      titulo: string;
+      generos: string[];
+      esPrivada: boolean;
+      esExplicita: boolean;
+    }
+  ): Promise<Cancion> => {
+    const token = localStorage.getItem("token");
+    const respuesta = await fetch(
+      `http://localhost:3900/api/canciones/${cancionId}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!respuesta.ok) {
+      const datos = await respuesta.json();
+      throw new Error(datos.message || "Error al actualizar canción");
+    }
+
+    const resultado = await respuesta.json();
+    return resultado.cancion;
+  },
+
   // Eliminar canción
   eliminarCancion: async (cancionId: string): Promise<void> => {
     const token = localStorage.getItem("token");

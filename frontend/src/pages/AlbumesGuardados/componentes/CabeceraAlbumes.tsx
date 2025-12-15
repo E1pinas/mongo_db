@@ -15,7 +15,7 @@ export function CabeceraAlbumes({ totalAlbumes }: CabeceraAlbumesProps) {
           </div>
           <div>
             <p className="text-sm text-orange-400 font-semibold mb-1">
-              TU COLECCIÓN
+              TU BIBLIOTECA
             </p>
             <h1 className="text-5xl font-black bg-linear-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
               Álbumes
@@ -23,12 +23,13 @@ export function CabeceraAlbumes({ totalAlbumes }: CabeceraAlbumesProps) {
           </div>
         </div>
 
-        <div className="px-4 py-2 bg-neutral-800/50 backdrop-blur-sm rounded-full text-sm inline-block">
-          <span className="text-neutral-400">Total:</span>
-          <span className="ml-2 font-bold text-white">
-            {totalAlbumes} {totalAlbumes === 1 ? "álbum" : "álbumes"}
-          </span>
-        </div>
+        <p className="text-neutral-400 text-sm">
+          {totalAlbumes === 0
+            ? "Aún no has guardado ningún álbum"
+            : `${totalAlbumes} ${
+                totalAlbumes === 1 ? "álbum guardado" : "álbumes guardados"
+              }`}
+        </p>
       </div>
     </div>
   );
